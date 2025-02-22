@@ -19,13 +19,19 @@
 #include "Mod.h"
 #include <QDebug>
 #include <FileSystem.h>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 
-namespace {
+namespace
+{
 
-ModDetails invalidDetails;
+    ModDetails invalidDetails;
 
 }
 
+// 静态成员初始化
+QMap<QString, QJsonDocument> Mod::s_modsJsonMap;
 
 Mod::Mod(const QFileInfo &file)
 {
@@ -76,6 +82,43 @@ void Mod::repath(const QFileInfo &file)
     }
 }
 
+void Mod::loadModsJson(const QString &jsonPath)
+{
+    if (!s_modsJsonMap.contains(jsonPath))
+    {
+        // 如果是新的json文件，先清空现有缓存
+        if (!s_modsJsonMap.isEmpty())
+        {
+            s_modsJsonMap.clear();
+        }
+
+        QFile jsonFile(jsonPath);
+        if (jsonFile.open(QIODevice::ReadOnly))
+        {
+            s_modsJsonMap[jsonPath] = QJsonDocument::fromJson(jsonFile.readAll());
+            jsonFile.close();
+        }
+    }
+}
+
+bool Mod::saveModsJson(const QString &jsonPath)
+{
+    if (!s_modsJsonMap.contains(jsonPath))
+    {
+        return false;
+    }
+
+    QFile jsonFile(jsonPath);
+    if (!jsonFile.open(QIODevice::WriteOnly))
+    {
+        return false;
+    }
+
+    jsonFile.write(s_modsJsonMap[jsonPath].toJson());
+    jsonFile.close();
+    return true;
+}
+
 bool Mod::enable(bool value)
 {
     if (m_type == Mod::MOD_UNKNOWN || m_type == Mod::MOD_FOLDER)
@@ -85,12 +128,17 @@ bool Mod::enable(bool value)
         return false;
 
     QString path = m_file.absoluteFilePath();
+    QString oldName = m_file.fileName();
+    QString newName;
+
+    // 处理文件重命名
     if (value)
     {
         QFile foo(path);
         if (!path.endsWith(".disabled"))
             return false;
         path.chop(9);
+        newName = oldName.left(oldName.length() - 9);
         if (!foo.rename(path))
             return false;
     }
@@ -98,9 +146,43 @@ bool Mod::enable(bool value)
     {
         QFile foo(path);
         path += ".disabled";
+        newName = oldName + ".disabled";
         if (!foo.rename(path))
             return false;
     }
+
+    // 处理JSON文件
+    QString newJsonPath = QDir::cleanPath(QDir(QFileInfo(path).dir().absolutePath()).filePath("../../mod.json"));
+
+    if (QFile::exists(newJsonPath))
+    {
+        loadModsJson(newJsonPath);
+
+        if (s_modsJsonMap[newJsonPath].isArray())
+        {
+            QJsonArray modsArray = s_modsJsonMap[newJsonPath].array();
+            bool found = false;
+
+            for (int i = 0; i < modsArray.size(); i++)
+            {
+                QJsonObject mod = modsArray[i].toObject();
+                if (mod["name"].toString() == oldName)
+                {
+                    mod["name"] = newName;
+                    modsArray[i] = mod;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found)
+            {
+                s_modsJsonMap[newJsonPath].setArray(modsArray);
+                saveModsJson(newJsonPath);
+            }
+        }
+    }
+
     repath(QFileInfo(path));
     m_enabled = value;
     return true;
@@ -112,14 +194,12 @@ bool Mod::destroy()
     return FS::deletePath(m_file.filePath());
 }
 
-
-const ModDetails & Mod::details() const
+const ModDetails &Mod::details() const
 {
-    if(!m_localDetails)
+    if (!m_localDetails)
         return invalidDetails;
     return *m_localDetails;
 }
-
 
 QString Mod::version() const
 {
@@ -128,8 +208,9 @@ QString Mod::version() const
 
 QString Mod::name() const
 {
-    auto & d = details();
-    if(!d.name.isEmpty()) {
+    auto &d = details();
+    if (!d.name.isEmpty())
+    {
         return d.name;
     }
     return m_name;

@@ -21,8 +21,6 @@
 
 #include "ModDetails.h"
 
-
-
 class Mod
 {
 public:
@@ -32,7 +30,7 @@ public:
         MOD_ZIPFILE,    //!< The mod is a zip file containing the mod's class files.
         MOD_SINGLEFILE, //!< The mod is a single file (not a zip file).
         MOD_FOLDER,     //!< The mod is in a folder on the filesystem.
-        MOD_LITEMOD, //!< The mod is a litemod
+        MOD_LITEMOD,    //!< The mod is a litemod
     };
 
     Mod() = default;
@@ -81,25 +79,34 @@ public:
     // change the mod's filesystem path (used by mod lists for *MAGIC* purposes)
     void repath(const QFileInfo &file);
 
-    bool shouldResolve() {
+    bool shouldResolve()
+    {
         return !m_resolving && !m_resolved;
     }
-    bool isResolving() {
+    bool isResolving()
+    {
         return m_resolving;
     }
     int resolutionTicket()
     {
         return m_resolutionTicket;
     }
-    void setResolving(bool resolving, int resolutionTicket) {
+    void setResolving(bool resolving, int resolutionTicket)
+    {
         m_resolving = resolving;
         m_resolutionTicket = resolutionTicket;
     }
-    void finishResolvingWithDetails(std::shared_ptr<ModDetails> details){
+    void finishResolvingWithDetails(std::shared_ptr<ModDetails> details)
+    {
         m_resolving = false;
         m_resolved = true;
         m_localDetails = details;
     }
+
+private:
+    static QMap<QString, QJsonDocument> s_modsJsonMap;
+    static void loadModsJson(const QString &jsonPath);
+    static bool saveModsJson(const QString &jsonPath);
 
 protected:
     QFileInfo m_file;
