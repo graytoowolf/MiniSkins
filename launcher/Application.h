@@ -7,6 +7,9 @@
 #include <QIcon>
 #include <QDateTime>
 #include <QUrl>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QFile>
 #include <updater/GoUpdate.h>
 
 #include "DownloadSource.h"
@@ -21,7 +24,6 @@ class InstanceWindow;
 class MainWindow;
 class SetupWizard;
 class GenericPageProvider;
-class QFile;
 class HttpMetaCache;
 class SettingsObject;
 class InstanceList;
@@ -36,8 +38,9 @@ class TranslationsModel;
 class ITheme;
 class MCEditTool;
 
-namespace Meta {
-class Index;
+namespace Meta
+{
+    class Index;
 }
 
 #if defined(APPLICATION)
@@ -49,7 +52,8 @@ class Application : public QApplication
     // friends for the purpose of limiting access to deprecated stuff
     Q_OBJECT
 public:
-    enum Status {
+    enum Status
+    {
         StartingUp,
         Failed,
         Succeeded,
@@ -60,21 +64,23 @@ public:
     Application(int &argc, char **argv);
     virtual ~Application();
 
-    std::shared_ptr<SettingsObject> settings() const {
+    std::shared_ptr<SettingsObject> settings() const
+    {
         return m_settings;
     }
 
-    qint64 timeSinceStart() const {
+    qint64 timeSinceStart() const
+    {
         return startTime.msecsTo(QDateTime::currentDateTime());
     }
 
-    QIcon getThemedIcon(const QString& name);
+    QIcon getThemedIcon(const QString &name);
 
-    void setIconTheme(const QString& name);
+    void setIconTheme(const QString &name);
 
     std::vector<ITheme *> getValidApplicationThemes();
 
-    void setApplicationTheme(const QString& name, bool initial);
+    void setApplicationTheme(const QString &name, bool initial);
 
     void setData(const QString &addonId, const QString &fileId, const QString &ID, const QString &splatform, const QString &downloadUrl);
 
@@ -86,7 +92,8 @@ public:
     QString getSplatform() const;
     bool isUpdating() const;
 
-    shared_qobject_ptr<UpdateChecker> updateChecker() {
+    shared_qobject_ptr<UpdateChecker> updateChecker()
+    {
         return m_updateChecker;
     }
 
@@ -94,19 +101,23 @@ public:
 
     std::shared_ptr<JavaInstallList> javalist();
 
-    std::shared_ptr<InstanceList> instances() const {
+    std::shared_ptr<InstanceList> instances() const
+    {
         return m_instances;
     }
 
-    std::shared_ptr<IconList> icons() const {
+    std::shared_ptr<IconList> icons() const
+    {
         return m_icons;
     }
 
-    MCEditTool *mcedit() const {
+    MCEditTool *mcedit() const
+    {
         return m_mcedit.get();
     }
 
-    shared_qobject_ptr<AccountList> accounts() const {
+    shared_qobject_ptr<AccountList> accounts() const
+    {
         return m_accounts;
     }
 
@@ -114,11 +125,13 @@ public:
 
     QString curseAPIKey() const;
 
-    Status status() const {
+    Status status() const
+    {
         return m_status;
     }
 
-    const QMap<QString, std::shared_ptr<BaseProfilerFactory>> &profilers() const {
+    const QMap<QString, std::shared_ptr<BaseProfilerFactory>> &profilers() const
+    {
         return m_profilers;
     }
 
@@ -135,8 +148,8 @@ public:
     bool getconfigfile();
 
     // Getter methods
-    const QList<DownloadSource>& getDownloadSources() const;
-    const QList<YggSource>& getYggSources() const;
+    const QList<DownloadSource> &getDownloadSources() const;
+    const QList<YggSource> &getYggSources() const;
 
     // Add methods
     void addDownloadSource(const DownloadSource &source);
@@ -146,10 +159,9 @@ public:
     void clearDownloadSources();
     void clearYggSources();
 
-
-
     /// this is the root of the 'installation'. Used for automatic updates
-    const QString &root() {
+    const QString &root()
+    {
         return m_rootPath;
     }
 
@@ -165,7 +177,16 @@ public:
     void updateIsRunning(bool running);
     bool updatesAreAllowed();
 
-    void ShowGlobalSettings(class QWidget * parent, QString open_page = QString());
+    void ShowGlobalSettings(class QWidget *parent, QString open_page = QString());
+
+    // MOD黑名单相关方法
+    const QMap<int, QString> &getModBlacklist() const { return m_modBlacklist; } // 修改返回类型
+    bool isModBlacklisted(const int &projectId) const;
+    bool addModToBlacklist(const int &projectId, const QString &name);
+    bool removeModFromBlacklist(const int &projectId);
+    bool updateModBlacklistName(const int &projectId, const QString &newName); // 新增方法
+    // 通过 projectId 获取黑名单中的 mod 名称
+    QString getModNameFromBlacklist(int projectId) const;
 
 signals:
     void updateAllowedChanged(bool status);
@@ -174,13 +195,12 @@ signals:
 
 public slots:
     bool launch(
-            InstancePtr instance,
-            bool online = true,
-            BaseProfilerFactory *profiler = nullptr,
-            QuickPlayTargetPtr quickPlayTarget = nullptr,
-            MinecraftAccountPtr accountToUse = nullptr,
-            const QString &offlineName = QString()
-            );
+        InstancePtr instance,
+        bool online = true,
+        BaseProfilerFactory *profiler = nullptr,
+        QuickPlayTargetPtr quickPlayTarget = nullptr,
+        MinecraftAccountPtr accountToUse = nullptr,
+        const QString &offlineName = QString());
     bool kill(InstancePtr instance);
 
 private slots:
@@ -189,9 +209,9 @@ private slots:
     void sourceFinished();
     bool FileHash(QString srcDir, QString hash256);
     void on_windowClose();
-    void messageReceived(const QByteArray & message);
+    void messageReceived(const QByteArray &message);
     void controllerSucceeded();
-    void controllerFailed(const QString & error);
+    void controllerFailed(const QString &error);
     void setupWizardFinished(int status);
 
 private:
@@ -199,7 +219,7 @@ private:
     void performMainStartupAction();
 
     // sets the fatal error message and m_status to Failed.
-    void showFatalErrorMessage(const QString & title, const QString & content);
+    void showFatalErrorMessage(const QString &title, const QString &content);
 
 private:
     void addRunningInstance();
@@ -241,14 +261,18 @@ private:
     QList<YggSource> yggSources;
     QSet<QString> yggSourceUrls;
 
+    QMap<int, QString> m_modBlacklist; // 修改成员变量类型
+    QString m_modBlacklistPath;
+
 #if defined Q_OS_WIN32
     // used on Windows to attach the standard IO streams
     bool consoleAttached = false;
 #endif
 
     // FIXME: attach to instances instead.
-    struct InstanceXtras {
-        InstanceWindow * window = nullptr;
+    struct InstanceXtras
+    {
+        InstanceWindow *window = nullptr;
         shared_qobject_ptr<LaunchController> controller;
     };
     std::map<QString, InstanceXtras> m_instanceExtras;
@@ -259,12 +283,13 @@ private:
     bool m_updateRunning = false;
 
     // main window, if any
-    MainWindow * m_mainWindow = nullptr;
+    MainWindow *m_mainWindow = nullptr;
 
     // peer launcher instance connector - used to implement single instance launcher and signalling
-    LocalPeer * m_peerInstance = nullptr;
+    LocalPeer *m_peerInstance = nullptr;
 
-    SetupWizard * m_setupWizard = nullptr;
+    SetupWizard *m_setupWizard = nullptr;
+
 public:
     QString m_instanceIdToLaunch;
     QString m_serverToJoin;
@@ -281,4 +306,8 @@ public:
     bool m_liveCheck = false;
     QUrl m_zipToImport;
     std::unique_ptr<QFile> logFile;
+
+private:
+    void loadModBlacklist();
+    bool saveModBlacklist(const QMap<int, QString> &blacklist); // 修改参数类型
 };

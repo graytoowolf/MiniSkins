@@ -341,6 +341,8 @@ set(MINECRAFT_SOURCES
     minecraft/mod/ModFolderLoadTask.cpp
     minecraft/mod/LocalModParseTask.h
     minecraft/mod/LocalModParseTask.cpp
+    minecraft/mod/fingerprint.h
+    minecraft/mod/fingerprint.cpp
     minecraft/mod/ResourcePackFolderModel.h
     minecraft/mod/ResourcePackFolderModel.cpp
     minecraft/mod/TexturePackFolderModel.h
@@ -716,6 +718,8 @@ SET(LAUNCHER_SOURCES
     # GUI - global settings pages
     ui/pages/global/AccountListPage.cpp
     ui/pages/global/AccountListPage.h
+    ui/pages/global/modblacklistpage.cpp
+    ui/pages/global/modblacklistpage.h
     ui/pages/global/CustomCommandsPage.cpp
     ui/pages/global/CustomCommandsPage.h
     ui/pages/global/ExternalToolsPage.cpp
@@ -904,6 +908,7 @@ qt5_wrap_ui(LAUNCHER_UI
     ui/dialogs/SkinUploadDialog.ui
     ui/dialogs/UpdateDialog.ui
     ui/pages/global/AccountListPage.ui
+    ui/pages/global/modblacklistpage.ui
     ui/pages/global/ExternalToolsPage.ui
     ui/pages/global/JavaPage.ui
     ui/pages/global/LauncherPage.ui

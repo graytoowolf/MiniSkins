@@ -73,9 +73,9 @@ private slots:
 
     void on_actionAddInstance_triggered();
 
-    void on_actionREDDIT_triggered();
+    //void on_actionREDDIT_triggered();
 
-    void on_actionDISCORD_triggered();
+    //void on_actionDISCORD_triggered();
 
     void on_actionCopyInstance_triggered();
 
@@ -97,7 +97,7 @@ private slots:
 
     void on_actionViewSelectedMCFolder_triggered();
 
-    void on_actionViewSelectedModsFolder_triggered();
+//    void on_actionViewSelectedModsFolder_triggered();
 
     void refreshInstances();
 
@@ -107,7 +107,7 @@ private slots:
 
     void on_actionSettings_triggered();
 
-    void on_actionInstanceSettings_triggered();
+//    void on_actionInstanceSettings_triggered();
 
     void on_actionManageAccounts_triggered();
 
@@ -174,7 +174,7 @@ private slots:
 
     void updateNotAvailable();
 
-    void notificationsChanged();
+//    void notificationsChanged();
 
     void defaultAccountChanged();
 

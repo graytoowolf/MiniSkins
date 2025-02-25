@@ -62,9 +62,16 @@ void CurseForge::FileResolvingTask::processModData(const QJsonArray &dataArray)
         auto modObj = dataValue.toObject();
         int classId = modObj.value("classId").toInt();
         int m_id = modObj.value("id").toInt();
+        QString m_name = modObj.value("name").toString();
         for (auto &m_file : m_toProcess.files) {
             if (m_file.projectId == m_id){
                 m_file.targetFolder = getTargetFolderByClassId(classId);
+            }
+        }
+        if (APPLICATION->isModBlacklisted(m_id)){
+            QString modName = APPLICATION->getModNameFromBlacklist(m_id);
+            if (modName == "Provisional Name"){
+                APPLICATION->updateModBlacklistName(m_id,m_name);
             }
         }
     }
@@ -94,14 +101,14 @@ void CurseForge::FileResolvingTask::prepareDownloads()
     QString m_modpacksfile = FS::PathCombine(m_instDir,m_modpacksid);
     QJsonArray modArray;
     m_filePath = m_path;
+    QFile modFile(FS::PathCombine(m_modpacksfile,"mod.json"));
     if (APPLICATION->isUpdating()){
-        QFile modFile(FS::PathCombine(m_modpacksfile,"mod.json"));
         if (modFile.exists()) {
             if (modFile.open(QIODevice::ReadOnly)) {
                 QJsonDocument modDoc = QJsonDocument::fromJson(modFile.readAll());
                 modArray = modDoc.array();
-                modFile.close();
                 m_filePath = FS::PathCombine(m_instDir,m_modpacksid);
+                modFile.close();
             }
         }
     }
@@ -113,43 +120,58 @@ void CurseForge::FileResolvingTask::prepareDownloads()
         auto fileIdStr = QString::number(file.fileId);
         bool shouldQueueForDownload = true;
         if (!modArray.isEmpty()) {
-            for (const QJsonValue &modValue : modArray) {
-                QJsonObject modObject = modValue.toObject();
+            for (int i = 0; i < modArray.size(); i++) {
+                QJsonObject modObject = modArray[i].toObject();
                 if (modObject["projectID"].toInt() == file.projectId) {
                     if (modObject["fileID"].toInt() == file.fileId) {
                         file.fileName = modObject["name"].toString();
                         shouldQueueForDownload = false;
                         break;
                     } else {
-
-                        QString m_name = FS::PathCombine(m_modpacksfile,"minecraft",file.targetFolder,modObject["name"].toString());
-                        QFile::remove(m_name); // 删除老的mod文件
+                        // 删除文件
+                        QString m_name = FS::PathCombine(m_modpacksfile, "minecraft",
+                                                       file.targetFolder,
+                                                       modObject["name"].toString());
+                        QFile::remove(m_name);
+                        // 从数组中移除该元素
+                        modArray.removeAt(i);
+                        i--; // 因为删除了元素，需要减少索引
                         break;
                     }
                 }
             }
-            for (const QJsonValue& value : modArray) {
-                QJsonObject jsonFile = value.toObject();
+
+            // 检查并删除不再使用的mod
+            for (int i = modArray.size() - 1; i >= 0; i--) {
+                QJsonObject jsonFile = modArray[i].toObject();
                 const int projectID = jsonFile["projectID"].toInt();
-                auto fileIt = std::find_if(m_toProcess.files.begin(), m_toProcess.files.end(),
-                                           [projectID](const File& file) { return file.projectId == projectID; });
+                auto fileIt = std::find_if(m_toProcess.files.begin(),
+                                         m_toProcess.files.end(),
+                                         [projectID](const File& file) {
+                                             return file.projectId == projectID;
+                                         });
                 if (fileIt == m_toProcess.files.end()) {
-                    QFile::remove(FS::PathCombine(m_modpacksfile,"minecraft",file.targetFolder,jsonFile["name"].toString()));
+                    // 删除文件
+                    QFile::remove(FS::PathCombine(m_modpacksfile, "minecraft",
+                                                file.targetFolder,
+                                                jsonFile["name"].toString()));
+                    // 从数组中移除
+                    modArray.removeAt(i);
                 }
             }
+
         }
-
-
         if (shouldQueueForDownload) {
-//            QString metaurl = QString("%1/%2/files/%3").arg(metabase, projectIdStr, fileIdStr);
-//            auto dl = Net::Download::makeByteArray(QUrl(metaurl), &results[index]);
-//            dl->setExtraHeader("x-api-key", APPLICATION->curseAPIKey());
-//            m_dljob->addNetAction(dl);
-//            indextask++;
             modIdsArray.append(fileIdStr);
         }
         index++;
     }
+    if (modFile.open(QIODevice::WriteOnly)) {
+        QJsonDocument doc(modArray);
+        modFile.write(doc.toJson());
+        modFile.close();
+    }
+
     if (!modIdsArray.isEmpty())
     {
         QJsonObject requestObject;
@@ -165,17 +187,6 @@ void CurseForge::FileResolvingTask::prepareDownloads()
     } else {
         emitSucceeded();
     }
-
-
-//    if (indextask > 0) {
-//        // 仅当有文件需要下载时，即 index > 0 时，连接信号与槽并启动 m_dljob
-//        connect(m_dljob.get(), &NetJob::finished, this, &CurseForge::FileResolvingTask::netJobFinished);
-//        connect(m_dljob.get(), &NetJob::progress, this, &CurseForge::FileResolvingTask::netJobprogress);
-//        m_dljob->start();
-//    } else {
-//        // 如果没有文件需要下载，即 index == 0 时，可能想要直接通知任务完成
-//        emitSucceeded();
-//    }
 }
 void CurseForge::FileResolvingTask::netJobprogress(qint64 current, qint64 total)
 {
@@ -209,40 +220,20 @@ void CurseForge::FileResolvingTask::netJobFinished()
         }
     }
 
-/*
-    for(auto & bytes: results)
-    {
-        index++;
-        if(bytes.isEmpty()){
-            continue;
-        }
-        auto & out = m_toProcess.files[index];
-        try
-        {
-            failed &= (!out.parseFromBytes(bytes));
-        }
-        catch (const JSONValidationError &e)
-        {
-
-            qCritical() << "Resolving of" << out.projectId << out.fileId << "failed because of a parsing error:";
-            qCritical() << e.cause();
-            qCritical() << "JSON:";
-            qCritical() << bytes;
-            failed = true;
-        }
-
-    }
-*/
     m_filePath = FS::PathCombine(m_filePath,"mod.json");
     QFile m_modFile(m_filePath);
     if (m_modFile.open(QIODevice::WriteOnly)) {
         QJsonArray newArray;
         for (const auto &file : m_toProcess.files) {
+            QString m_name = file.fileName;
+            if (APPLICATION->isModBlacklisted(file.projectId)) {
+                m_name += ".disabled";
+            }
             QJsonObject fileObj{
                 {"projectID", file.projectId},
                 {"fileID", file.fileId},
                 {"required", true},
-                {"name", file.fileName}
+                {"name", m_name}
             };
             newArray.append(fileObj);
         }

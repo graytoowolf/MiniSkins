@@ -215,7 +215,7 @@ public:
     TranslatedAction actionMods;
     TranslatedAction actionViewSelectedInstFolder;
     TranslatedAction actionViewSelectedMCFolder;
-    TranslatedAction actionViewSelectedModsFolder;
+    //TranslatedAction actionViewSelectedModsFolder;
     TranslatedAction actionDeleteInstance;
     TranslatedAction CheckInstanceupdates;
     TranslatedAction actionConfig_Folder;
@@ -348,25 +348,25 @@ public:
             helpMenu->addAction(actionReportBug);
         }
 
-        if (!BuildConfig.DISCORD_URL.isEmpty()) {
-            actionDISCORD = TranslatedAction(MainWindow);
-            actionDISCORD->setObjectName(QStringLiteral("actionDISCORD"));
-            actionDISCORD->setIcon(APPLICATION->getThemedIcon("discord"));
-            actionDISCORD.setTextId(QT_TRANSLATE_NOOP("MainWindow", "Discord"));
-            actionDISCORD.setTooltipId(QT_TRANSLATE_NOOP("MainWindow", "Open %1 discord voice chat."));
-            all_actions.append(&actionDISCORD);
-            helpMenu->addAction(actionDISCORD);
-        }
+        // if (!BuildConfig.DISCORD_URL.isEmpty()) {
+        //     actionDISCORD = TranslatedAction(MainWindow);
+        //     actionDISCORD->setObjectName(QStringLiteral("actionDISCORD"));
+        //     actionDISCORD->setIcon(APPLICATION->getThemedIcon("discord"));
+        //     actionDISCORD.setTextId(QT_TRANSLATE_NOOP("MainWindow", "Discord"));
+        //     actionDISCORD.setTooltipId(QT_TRANSLATE_NOOP("MainWindow", "Open %1 discord voice chat."));
+        //     all_actions.append(&actionDISCORD);
+        //     helpMenu->addAction(actionDISCORD);
+        // }
 
-        if (!BuildConfig.SUBREDDIT_URL.isEmpty()) {
-            actionREDDIT = TranslatedAction(MainWindow);
-            actionREDDIT->setObjectName(QStringLiteral("actionREDDIT"));
-            actionREDDIT->setIcon(APPLICATION->getThemedIcon("reddit-alien"));
-            actionREDDIT.setTextId(QT_TRANSLATE_NOOP("MainWindow", "Reddit"));
-            actionREDDIT.setTooltipId(QT_TRANSLATE_NOOP("MainWindow", "Open %1 subreddit."));
-            all_actions.append(&actionREDDIT);
-            helpMenu->addAction(actionREDDIT);
-        }
+        // if (!BuildConfig.SUBREDDIT_URL.isEmpty()) {
+        //     actionREDDIT = TranslatedAction(MainWindow);
+        //     actionREDDIT->setObjectName(QStringLiteral("actionREDDIT"));
+        //     actionREDDIT->setIcon(APPLICATION->getThemedIcon("reddit-alien"));
+        //     actionREDDIT.setTextId(QT_TRANSLATE_NOOP("MainWindow", "Reddit"));
+        //     actionREDDIT.setTooltipId(QT_TRANSLATE_NOOP("MainWindow", "Open %1 subreddit."));
+        //     all_actions.append(&actionREDDIT);
+        //     helpMenu->addAction(actionREDDIT);
+        // }
 
         actionAbout = TranslatedAction(MainWindow);
         actionAbout->setObjectName(QStringLiteral("actionAbout"));
@@ -871,15 +871,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new MainWindow
         }
     }
 
-    {
-        auto checker = new NotificationChecker();
-        checker->setNotificationsUrl(QUrl(BuildConfig.NOTIFICATION_URL));
-        checker->setApplicationPlatform(BuildConfig.BUILD_PLATFORM);
-        checker->setApplicationFullVersion(BuildConfig.FULL_VERSION_STR);
-        m_notificationChecker.reset(checker);
-        connect(m_notificationChecker.get(), &NotificationChecker::notificationCheckFinished, this, &MainWindow::notificationsChanged);
-        checker->checkForNotifications();
-    }
+//    {
+//        auto checker = new NotificationChecker();
+//        checker->setNotificationsUrl(QUrl(BuildConfig.NOTIFICATION_URL));
+//        checker->setApplicationPlatform(BuildConfig.BUILD_PLATFORM);
+//        checker->setApplicationFullVersion(BuildConfig.FULL_VERSION_STR);
+//        m_notificationChecker.reset(checker);
+//        connect(m_notificationChecker.get(), &NotificationChecker::notificationCheckFinished, this, &MainWindow::notificationsChanged);
+//        checker->checkForNotifications();
+//    }
 
     setSelectedInstanceById(APPLICATION->settings()->get("SelectedInstance").toString());
 
@@ -1319,24 +1319,24 @@ QString intListToString(const QList<int> &list)
     }
     return slist.join(',');
 }
-void MainWindow::notificationsChanged()
-{
-    QList<NotificationChecker::NotificationEntry> entries = m_notificationChecker->notificationEntries();
-    QList<int> shownNotifications = stringToIntList(APPLICATION->settings()->get("ShownNotifications").toString());
-    for (auto it = entries.begin(); it != entries.end(); ++it)
-    {
-        NotificationChecker::NotificationEntry entry = *it;
-        if (!shownNotifications.contains(entry.id))
-        {
-            NotificationDialog dialog(entry, this);
-            if (dialog.exec() == NotificationDialog::DontShowAgain)
-            {
-                shownNotifications.append(entry.id);
-            }
-        }
-    }
-    APPLICATION->settings()->set("ShownNotifications", intListToString(shownNotifications));
-}
+//void MainWindow::notificationsChanged()
+//{
+//    QList<NotificationChecker::NotificationEntry> entries = m_notificationChecker->notificationEntries();
+//    QList<int> shownNotifications = stringToIntList(APPLICATION->settings()->get("ShownNotifications").toString());
+//    for (auto it = entries.begin(); it != entries.end(); ++it)
+//    {
+//        NotificationChecker::NotificationEntry entry = *it;
+//        if (!shownNotifications.contains(entry.id))
+//        {
+//            NotificationDialog dialog(entry, this);
+//            if (dialog.exec() == NotificationDialog::DontShowAgain)
+//            {
+//                shownNotifications.append(entry.id);
+//            }
+//        }
+//    }
+//    APPLICATION->settings()->set("ShownNotifications", intListToString(shownNotifications));
+//}
 
 void MainWindow::downloadUpdates(GoUpdate::Status status)
 {
@@ -1517,7 +1517,7 @@ void MainWindow::processReply()
     QString fileId = QString::number(firstObject.value("id").toInt());
     QString downloadUrl = firstObject.value("downloadUrl").toString();
     QString displayName = firstObject.value("displayName").toString();
-    
+
     // 与当前的fileId比较
     if (fileId != m_fileId) {
         // ID不一样，提示更新
@@ -1632,15 +1632,15 @@ void MainWindow::droppedURLs(QList<QUrl> urls)
     }
 }
 
-void MainWindow::on_actionREDDIT_triggered()
-{
-    DesktopServices::openUrl(QUrl(BuildConfig.SUBREDDIT_URL));
-}
+// void MainWindow::on_actionREDDIT_triggered()
+// {
+//     DesktopServices::openUrl(QUrl(BuildConfig.SUBREDDIT_URL));
+// }
 
-void MainWindow::on_actionDISCORD_triggered()
-{
-    DesktopServices::openUrl(QUrl(BuildConfig.DISCORD_URL));
-}
+// void MainWindow::on_actionDISCORD_triggered()
+// {
+//     DesktopServices::openUrl(QUrl(BuildConfig.DISCORD_URL));
+// }
 
 void MainWindow::on_actionChangeInstIcon_triggered()
 {
@@ -1787,10 +1787,10 @@ void MainWindow::globalSettingsClosed()
     update();
 }
 
-void MainWindow::on_actionInstanceSettings_triggered()
-{
-    APPLICATION->showInstanceWindow(m_selectedInstance, "settings");
-}
+//void MainWindow::on_actionInstanceSettings_triggered()
+//{
+//    APPLICATION->showInstanceWindow(m_selectedInstance, "settings");
+//}
 
 void MainWindow::on_actionEditInstNotes_triggered()
 {
@@ -1917,19 +1917,19 @@ void MainWindow::on_actionViewSelectedMCFolder_triggered()
     }
 }
 
-void MainWindow::on_actionViewSelectedModsFolder_triggered()
-{
-    if (m_selectedInstance)
-    {
-        QString str = m_selectedInstance->modsRoot();
-        if (!FS::ensureFilePathExists(str))
-        {
-            // TODO: report error
-            return;
-        }
-        DesktopServices::openDirectory(QDir(str).absolutePath());
-    }
-}
+//void MainWindow::on_actionViewSelectedModsFolder_triggered()
+//{
+//    if (m_selectedInstance)
+//    {
+//        QString str = m_selectedInstance->modsRoot();
+//        if (!FS::ensureFilePathExists(str))
+//        {
+//            // TODO: report error
+//            return;
+//        }
+//        DesktopServices::openDirectory(QDir(str).absolutePath());
+//    }
+//}
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {

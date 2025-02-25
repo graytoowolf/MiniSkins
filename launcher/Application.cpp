@@ -14,6 +14,7 @@
 #include "ui/pages/global/ProxyPage.h"
 #include "ui/pages/global/ExternalToolsPage.h"
 #include "ui/pages/global/AccountListPage.h"
+#include "ui/pages/global/modblacklistpage.h"
 #include "ui/pages/global/PasteEEPage.h"
 #include "ui/pages/global/CustomCommandsPage.h"
 
@@ -89,11 +90,12 @@ static const QLatin1String liveCheckFile("live.check");
 
 using namespace Commandline;
 
-#define MACOS_HINT "If you are on macOS Sierra, you might have to move the app to your /Applications or ~/Applications folder. "\
-                   "This usually fixes the problem and you can move the application elsewhere afterwards.\n"\
+#define MACOS_HINT "If you are on macOS Sierra, you might have to move the app to your /Applications or ~/Applications folder. " \
+                   "This usually fixes the problem and you can move the application elsewhere afterwards.\n"                     \
                    "\n"
 
-namespace {
+namespace
+{
     void appDebugOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
     {
         const char *levels = "DWCFIS";
@@ -114,13 +116,17 @@ namespace {
         fflush(stderr);
     }
 
-    QString getIdealPlatform(QString currentPlatform) {
+    QString getIdealPlatform(QString currentPlatform)
+    {
         auto info = Sys::getKernelInfo();
-        switch(info.kernelType) {
-        case Sys::KernelType::Darwin: {
+        switch (info.kernelType)
+        {
+        case Sys::KernelType::Darwin:
+        {
             return "osx64-5.15.2";
         }
-        case Sys::KernelType::Windows: {
+        case Sys::KernelType::Windows:
+        {
             // FIXME: 5.15.2 is not stable on Windows, due to a large number of completely unpredictable and hard to reproduce issues
             break;
             /*
@@ -139,7 +145,8 @@ namespace {
             */
         }
         case Sys::KernelType::Undetermined:
-        case Sys::KernelType::Linux: {
+        case Sys::KernelType::Linux:
+        {
             break;
         }
         }
@@ -152,24 +159,24 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
 {
 #if defined Q_OS_WIN32
     // attach the parent console
-    if(AttachConsole(ATTACH_PARENT_PROCESS))
+    if (AttachConsole(ATTACH_PARENT_PROCESS))
     {
         // if attach succeeds, reopen and sync all the i/o
-        if(freopen("CON", "w", stdout))
+        if (freopen("CON", "w", stdout))
         {
             std::cout.sync_with_stdio();
         }
-        if(freopen("CON", "w", stderr))
+        if (freopen("CON", "w", stderr))
         {
             std::cerr.sync_with_stdio();
         }
-        if(freopen("CON", "r", stdin))
+        if (freopen("CON", "r", stdin))
         {
             std::cin.sync_with_stdio();
         }
-        auto out = GetStdHandle (STD_OUTPUT_HANDLE);
+        auto out = GetStdHandle(STD_OUTPUT_HANDLE);
         DWORD written;
-        const char * endline = "\n";
+        const char *endline = "\n";
         WriteConsole(out, endline, strlen(endline), &written, NULL);
         consoleAttached = true;
     }
@@ -185,18 +192,18 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
 #ifdef Q_OS_LINUX
     {
         QFile osrelease("/proc/sys/kernel/osrelease");
-        if (osrelease.open(QFile::ReadOnly | QFile::Text)) {
+        if (osrelease.open(QFile::ReadOnly | QFile::Text))
+        {
             QTextStream in(&osrelease);
             auto contents = in.readAll();
-            if(
+            if (
                 contents.contains("WSL", Qt::CaseInsensitive) ||
-                contents.contains("Microsoft", Qt::CaseInsensitive)
-            ) {
+                contents.contains("Microsoft", Qt::CaseInsensitive))
+            {
                 showFatalErrorMessage(
                     "Unsupported system detected!",
                     "Linux-on-Windows distributions are not supported.\n\n"
-                    "Please use the Windows binary when playing on Windows."
-                );
+                    "Please use the Windows binary when playing on Windows.");
                 return;
             }
         }
@@ -263,7 +270,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         catch (const ParsingError &e)
         {
             std::cerr << "CommandLineError: " << e.what() << std::endl;
-            if(argc > 0)
+            if (argc > 0)
                 std::cerr << "Try '" << argv[0] << " -h' to get help on command line parameters."
                           << std::endl;
             m_status = Application::Failed;
@@ -291,7 +298,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
     m_serverToJoin = args["server"].toString();
     m_worldToJoin = args["world"].toString();
     m_profileToUse = args["profile"].toString();
-    if(args["offline"].toBool()) {
+    if (args["offline"].toBool())
+    {
         m_offline = true;
         m_offlineName = args["name"].toString();
     }
@@ -336,9 +344,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
                 "Make sure you have the right permissions to the launcher data folder and any folder needed to access it.\n"
                 "(%1)\n"
                 "\n"
-                "The launcher cannot continue until you fix this problem."
-            ).arg(dataPath)
-        );
+                "The launcher cannot continue until you fix this problem.")
+                .arg(dataPath));
         return;
     }
     if (!QDir::setCurrent(dataPath))
@@ -354,14 +361,13 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
                 "Make sure you have the right permissions to the launcher data folder.\n"
                 "(%1)\n"
                 "\n"
-                "The launcher cannot continue until you fix this problem."
-            ).arg(dataPath)
-        );
+                "The launcher cannot continue until you fix this problem.")
+                .arg(dataPath));
         return;
     }
 
     // --world and --server can't be used together
-    if(!m_worldToJoin.isEmpty() && !m_serverToJoin.isEmpty())
+    if (!m_worldToJoin.isEmpty() && !m_serverToJoin.isEmpty())
     {
         std::cerr << "--server and --world are mutually exclusive!" << std::endl;
         m_status = Application::Failed;
@@ -369,46 +375,49 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
     }
 
     // all the things invalid when NOT trying to --launch
-    if(m_instanceIdToLaunch.isEmpty()) {
-        if(!m_serverToJoin.isEmpty())
+    if (m_instanceIdToLaunch.isEmpty())
+    {
+        if (!m_serverToJoin.isEmpty())
         {
             std::cerr << "--server can only be used in combination with --launch!" << std::endl;
             m_status = Application::Failed;
             return;
         }
 
-        if(!m_worldToJoin.isEmpty())
+        if (!m_worldToJoin.isEmpty())
         {
             std::cerr << "--world can only be used in combination with --launch!" << std::endl;
             m_status = Application::Failed;
             return;
         }
 
-        if(!m_profileToUse.isEmpty())
+        if (!m_profileToUse.isEmpty())
         {
             std::cerr << "--account can only be used in combination with --launch!" << std::endl;
             m_status = Application::Failed;
             return;
         }
 
-        if(m_offline)
+        if (m_offline)
         {
             std::cerr << "--offline can only be used in combination with --launch!" << std::endl;
             m_status = Application::Failed;
             return;
         }
 
-        if(!m_offlineName.isEmpty())
+        if (!m_offlineName.isEmpty())
         {
             std::cerr << "--offlineName can only be used in combination with --launch and --offline!" << std::endl;
             m_status = Application::Failed;
             return;
         }
     }
-    else {
+    else
+    {
         // all the things invalid when trying to --launch
         // online, and offline name is set
-        if(!m_offline && !m_offlineName.isEmpty()) {
+        if (!m_offline && !m_offlineName.isEmpty())
+        {
             std::cerr << "--offlineName can only be used in combination with --launch and --offline!" << std::endl;
             m_status = Application::Failed;
             return;
@@ -430,13 +439,12 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
                 BuildConfig.LAUNCHER_DISPLAYNAME,
                 "Would you like to move application data to a new data location? It will improve the launcher's performance, but if you switch to older versions it will look like instances have disappeared. If you select no, you can migrate later in settings. You should select yes unless you're commonly switching between different versions (eg. develop and stable).",
                 QMessageBox::Yes | QMessageBox::No,
-                QMessageBox::Yes
-            );
+                QMessageBox::Yes);
             if (askMoveDialogue == QMessageBox::Yes)
             {
                 qDebug() << "On macOS and found config file in old location, moving user data...";
                 QDir dir;
-                QStringList dataFiles {
+                QStringList dataFiles{
                     "*.log", // Launcher log files: ${Launcher_Name}-@.log
                     "accounts.json",
                     "accounts",
@@ -451,10 +459,10 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
                     BuildConfig.LAUNCHER_CONFIGFILE,
                     "themes",
                     "jars",
-                    "translations"
-                };
+                    "translations"};
                 QDirIterator files(originalData, dataFiles);
-                while (files.hasNext()) {
+                while (files.hasNext())
+                {
                     QString filePath(files.next());
                     QString fileName(files.fileName());
                     if (!dir.rename(filePath, FS::PathCombine(dataPath, fileName)))
@@ -489,16 +497,17 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         // FIXME: you can run the same binaries with multiple data dirs and they won't clash. This could cause issues for updates.
         m_peerInstance = new LocalPeer(this, appID);
         connect(m_peerInstance, &LocalPeer::messageReceived, this, &Application::messageReceived);
-        if(m_peerInstance->isClient()) {
+        if (m_peerInstance->isClient())
+        {
             int timeout = 2000;
 
-            if(m_instanceIdToLaunch.isEmpty())
+            if (m_instanceIdToLaunch.isEmpty())
             {
                 ApplicationMessage activate;
                 activate.command = "activate";
                 m_peerInstance->sendMessage(activate.serialize(), timeout);
 
-                if(!m_zipToImport.isEmpty())
+                if (!m_zipToImport.isEmpty())
                 {
                     ApplicationMessage import;
                     import.command = "import";
@@ -512,19 +521,20 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
                 launch.command = "launch";
                 launch.args["id"] = m_instanceIdToLaunch;
 
-                if(!m_serverToJoin.isEmpty())
+                if (!m_serverToJoin.isEmpty())
                 {
                     launch.args["server"] = m_serverToJoin;
                 }
-                if(!m_worldToJoin.isEmpty())
+                if (!m_worldToJoin.isEmpty())
                 {
                     launch.args["world"] = m_worldToJoin;
                 }
-                if(!m_profileToUse.isEmpty())
+                if (!m_profileToUse.isEmpty())
                 {
                     launch.args["profile"] = m_profileToUse;
                 }
-                if(m_offline) {
+                if (m_offline)
+                {
                     launch.args["offline_enabled"] = "true";
                     launch.args["offline_name"] = m_offlineName;
                 }
@@ -551,7 +561,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         moveFile(logBase.arg(0), logBase.arg(1));
 
         logFile = std::unique_ptr<QFile>(new QFile(logBase.arg(0)));
-        if(!logFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+        if (!logFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
         {
             showFatalErrorMessage(
                 "The launcher data folder is not writable!",
@@ -564,9 +574,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
                     "Make sure you have write permissions to the data folder.\n"
                     "(%1)\n"
                     "\n"
-                    "The launcher cannot continue until you fix this problem."
-                ).arg(dataPath)
-            );
+                    "The launcher cannot continue until you fix this problem.")
+                    .arg(dataPath));
             return;
         }
         qInstallMessageHandler(appDebugOutput);
@@ -604,15 +613,15 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         }
         qDebug() << "Binary path                : " << binPath;
         qDebug() << "Application root path      : " << m_rootPath;
-        if(!m_instanceIdToLaunch.isEmpty())
+        if (!m_instanceIdToLaunch.isEmpty())
         {
             qDebug() << "ID of instance to launch   : " << m_instanceIdToLaunch;
         }
-        if(!m_serverToJoin.isEmpty())
+        if (!m_serverToJoin.isEmpty())
         {
             qDebug() << "Address of server to join  :" << m_serverToJoin;
         }
-        if(!m_worldToJoin.isEmpty())
+        if (!m_worldToJoin.isEmpty())
         {
             qDebug() << "Name of world to join      :" << m_worldToJoin;
         }
@@ -621,16 +630,16 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
 
     do // once
     {
-        if(m_liveCheck)
+        if (m_liveCheck)
         {
             QFile check(liveCheckFile);
-            if(!check.open(QIODevice::WriteOnly | QIODevice::Truncate))
+            if (!check.open(QIODevice::WriteOnly | QIODevice::Truncate))
             {
                 qWarning() << "Could not open" << liveCheckFile << "for writing!";
                 break;
             }
             auto payload = appID.toString().toUtf8();
-            if(check.write(payload) != payload.size())
+            if (check.write(payload) != payload.size())
             {
                 qWarning() << "Could not write into" << liveCheckFile << "!";
                 check.remove();
@@ -638,7 +647,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
             }
             check.close();
         }
-    } while(false);
+    } while (false);
 
     // Initialize application settings
     {
@@ -699,7 +708,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
 
         m_settings->registerSetting("Downloadsource", "Mojang");
         m_settings->registerSetting("Downloadsourceurl", "");
-        m_settings->registerSetting("Downloadsourceproxy",false);
+        m_settings->registerSetting("Downloadsourceproxy", false);
 
         m_settings->registerSetting("Threads", 8);
 
@@ -792,6 +801,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
             m_globalSettingsProvider->addPage<ProxyPage>();
             m_globalSettingsProvider->addPage<ExternalToolsPage>();
             m_globalSettingsProvider->addPage<AccountListPage>();
+            m_globalSettingsProvider->addPage<ModBlacklistPage>();
             m_globalSettingsProvider->addPage<PasteEEPage>();
         }
         qDebug() << "<> Settings loaded.";
@@ -823,7 +833,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
     }
 
     // initialize the updater
-    if(BuildConfig.UPDATER_ENABLED)
+    if (BuildConfig.UPDATER_ENABLED)
     {
         auto platform = getIdealPlatform(BuildConfig.BUILD_PLATFORM);
         auto channelUrl = BuildConfig.UPDATER_BASE + platform + "/channels.json";
@@ -834,7 +844,6 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
 
     // authlib-injector
     {
-
         auto *authlib_netJob = new NetJob("authlib-injector", network());
         authlib_netJob->addNetAction(Net::Download::makeByteArray(QUrl(BuildConfig.AUTHLIB_INJECTOR_URL), &authlib_response));
         authlib_filesNetJob = authlib_netJob;
@@ -842,7 +851,14 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         QObject::connect(authlib_netJob, &NetJob::succeeded, this, &Application::requestFinished);
     }
 
-    //获取源
+    // 在设置数据路径之后,初始化黑名单文件路径
+    m_modBlacklistPath = FS::PathCombine(applicationDirPath(), "modblacklist.json");
+    qDebug() << "m_modBlacklistPath:" << m_modBlacklistPath;
+
+    // 加载MOD黑名单
+    loadModBlacklist();
+
+    // 获取源
     {
         auto *netJob = new NetJob("Acquire download source", network());
         netJob->addNetAction(Net::Download::makeByteArray(QUrl(BuildConfig.SOURCE_URL), &response));
@@ -859,13 +875,10 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
                 ":/icons/multimc/32x32/instances/",
                 ":/icons/multimc/50x50/instances/",
                 ":/icons/multimc/128x128/instances/",
-                ":/icons/multimc/scalable/instances/"
-            };
+                ":/icons/multimc/scalable/instances/"};
         m_icons.reset(new IconList(instFolders, setting->get().toString()));
-        connect(setting.get(), &Setting::SettingChanged,[&](const Setting &, QVariant value)
-                {
-                    m_icons->directoryChanged(value.toString());
-                });
+        connect(setting.get(), &Setting::SettingChanged, [&](const Setting &, QVariant value)
+                { m_icons->directoryChanged(value.toString()); });
         qDebug() << "<> Instance icons intialized.";
     }
 
@@ -881,7 +894,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
 
     // Initialize widget themes
     {
-        auto insertTheme = [this](ITheme * theme)
+        auto insertTheme = [this](ITheme *theme)
         {
             m_themes.insert(std::make_pair(theme->id(), std::unique_ptr<ITheme>(theme)));
         };
@@ -951,7 +964,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
     // now we have network, download translation updates
     m_translations->downloadIndex();
 
-    //FIXME: what to do with these?
+    // FIXME: what to do with these?
     m_profilers.insert("jprofiler", std::shared_ptr<BaseProfilerFactory>(new JProfilerFactory()));
     m_profilers.insert("jvisualvm", std::shared_ptr<BaseProfilerFactory>(new JVisualVMFactory()));
     for (auto profiler : m_profilers.values())
@@ -964,7 +977,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_mcedit.reset(new MCEditTool(m_settings));
     }
 
-    connect(this, &Application::aboutToQuit, [this](){
+    connect(this, &Application::aboutToQuit, [this]()
+            {
         if(m_instances)
         {
             // save any remaining instance state
@@ -974,8 +988,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         {
             logFile->flush();
             logFile->close();
-        }
-    });
+        } });
 
     {
         setIconTheme(settings()->get("IconTheme").toString());
@@ -984,7 +997,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         qDebug() << "<> Application theme set.";
     }
 
-    if(createSetupWizard())
+    if (createSetupWizard())
     {
         return;
     }
@@ -1018,7 +1031,7 @@ bool Application::createSetupWizard()
     }();
     bool wizardRequired = javaRequired || languageRequired;
 
-    if(wizardRequired)
+    if (wizardRequired)
     {
         m_setupWizard = new SetupWizard(nullptr);
         if (languageRequired)
@@ -1045,33 +1058,34 @@ void Application::setupWizardFinished(int status)
 void Application::performMainStartupAction()
 {
     m_status = Application::Initialized;
-    if(!m_instanceIdToLaunch.isEmpty())
+    if (!m_instanceIdToLaunch.isEmpty())
     {
         auto inst = instances()->getInstanceById(m_instanceIdToLaunch);
-        if(inst)
+        if (inst)
         {
             QuickPlayTargetPtr serverOrWorldToJoin = nullptr;
             MinecraftAccountPtr accountToUse = nullptr;
             bool offline = m_offline;
 
             qDebug() << "<> Instance" << m_instanceIdToLaunch << "launching";
-            if(!m_serverToJoin.isEmpty())
+            if (!m_serverToJoin.isEmpty())
             {
                 // FIXME: validate the server string
                 serverOrWorldToJoin.reset(new QuickPlayTarget(QuickPlayTarget::parseMultiplayer(m_serverToJoin)));
                 qDebug() << "   Launching with server" << m_serverToJoin;
             }
 
-            if(!m_worldToJoin.isEmpty())
+            if (!m_worldToJoin.isEmpty())
             {
                 serverOrWorldToJoin.reset(new QuickPlayTarget(QuickPlayTarget::parseSingleplayer(m_worldToJoin)));
                 qDebug() << "   Launching with world" << m_worldToJoin;
             }
 
-            if(!m_profileToUse.isEmpty())
+            if (!m_profileToUse.isEmpty())
             {
                 accountToUse = accounts()->getAccountByProfileName(m_profileToUse);
-                if(!accountToUse) {
+                if (!accountToUse)
+                {
                     return;
                 }
                 qDebug() << "   Launching with account" << m_profileToUse;
@@ -1081,20 +1095,20 @@ void Application::performMainStartupAction()
             return;
         }
     }
-    if(!m_mainWindow)
+    if (!m_mainWindow)
     {
         // normal main window
         showMainWindow(false);
         qDebug() << "<> Main window shown.";
     }
-    if(!m_zipToImport.isEmpty())
+    if (!m_zipToImport.isEmpty())
     {
         qDebug() << "<> Importing instance from zip:" << m_zipToImport;
-        m_mainWindow->droppedURLs({ m_zipToImport });
+        m_mainWindow->droppedURLs({m_zipToImport});
     }
 }
 
-void Application::showFatalErrorMessage(const QString& title, const QString& content)
+void Application::showFatalErrorMessage(const QString &title, const QString &content)
 {
     m_status = Application::Failed;
     auto dialog = CustomMessageBox::selectable(nullptr, title, content, QMessageBox::Critical);
@@ -1108,7 +1122,7 @@ Application::~Application()
 
 #if defined Q_OS_WIN32
     // Detach from Windows console
-    if(consoleAttached)
+    if (consoleAttached)
     {
         fclose(stdout);
         fclose(stdin);
@@ -1118,9 +1132,9 @@ Application::~Application()
 #endif
 }
 
-void Application::messageReceived(const QByteArray& message)
+void Application::messageReceived(const QByteArray &message)
 {
-    if(status() != Initialized)
+    if (status() != Initialized)
     {
         qDebug() << "Received message" << message << "while still initializing. It will be ignored.";
         return;
@@ -1129,23 +1143,23 @@ void Application::messageReceived(const QByteArray& message)
     ApplicationMessage received;
     received.parse(message);
 
-    auto & command = received.command;
+    auto &command = received.command;
 
-    if(command == "activate")
+    if (command == "activate")
     {
         showMainWindow();
     }
-    else if(command == "import")
+    else if (command == "import")
     {
         QString path = received.args["path"];
-        if(path.isEmpty())
+        if (path.isEmpty())
         {
             qWarning() << "Received" << command << "message without a zip path/URL.";
             return;
         }
-        m_mainWindow->droppedURLs({ QUrl(path) });
+        m_mainWindow->droppedURLs({QUrl(path)});
     }
-    else if(command == "launch")
+    else if (command == "launch")
     {
         QString id = received.args["id"];
         QString server = received.args["server"];
@@ -1155,29 +1169,37 @@ void Application::messageReceived(const QByteArray& message)
         QString offlineName = received.args["offline_name"];
 
         InstancePtr instance;
-        if(!id.isEmpty()) {
+        if (!id.isEmpty())
+        {
             instance = instances()->getInstanceById(id);
-            if(!instance) {
+            if (!instance)
+            {
                 qWarning() << "Launch command requires an valid instance ID. " << id << "resolves to nothing.";
                 return;
             }
         }
-        else {
+        else
+        {
             qWarning() << "Launch command called without an instance ID...";
             return;
         }
 
         QuickPlayTargetPtr quickPlayTarget = nullptr;
-        if(!server.isEmpty()) {
+        if (!server.isEmpty())
+        {
             quickPlayTarget = std::make_shared<QuickPlayTarget>(QuickPlayTarget::parseMultiplayer(server));
-        } else if(!world.isEmpty()) {
+        }
+        else if (!world.isEmpty())
+        {
             quickPlayTarget = std::make_shared<QuickPlayTarget>(QuickPlayTarget::parseSingleplayer(world));
         }
 
         MinecraftAccountPtr accountObject;
-        if(!profile.isEmpty()) {
+        if (!profile.isEmpty())
+        {
             accountObject = accounts()->getAccountByProfileName(profile);
-            if(!accountObject) {
+            if (!accountObject)
+            {
                 qWarning() << "Launch command requires the specified profile to be valid. " << profile << "does not resolve to any account.";
                 return;
             }
@@ -1189,8 +1211,7 @@ void Application::messageReceived(const QByteArray& message)
             nullptr,
             quickPlayTarget,
             accountObject,
-            offlineName
-        );
+            offlineName);
     }
     else
     {
@@ -1224,13 +1245,13 @@ std::vector<ITheme *> Application::getValidApplicationThemes()
     return ret;
 }
 
-void Application::setApplicationTheme(const QString& name, bool initial)
+void Application::setApplicationTheme(const QString &name, bool initial)
 {
     auto systemPalette = qApp->palette();
     auto themeIter = m_themes.find(name);
-    if(themeIter != m_themes.end())
+    if (themeIter != m_themes.end())
     {
-        auto & theme = (*themeIter).second;
+        auto &theme = (*themeIter).second;
         theme->apply(initial);
     }
     else
@@ -1239,14 +1260,15 @@ void Application::setApplicationTheme(const QString& name, bool initial)
     }
 }
 
-void Application::setIconTheme(const QString& name)
+void Application::setIconTheme(const QString &name)
 {
     XdgIcon::setThemeName(name);
 }
 
-QIcon Application::getThemedIcon(const QString& name)
+QIcon Application::getThemedIcon(const QString &name)
 {
-    if(name == "logo") {
+    if (name == "logo")
+    {
         return QIcon(":/logo.svg");
     }
     return XdgIcon::fromTheme(name);
@@ -1261,35 +1283,35 @@ bool Application::openJsonEditor(const QString &filename)
     }
     else
     {
-        //return DesktopServices::openFile(m_settings->get("JsonEditor").toString(), file);
+        // return DesktopServices::openFile(m_settings->get("JsonEditor").toString(), file);
         return DesktopServices::run(m_settings->get("JsonEditor").toString(), {file});
     }
 }
 
 bool Application::launch(
-        InstancePtr instance,
-        bool online,
-        BaseProfilerFactory *profiler,
-        QuickPlayTargetPtr quickPlayTarget,
-        MinecraftAccountPtr accountToUse,
-        const QString& offlineName
-) {
-    if(m_updateRunning)
+    InstancePtr instance,
+    bool online,
+    BaseProfilerFactory *profiler,
+    QuickPlayTargetPtr quickPlayTarget,
+    MinecraftAccountPtr accountToUse,
+    const QString &offlineName)
+{
+    if (m_updateRunning)
     {
         qDebug() << "Cannot launch instances while an update is running. Please try again when updates are completed.";
     }
-    else if(instance->canLaunch())
+    else if (instance->canLaunch())
     {
-        auto & extras = m_instanceExtras[instance->id()];
-        auto & window = extras.window;
-        if(window)
+        auto &extras = m_instanceExtras[instance->id()];
+        auto &window = extras.window;
+        if (window)
         {
-            if(!window->saveAll())
+            if (!window->saveAll())
             {
                 return false;
             }
         }
-        auto & controller = extras.controller;
+        auto &controller = extras.controller;
         controller.reset(new LaunchController());
         controller->setInstance(instance);
         controller->setOnline(online);
@@ -1297,11 +1319,11 @@ bool Application::launch(
         controller->setQuickPlayTarget(quickPlayTarget);
         controller->setAccountToUse(accountToUse);
         controller->setOfflineName(offlineName);
-        if(window)
+        if (window)
         {
             controller->setParentWidget(window);
         }
-        else if(m_mainWindow)
+        else if (m_mainWindow)
         {
             controller->setParentWidget(m_mainWindow);
         }
@@ -1331,10 +1353,10 @@ bool Application::kill(InstancePtr instance)
         qWarning() << "Attempted to kill instance" << instance->id() << ", which isn't running.";
         return false;
     }
-    auto & extras = m_instanceExtras[instance->id()];
+    auto &extras = m_instanceExtras[instance->id()];
     // NOTE: copy of the shared pointer keeps it alive
     auto controller = extras.controller;
-    if(controller)
+    if (controller)
     {
         return controller->abort();
     }
@@ -1343,8 +1365,8 @@ bool Application::kill(InstancePtr instance)
 
 void Application::addRunningInstance()
 {
-    m_runningInstances ++;
-    if(m_runningInstances == 1)
+    m_runningInstances++;
+    if (m_runningInstances == 1)
     {
         emit updateAllowedChanged(false);
     }
@@ -1352,13 +1374,13 @@ void Application::addRunningInstance()
 
 void Application::subRunningInstance()
 {
-    if(m_runningInstances == 0)
+    if (m_runningInstances == 0)
     {
         qCritical() << "Something went really wrong and we now have less than 0 running instances... WTF";
         return;
     }
-    m_runningInstances --;
-    if(m_runningInstances == 0)
+    m_runningInstances--;
+    if (m_runningInstances == 0)
     {
         emit updateAllowedChanged(true);
     }
@@ -1379,19 +1401,18 @@ void Application::updateIsRunning(bool running)
     m_updateRunning = running;
 }
 
-
 void Application::controllerSucceeded()
 {
     auto controller = qobject_cast<LaunchController *>(QObject::sender());
-    if(!controller)
+    if (!controller)
         return;
     auto id = controller->id();
-    auto & extras = m_instanceExtras[id];
+    auto &extras = m_instanceExtras[id];
 
     // on success, do...
     if (controller->instance()->settings()->get("AutoCloseConsole").toBool())
     {
-        if(extras.window)
+        if (extras.window)
         {
             extras.window->close();
         }
@@ -1400,37 +1421,38 @@ void Application::controllerSucceeded()
     subRunningInstance();
 
     // quit when there are no more windows.
-    if(shouldExitNow())
+    if (shouldExitNow())
     {
         m_status = Status::Succeeded;
         exit(0);
     }
 }
 
-void Application::controllerFailed(const QString& error)
+void Application::controllerFailed(const QString &error)
 {
     Q_UNUSED(error);
     auto controller = qobject_cast<LaunchController *>(QObject::sender());
-    if(!controller)
+    if (!controller)
         return;
     auto id = controller->id();
-    auto & extras = m_instanceExtras[id];
+    auto &extras = m_instanceExtras[id];
 
     // on failure, do... nothing
     extras.controller.reset();
     subRunningInstance();
 
     // quit when there are no more windows.
-    if(shouldExitNow())
+    if (shouldExitNow())
     {
         m_status = Status::Failed;
         exit(1);
     }
 }
 
-void Application::ShowGlobalSettings(class QWidget* parent, QString open_page)
+void Application::ShowGlobalSettings(class QWidget *parent, QString open_page)
 {
-    if(!m_globalSettingsProvider) {
+    if (!m_globalSettingsProvider)
+    {
         return;
     }
     emit globalSettingsAboutToOpen();
@@ -1442,9 +1464,9 @@ void Application::ShowGlobalSettings(class QWidget* parent, QString open_page)
     emit globalSettingsClosed();
 }
 
-MainWindow* Application::showMainWindow(bool minimized)
+MainWindow *Application::showMainWindow(bool minimized)
 {
-    if(m_mainWindow)
+    if (m_mainWindow)
     {
         m_mainWindow->setWindowState(m_mainWindow->windowState() & ~Qt::WindowMinimized);
         m_mainWindow->raise();
@@ -1455,7 +1477,7 @@ MainWindow* Application::showMainWindow(bool minimized)
         m_mainWindow = new MainWindow();
         m_mainWindow->restoreState(QByteArray::fromBase64(APPLICATION->settings()->get("MainWindowState").toByteArray()));
         m_mainWindow->restoreGeometry(QByteArray::fromBase64(APPLICATION->settings()->get("MainWindowGeometry").toByteArray()));
-        if(minimized)
+        if (minimized)
         {
             m_mainWindow->showMinimized();
         }
@@ -1474,13 +1496,13 @@ MainWindow* Application::showMainWindow(bool minimized)
 
 InstanceWindow *Application::showInstanceWindow(InstancePtr instance, QString page)
 {
-    if(!instance)
+    if (!instance)
         return nullptr;
     auto id = instance->id();
-    auto & extras = m_instanceExtras[id];
-    auto & window = extras.window;
+    auto &extras = m_instanceExtras[id];
+    auto &window = extras.window;
 
-    if(window)
+    if (window)
     {
         window->raise();
         window->activateWindow();
@@ -1488,14 +1510,14 @@ InstanceWindow *Application::showInstanceWindow(InstancePtr instance, QString pa
     else
     {
         window = new InstanceWindow(instance);
-        m_openWindows ++;
+        m_openWindows++;
         connect(window, &InstanceWindow::isClosing, this, &Application::on_windowClose);
     }
-    if(!page.isEmpty())
+    if (!page.isEmpty())
     {
         window->selectPage(page);
     }
-    if(extras.controller)
+    if (extras.controller)
     {
         extras.controller->setParentWidget(window);
     }
@@ -1506,32 +1528,34 @@ void Application::on_windowClose()
 {
     m_openWindows--;
     auto instWindow = qobject_cast<InstanceWindow *>(QObject::sender());
-    if(instWindow)
+    if (instWindow)
     {
-        auto & extras = m_instanceExtras[instWindow->instanceId()];
+        auto &extras = m_instanceExtras[instWindow->instanceId()];
         extras.window = nullptr;
-        if(extras.controller)
+        if (extras.controller)
         {
             extras.controller->setParentWidget(m_mainWindow);
         }
     }
     auto mainWindow = qobject_cast<MainWindow *>(QObject::sender());
-    if(mainWindow)
+    if (mainWindow)
     {
         m_mainWindow = nullptr;
     }
     // quit when there are no more windows.
-    if(shouldExitNow())
+    if (shouldExitNow())
     {
         exit(0);
     }
 }
 
-QString Application::msaClientId() const {
+QString Application::msaClientId() const
+{
     return BuildConfig.MSA_CLIENT_ID;
 }
 
-QString Application::curseAPIKey() const {
+QString Application::curseAPIKey() const
+{
     return BuildConfig.CURSE_API_KEY;
 }
 
@@ -1596,7 +1620,7 @@ void Application::updateProxySettings(QString proxyTypeStr, QString addr, int po
     qDebug() << proxyDesc;
 }
 
-shared_qobject_ptr< HttpMetaCache > Application::metacache()
+shared_qobject_ptr<HttpMetaCache> Application::metacache()
 {
     return m_metacache;
 }
@@ -1617,7 +1641,7 @@ shared_qobject_ptr<Meta::Index> Application::metadataIndex()
 
 QString Application::getJarsPath()
 {
-    if(m_jarsPath.isEmpty())
+    if (m_jarsPath.isEmpty())
     {
         return FS::PathCombine(QCoreApplication::applicationDirPath(), "jars");
     }
@@ -1655,15 +1679,16 @@ void Application::requestFinished()
         QObject::connect(authlib_netJob, &NetJob::succeeded, this, &Application::authlibFinished);
     }
 }
-//判断 authlib hash256s是否一致
+// 判断 authlib hash256s是否一致
 bool Application::FileHash(QString srcDir, QString hash256)
 {
     QFile file(srcDir);
     QCryptographicHash Hash(QCryptographicHash::Sha256);
-    if(file.open(QIODevice::ReadOnly)){
+    if (file.open(QIODevice::ReadOnly))
+    {
         Hash.addData(file.readAll());
         QByteArray HASH256 = Hash.result();
-        if(HASH256.toHex() == hash256)
+        if (HASH256.toHex() == hash256)
         {
             return true;
         }
@@ -1672,29 +1697,34 @@ bool Application::FileHash(QString srcDir, QString hash256)
 }
 void Application::authlibFinished()
 {
-    qDebug()<<"downloading authlib-injector succeeded";
+    qDebug() << "downloading authlib-injector succeeded";
     authlib_filesNetJob.reset();
-
 }
 // Getter methods
-const QList<DownloadSource>& Application::getDownloadSources() const { return downloadSources; }
-const QList<YggSource>& Application::getYggSources() const { return yggSources; }
+const QList<DownloadSource> &Application::getDownloadSources() const { return downloadSources; }
+const QList<YggSource> &Application::getYggSources() const { return yggSources; }
 
 // Add methods
 void Application::addDownloadSource(const DownloadSource &source) { downloadSources.append(source); }
-void Application::addYggSource(const YggSource &source, int position) {
+void Application::addYggSource(const YggSource &source, int position)
+{
     QString normalizedUrl = source.getUrl().trimmed(); // 去掉多余空格
-    if (normalizedUrl.endsWith('/')) {
+    if (normalizedUrl.endsWith('/'))
+    {
         normalizedUrl.chop(1); // 如果末尾有 "/"，移除它
     }
     // 检查 URL 是否已存在
-    if (yggSourceUrls.contains(normalizedUrl)) {
+    if (yggSourceUrls.contains(normalizedUrl))
+    {
         return; // 如果已存在，则直接返回
     }
     // 如果未指定插入位置，添加到末尾
-    if (position < 0 || position > yggSources.size()) {
+    if (position < 0 || position > yggSources.size())
+    {
         yggSources.append(source);
-    } else {
+    }
+    else
+    {
         yggSources.insert(position, source); // 指定位置插入
     }
 
@@ -1774,43 +1804,141 @@ void Application::sourceFinished()
     }
 }
 
-
 bool Application::getconfigfile()
 {
     QFileInfo file(BuildConfig.LAUNCHER_CONFIGFILE);
     return file.isFile();
-
 }
 
-QString Application::getAddonId() const {
+QString Application::getAddonId() const
+{
     return addonId;
 }
 
-QString Application::getFileId() const {
+QString Application::getFileId() const
+{
     return fileId;
 }
 
-QString Application::getID() const {
+QString Application::getID() const
+{
     return ID;
 }
 
-QString Application::getSplatform() const {
+QString Application::getSplatform() const
+{
     return splatform;
 }
 
-bool Application::isUpdating() const {
+bool Application::isUpdating() const
+{
     return updating;
 }
 
 void Application::setData(const QString &addonId, const QString &fileId,
-const QString &ID, const QString &splatform, const QString &downloadUrl) {
+                          const QString &ID, const QString &splatform, const QString &downloadUrl)
+{
     this->addonId = addonId;
     this->fileId = fileId;
     this->ID = ID;
     this->splatform = splatform;
 }
 
-void Application::setUpdating(bool updating) {
+void Application::setUpdating(bool updating)
+{
     this->updating = updating;
 }
 
+void Application::loadModBlacklist()
+{
+    QFile file(m_modBlacklistPath);
+    if (!file.exists())
+    {
+        // 如果文件不存在,创建一个空的黑名单文件
+        if (file.open(QFile::WriteOnly))
+        {
+            file.write("{}");
+            file.close();
+        }
+        return;
+    }
+
+    if (file.open(QIODevice::ReadOnly))
+    {
+        QByteArray data = file.readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        if (doc.isObject())
+        {
+            QJsonObject obj = doc.object();
+            for (auto it = obj.begin(); it != obj.end(); ++it)
+            {
+                m_modBlacklist.insert(it.key().toInt(), it.value().toString());
+            }
+        }
+        file.close();
+    }
+}
+
+bool Application::saveModBlacklist(const QMap<int, QString> &blacklist)
+{
+    QFile file(m_modBlacklistPath);
+    if (!file.open(QFile::WriteOnly))
+    {
+        return false;
+    }
+
+    QJsonObject obj;
+    for (auto it = blacklist.begin(); it != blacklist.end(); ++it)
+    {
+        obj.insert(QString::number(it.key()), it.value());
+    }
+
+    QJsonDocument doc(obj);
+    file.write(doc.toJson());
+    file.close();
+    m_modBlacklist = blacklist;
+    return true;
+}
+
+bool Application::isModBlacklisted(const int &projectId) const
+{
+    return m_modBlacklist.contains(projectId);
+}
+
+bool Application::addModToBlacklist(const int &projectId, const QString &name)
+{
+    if (isModBlacklisted(projectId))
+    {
+        return false;
+    }
+
+    m_modBlacklist.insert(projectId, name);
+    return saveModBlacklist(m_modBlacklist);
+}
+
+bool Application::removeModFromBlacklist(const int &projectId)
+{
+    if (!m_modBlacklist.contains(projectId))
+    {
+        return false;
+    }
+
+    m_modBlacklist.remove(projectId);
+    return saveModBlacklist(m_modBlacklist);
+}
+
+bool Application::updateModBlacklistName(const int &projectId, const QString &newName)
+{
+    if (!m_modBlacklist.contains(projectId))
+    {
+        return false;
+    }
+
+    m_modBlacklist[projectId] = newName;
+    return saveModBlacklist(m_modBlacklist);
+}
+
+QString Application::getModNameFromBlacklist(int projectId) const
+{
+    return m_modBlacklist.value(projectId);
+}
