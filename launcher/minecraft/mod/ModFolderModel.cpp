@@ -140,12 +140,14 @@ void ModFolderModel::finishUpdate()
     {
         QSet<QString> added = newSet;
         added.subtract(currentSet);
-        beginInsertRows(QModelIndex(), mods.size(), mods.size() + added.size() - 1);
-        for(auto & addedMod: added) {
-            mods.append(newMods[addedMod]);
-            resolveMod(mods.last());
+        if (!added.isEmpty()) {
+            beginInsertRows(QModelIndex(), mods.size(), mods.size() + added.size() - 1);
+            for(auto & addedMod: added) {
+                mods.append(newMods[addedMod]);
+                resolveMod(mods.last());
+            }
+            endInsertRows();
         }
-        endInsertRows();
     }
 
     // update index
