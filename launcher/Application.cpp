@@ -789,6 +789,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
 
         // paste.ee API key
         m_settings->registerSetting("PasteEEAPIKey", "multimc");
+        m_settings->registerSetting("LogPlatform", "mclo.gs");
 
         // Init page provider
         {

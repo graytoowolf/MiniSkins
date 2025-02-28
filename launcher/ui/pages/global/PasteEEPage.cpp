@@ -35,6 +35,7 @@ PasteEEPage::PasteEEPage(QWidget *parent) :
     connect(ui->logPlatformComboBox, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
                 this, &PasteEEPage::platformChanged);
     loadSettings();
+    platformChanged(ui->logPlatformComboBox->currentIndex());
 }
 
 PasteEEPage::~PasteEEPage()
@@ -70,7 +71,6 @@ void PasteEEPage::loadSettings()
     if(index != -1) {
         ui->logPlatformComboBox->setCurrentIndex(index);
     }
-    platformChanged(index);
 }
 
 void PasteEEPage::applySettings()
