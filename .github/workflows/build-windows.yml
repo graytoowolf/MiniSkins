@@ -103,7 +103,7 @@ jobs:
            -DCMAKE_BUILD_TYPE=Release ^
            -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json ^
            -DCMAKE_INSTALL_PREFIX:PATH=D:/MiniSkins/install  ^
-           -DLauncher_UPDATER_BASE=https://mmc.mcpeau.com/ ^
+           -DLauncher_UPDATER_BASE=https://mmc.miniskins.top/ ^
            -DLauncher_VERSION_BUILD=%GITHUB_RUN_NUMBER% ^
            -DLauncher_BUILD_PLATFORM=win32 ^
            -G "MinGW Makefiles" ^
@@ -158,7 +158,7 @@ jobs:
           cd D:/MiniSkins/
           mkdir D:/MiniSkins/qiniu/win32/bs
           mkdir D:/MiniSkins/qiniu/MiniSkins
-          curl -L https://mmc.mcpeau.com/mc.exe -o mc.exe
+          curl -L https://mmc.miniskins.top/mc.exe -o mc.exe
           Compress-Archive -Path D:/MiniSkins/install/* -DestinationPath D:/MiniSkins/qiniu/MiniSkins.zip
           .\mc $env:GITHUB_RUN_NUMBER
 
