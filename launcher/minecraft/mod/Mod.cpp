@@ -169,6 +169,7 @@ bool Mod::enable(bool value)
                 if (mod["name"].toString() == oldName)
                 {
                     mod["name"] = newName;
+                    mod["required"] = value;
                     modsArray[i] = mod;
                     found = true;
                     break;
