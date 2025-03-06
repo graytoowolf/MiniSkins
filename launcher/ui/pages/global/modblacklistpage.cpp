@@ -144,7 +144,12 @@ void ModBlacklistPage::requestModInfo(const QStringList &fingerprints)
     // 直接将指纹数组添加到JSON数组
     for (const QString &fp : fingerprints)
     {
-        fingerprintArray.append(fp.toInt());
+        bool ok;
+        qlonglong fingerprint = fp.toLongLong(&ok);
+        if(ok)
+        {
+            fingerprintArray.append(QJsonValue(fingerprint));
+        }
     }
 
     requestObj["fingerprints"] = fingerprintArray;

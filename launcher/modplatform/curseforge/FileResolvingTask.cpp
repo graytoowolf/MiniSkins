@@ -293,6 +293,7 @@ CurseForge::ComparisonResult CurseForge::FileResolvingTask::compareManifests(con
         if (aInfo.fileID != fileID)
         {
             result.filesToDownload.append(fileID);
+            result.filesToDelete.append(aInfo.name);
         }
         else
         {
