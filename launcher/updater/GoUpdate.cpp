@@ -25,7 +25,7 @@ bool parseVersionInfo(const QByteArray &data, VersionFileList &list, QString &er
 
     QJsonObject json = jsonDoc.object();
 
-    qDebug() << data;
+    //qDebug() << data;
     qDebug() << "Loading version info from JSON.";
     QJsonArray filesArray = json.value("Files").toArray();
     for (QJsonValue fileValue : filesArray)

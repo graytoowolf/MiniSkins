@@ -951,6 +951,7 @@ bool InstanceList::commitStagedInstance(const QString& path, const QString& inst
         emit instancesChanged();
         emit instanceSelectRequest(instID);
     }
+    APPLICATION->setData("", "", "", "", "");
     APPLICATION->setUpdating(false);
     saveGroupList();
     return true;
