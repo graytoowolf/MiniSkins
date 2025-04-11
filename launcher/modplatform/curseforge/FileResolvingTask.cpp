@@ -107,21 +107,37 @@ void CurseForge::FileResolvingTask::prepareDownloads()
     QString m_modpacksid = APPLICATION->getID();
     QString m_modpacksfile = FS::PathCombine(m_instDir, m_modpacksid);
 
-    QString m_mod = FS::PathCombine(m_modpacksfile, "mod.json");
+    CurseForge::ComparisonResult result;
 
-    CurseForge::ComparisonResult result = compareManifests(m_mod);
-
-    QString basePath = "minecraft";
-    QString minecraftPath = FS::PathCombine(m_modpacksfile, basePath);
-    if (!QDir(minecraftPath).exists())
+    // 只有在更新模式下才执行MOD对比相关操作
+    if (APPLICATION->isUpdating())
     {
-        basePath = ".minecraft";
+        QString m_mod = FS::PathCombine(m_modpacksfile, "mod.json");
+        result = compareManifests(m_mod);
+
+        QString basePath = "minecraft";
+        QString minecraftPath = FS::PathCombine(m_modpacksfile, basePath);
+        if (!QDir(minecraftPath).exists())
+        {
+            basePath = ".minecraft";
+        }
+
+        for (const QString &fileName : result.filesToDelete)
+        {
+            QString m_name = FS::PathCombine(m_modpacksfile, basePath, "mods", fileName);
+            QFile::remove(m_name);
+        }
     }
-
-    for (const QString &fileName : result.filesToDelete)
+    else
     {
-        QString m_name = FS::PathCombine(m_modpacksfile, basePath, "mods", fileName);
-        QFile::remove(m_name);
+        // 非更新模式下，将所有文件添加到下载列表
+        for (const auto &file : m_toProcess.files)
+        {
+            if (file.fileId != 0)
+            {
+                result.filesToDownload.append(file.fileId);
+            }
+        }
     }
 
     if (!result.filesToDownload.isEmpty())
