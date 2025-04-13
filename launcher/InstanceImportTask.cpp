@@ -42,7 +42,7 @@
 
 InstanceImportTask::InstanceImportTask(const QUrl sourceUrl, const QString& addonId, const QString& fileId)
 {
-    m_sourceUrl = sourceUrl;    
+    m_sourceUrl = sourceUrl;
     m_addonId = addonId;
     m_fileId = fileId;
 }

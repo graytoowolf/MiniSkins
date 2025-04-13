@@ -358,7 +358,7 @@ QList< InstanceId > InstanceList::discoverInstances()
 
 InstanceList::InstListError InstanceList::loadList()
 {
-    auto existingIds = getIdMapping(m_instances);    
+    auto existingIds = getIdMapping(m_instances);
 
     QList<InstancePtr> newList;
 
@@ -902,7 +902,7 @@ bool InstanceList::commitStagedInstance(const QString& path, const QString& inst
             QDir dir(sourceDirPath);
             dir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
             QStringList subdirectories = dir.entryList();
-            foreach(QString subdirectory, subdirectories) {                
+            foreach(QString subdirectory, subdirectories) {
                 QString targetSubdirPath = FS::PathCombine(targetDirPath,subdirectory);
                 if(subdirectory.trimmed() == "mods"){
                     QString m_modsdir = FS::PathCombine(sourceDirPath,subdirectory);
@@ -947,9 +947,42 @@ bool InstanceList::commitStagedInstance(const QString& path, const QString& inst
             instanceSet.insert(instID);
             m_groupNameCache.insert(groupName);
         }
-
         emit instancesChanged();
         emit instanceSelectRequest(instID);
+
+        QStringList possiblePaths = {
+            FS::PathCombine(m_instDir, instID, ".minecraft"),
+            FS::PathCombine(m_instDir, instID, "minecraft")
+        };
+
+        QString minecraftDir;
+        for (const QString &path : possiblePaths) {
+            if (QDir(path).exists()) {
+                minecraftDir = path;
+                break;
+            }
+        }
+        // 如果目录不存在，创建默认目录
+        if (minecraftDir.isEmpty()) {
+            minecraftDir = possiblePaths.first();
+            QDir().mkpath(minecraftDir);
+        }
+
+        // 获取系统语言
+        QLocale locale = QLocale::system();
+        QString langCode = locale.name();
+
+        QString optionsFilePath = FS::PathCombine(minecraftDir, "options.txt");
+        if (!QFileInfo::exists(optionsFilePath)) {
+            QFile optionsFile(optionsFilePath);
+            if (optionsFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream out(&optionsFile);
+                out.setCodec("UTF-8");
+                out << "lang:" << langCode << "\n";
+                optionsFile.close();
+            }
+        }
+
     }
     APPLICATION->setData("", "", "", "", "");
     APPLICATION->setUpdating(false);
