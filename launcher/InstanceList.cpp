@@ -947,25 +947,18 @@ bool InstanceList::commitStagedInstance(const QString& path, const QString& inst
             instanceSet.insert(instID);
             m_groupNameCache.insert(groupName);
         }
+
         emit instancesChanged();
         emit instanceSelectRequest(instID);
 
-        QStringList possiblePaths = {
-            FS::PathCombine(m_instDir, instID, ".minecraft"),
-            FS::PathCombine(m_instDir, instID, "minecraft")
-        };
+        QString minecraftDir = getInstanceById(instID)->gameRoot();
 
-        QString minecraftDir;
-        for (const QString &path : possiblePaths) {
-            if (QDir(path).exists()) {
-                minecraftDir = path;
-                break;
+        // 检查目录是否存在，不存在则创建
+        if (!minecraftDir.isEmpty()) {
+            QDir mcDir(minecraftDir);
+            if (!mcDir.exists()) {
+                QDir().mkpath(minecraftDir);
             }
-        }
-        // 如果目录不存在，创建默认目录
-        if (minecraftDir.isEmpty()) {
-            minecraftDir = possiblePaths.first();
-            QDir().mkpath(minecraftDir);
         }
 
         // 获取系统语言

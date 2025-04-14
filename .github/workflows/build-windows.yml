@@ -166,6 +166,7 @@ jobs:
         env:
           PYTHONIOENCODING: utf-8
         run: |
+          copy mc.py D:/MiniSkins/
           cd D:/MiniSkins/
           chcp 65001
           python mc.py id=$env:GITHUB_RUN_NUMBER url='https://mmc.miniskins.top'
