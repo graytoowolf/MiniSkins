@@ -188,6 +188,13 @@ public:
     // 通过 projectId 获取黑名单中的 mod 名称
     QString getModNameFromBlacklist(int projectId) const;
 
+    // MOD白名单相关方法
+    const QMap<int, QString> &getModWhitelist() const { return m_modWhitelist; }
+    bool isModWhitelisted(const int &projectId) const;
+    bool addModToWhitelist(const int &projectId, const QString &name);
+    bool removeModFromWhitelist(const int &projectId);
+    bool updateModWhitelistName(const int &projectId, const QString &newName);
+    QString getModNameFromWhitelist(int projectId) const;
 signals:
     void updateAllowedChanged(bool status);
     void globalSettingsAboutToOpen();
@@ -261,8 +268,8 @@ private:
     QList<YggSource> yggSources;
     QSet<QString> yggSourceUrls;
 
-    QMap<int, QString> m_modBlacklist; // 修改成员变量类型
-    QString m_modBlacklistPath;
+    QMap<int, QString> m_modBlacklist;
+    QMap<int, QString> m_modWhitelist;
 
 #if defined Q_OS_WIN32
     // used on Windows to attach the standard IO streams
@@ -308,6 +315,7 @@ public:
     std::unique_ptr<QFile> logFile;
 
 private:
-    void loadModBlacklist();
-    bool saveModBlacklist(const QMap<int, QString> &blacklist); // 修改参数类型
+    void loadModList();
+    bool saveModList(); // 修改参数类型
+
 };

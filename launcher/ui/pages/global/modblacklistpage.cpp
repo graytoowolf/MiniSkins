@@ -2,14 +2,38 @@
 #include "ui_modblacklistpage.h"
 #include "Application.h"
 #include "minecraft/mod/fingerprint.h"
+#include <QMimeData>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QHeaderView>
+#include <QMessageBox>
 
-ModBlacklistPage::ModBlacklistPage(QWidget *parent) : QWidget(parent),
-                                                      ui(new Ui::ModBlacklistPage)
+namespace {
+    // 常量定义
+    constexpr int CHECKBOX_COLUMN = 0;
+    constexpr int PROJECT_ID_COLUMN = 1;
+    constexpr int MOD_NAME_COLUMN = 2;
+    constexpr int CHECKBOX_COLUMN_WIDTH = 20;
+
+    // API 相关常量
+    const QString CURSEFORGE_API_URL = "https://api.curseforge.com/v1/fingerprints";
+    const QString PROVISIONAL_MOD_NAME = "Provisional Name";
+}
+
+// 静态成员定义
+const QStringList ModBlacklistPage::SUPPORTED_EXTENSIONS = {".jar", ".disabled"};
+
+ModBlacklistPage::ModBlacklistPage(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::ModBlacklistPage)
 {
     ui->setupUi(this);
     setupUi();
-    loadBlacklist();
-    // 启用拖放
+    refreshData();
     setAcceptDrops(true);
 }
 
@@ -20,29 +44,26 @@ ModBlacklistPage::~ModBlacklistPage()
 
 bool ModBlacklistPage::isSupportedFile(const QString &filePath) const
 {
-    for (const QString &ext : m_supportedExtensions)
-    {
-        if (filePath.endsWith(ext, Qt::CaseInsensitive))
-        {
-            return true;
-        }
-    }
-    return false;
+    return std::any_of(SUPPORTED_EXTENSIONS.begin(), SUPPORTED_EXTENSIONS.end(),
+                       [&filePath](const QString &ext) {
+                           return filePath.endsWith(ext, Qt::CaseInsensitive);
+                       });
 }
 
 void ModBlacklistPage::dragEnterEvent(QDragEnterEvent *event)
 {
-    if (event->mimeData()->hasUrls())
-    {
-        const QList<QUrl> urls = event->mimeData()->urls();
-        for (const QUrl &url : urls)
-        {
-            if (isSupportedFile(url.toLocalFile()))
-            {
-                event->acceptProposedAction();
-                return;
-            }
-        }
+    if (!event->mimeData()->hasUrls()) {
+        return;
+    }
+
+    const QList<QUrl> urls = event->mimeData()->urls();
+    bool hasValidFile = std::any_of(urls.begin(), urls.end(),
+                                    [this](const QUrl &url) {
+                                        return isSupportedFile(url.toLocalFile());
+                                    });
+
+    if (hasValidFile) {
+        event->acceptProposedAction();
     }
 }
 
@@ -51,198 +72,325 @@ void ModBlacklistPage::dropEvent(QDropEvent *event)
     const QList<QUrl> urls = event->mimeData()->urls();
     QStringList fingerprints;
 
-    for (const QUrl &url : urls)
-    {
-        QString filePath = url.toLocalFile();
-        if (isSupportedFile(filePath))
-        {
-            QString actualPath = filePath;
-            QString hash = fingerprint::getJarFingerprint(actualPath);
-            if (!hash.isEmpty())
-            {
-                fingerprints.append(hash);
-            }
+    for (const QUrl &url : urls) {
+        const QString filePath = url.toLocalFile();
+        if (!isSupportedFile(filePath)) {
+            continue;
+        }
+
+        const QString hash = fingerprint::getJarFingerprint(filePath);
+        if (!hash.isEmpty()) {
+            fingerprints.append(hash);
         }
     }
 
-    if (!fingerprints.isEmpty())
-    {
-        requestModInfo(fingerprints);
+    if (!fingerprints.isEmpty()) {
+        const bool isWhitelist = (ui->tabWidget->currentIndex() == 1);
+        requestModInfo(fingerprints, isWhitelist);
     }
 
     event->acceptProposedAction();
 }
 
+void ModBlacklistPage::requestModInfo(const QStringList &fingerprints, bool isWhitelist)
+{
+    if (fingerprints.isEmpty()) {
+        return;
+    }
+
+    // 构建请求 JSON
+    QJsonObject requestObj;
+    QJsonArray fingerprintArray;
+
+    for (const QString &fp : fingerprints) {
+        bool ok;
+        qlonglong fingerprint = fp.toLongLong(&ok);
+        if (ok) {
+            fingerprintArray.append(QJsonValue(fingerprint));
+        }
+    }
+
+    if (fingerprintArray.isEmpty()) {
+        qWarning() << "No valid fingerprints to process";
+        return;
+    }
+
+    requestObj["fingerprints"] = fingerprintArray;
+    QJsonDocument doc{requestObj};
+    QByteArray data = doc.toJson();
+
+    // 创建网络请求
+    QNetworkRequest request{QUrl(CURSEFORGE_API_URL)};
+    request.setRawHeader("x-api-key", APPLICATION->curseAPIKey().toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    // 发送 POST 请求
+    auto *reply = APPLICATION->network()->post(request, data);
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply, isWhitelist]() {
+        reply->deleteLater();
+
+        if (reply->error() != QNetworkReply::NoError) {
+            qWarning() << "Fingerprint lookup failed:" << reply->errorString();
+            showErrorMessage(tr("Network Error"),
+                           tr("Failed to lookup mod information: %1").arg(reply->errorString()));
+            return;
+        }
+
+        processModInfoResponse(reply->readAll(), isWhitelist);
+    });
+}
+
+void ModBlacklistPage::processModInfoResponse(const QByteArray &responseData, bool isWhitelist)
+{
+    QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    QJsonObject root = doc.object();
+
+    if (!root.contains("data")) {
+        qWarning() << "Invalid response format: missing 'data' field";
+        return;
+    }
+
+    QJsonObject data = root["data"].toObject();
+    if (!data.contains("exactMatches")) {
+        qWarning() << "Invalid response format: missing 'exactMatches' field";
+        return;
+    }
+
+    QJsonArray matches = data["exactMatches"].toArray();
+    int addedCount = 0;
+
+    for (const QJsonValue &matchValue : matches) {
+        QJsonObject match = matchValue.toObject();
+        int projectId = match["id"].toInt();
+
+        if (projectId <= 0) {
+            continue;
+        }
+
+        bool success = isWhitelist
+            ? APPLICATION->addModToWhitelist(projectId, PROVISIONAL_MOD_NAME)
+            : APPLICATION->addModToBlacklist(projectId, PROVISIONAL_MOD_NAME);
+
+        if (success) {
+            ++addedCount;
+        }
+    }
+
+    if (addedCount > 0) {
+        refreshData();
+        showInfoMessage(tr("Success"),
+                       tr("Added %1 mod(s) to %2").arg(addedCount)
+                                                  .arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
+    }
+}
+
 void ModBlacklistPage::setupUi()
 {
-    // 设置表格属性
-    ui->tableWidget->setColumnCount(3);
-    QStringList headers;
-    headers << "" << tr("Project ID") << tr("Mod name"); // 复选框列不设置表头
-    ui->tableWidget->setHorizontalHeaderLabels(headers);
-    ui->tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
-    ui->tableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    ui->tableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
-    ui->tableWidget->setColumnWidth(0, 20);               // 设置复选框列宽度为20
-    ui->tableWidget->verticalHeader()->setVisible(false); // 隐藏序号
-    ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tableWidget->setSelectionMode(QAbstractItemView::ContiguousSelection);
-    ui->tableWidget->setAlternatingRowColors(true);
+    setupTableWidget(ui->blacklistTableWidget);
+    setupTableWidget(ui->whitelistTableWidget);
+    connectSignals();
+}
 
-    // 连接信号槽
-    connect(ui->tableWidget, &QTableWidget::cellDoubleClicked,
-            this, &ModBlacklistPage::onCellDoubleClicked);
-    connect(ui->tableWidget, &QTableWidget::cellChanged,
-            this, &ModBlacklistPage::onCellChanged);
+void ModBlacklistPage::setupTableWidget(QTableWidget *tableWidget)
+{
+    tableWidget->setColumnCount(3);
+
+    QStringList headers;
+    headers << "" << tr("Project ID") << tr("Mod name");
+    tableWidget->setHorizontalHeaderLabels(headers);
+
+    // 设置列宽策略
+    QHeaderView *header = tableWidget->horizontalHeader();
+    header->setSectionResizeMode(CHECKBOX_COLUMN, QHeaderView::Fixed);
+    header->setSectionResizeMode(PROJECT_ID_COLUMN, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(MOD_NAME_COLUMN, QHeaderView::Stretch);
+
+    tableWidget->setColumnWidth(CHECKBOX_COLUMN, CHECKBOX_COLUMN_WIDTH);
+    tableWidget->verticalHeader()->setVisible(false);
+    tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableWidget->setSelectionMode(QAbstractItemView::ContiguousSelection);
+    tableWidget->setAlternatingRowColors(true);
+}
+
+void ModBlacklistPage::connectSignals()
+{
+    // 黑名单表格信号连接
+    connect(ui->blacklistTableWidget, &QTableWidget::cellDoubleClicked,
+            this, &ModBlacklistPage::onBlacklistCellDoubleClicked);
+    connect(ui->blacklistTableWidget, &QTableWidget::cellChanged,
+            this, &ModBlacklistPage::onBlacklistCellChanged);
+
+    // 白名单表格信号连接
+    connect(ui->whitelistTableWidget, &QTableWidget::cellDoubleClicked,
+            this, &ModBlacklistPage::onWhitelistCellDoubleClicked);
+    connect(ui->whitelistTableWidget, &QTableWidget::cellChanged,
+            this, &ModBlacklistPage::onWhitelistCellChanged);
+
+    // 统一处理删除按钮
+    if (ui->removeButton) {
+        connect(ui->removeButton, &QPushButton::clicked, this, [this]() {
+            QTableWidget *currentTable = (ui->tabWidget->currentIndex() == 0)
+                ? ui->blacklistTableWidget
+                : ui->whitelistTableWidget;
+            removeSelectedMods(currentTable, ui->tabWidget->currentIndex() == 1);
+        });
+    }
+}
+
+void ModBlacklistPage::loadList(QTableWidget *tableWidget, const QMap<int, QString> &modList)
+{
+    tableWidget->blockSignals(true);
+    tableWidget->setRowCount(0);
+
+    for (auto it = modList.constBegin(); it != modList.constEnd(); ++it) {
+        const int projectId = it.key();
+        const QString &name = it.value();
+        addModToTable(tableWidget, projectId, name);
+    }
+
+    tableWidget->blockSignals(false);
+}
+
+void ModBlacklistPage::addModToTable(QTableWidget *tableWidget, int projectId, const QString &name)
+{
+    const int row = tableWidget->rowCount();
+    tableWidget->insertRow(row);
+
+    // 添加复选框
+    auto *checkItem = new QTableWidgetItem();
+    checkItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+    checkItem->setCheckState(Qt::Unchecked);
+    checkItem->setBackground(tableWidget->palette().base());
+    tableWidget->setItem(row, CHECKBOX_COLUMN, checkItem);
+
+    // Project ID (不可编辑)
+    auto *idItem = new QTableWidgetItem(QString::number(projectId));
+    idItem->setFlags(idItem->flags() & ~Qt::ItemIsEditable);
+    tableWidget->setItem(row, PROJECT_ID_COLUMN, idItem);
+
+    // Mod 名称 (可编辑)
+    tableWidget->setItem(row, MOD_NAME_COLUMN, new QTableWidgetItem(name));
 }
 
 void ModBlacklistPage::loadBlacklist()
 {
-    ui->tableWidget->blockSignals(true);
-    ui->tableWidget->setRowCount(0);
+    loadList(ui->blacklistTableWidget, APPLICATION->getModBlacklist());
+}
 
-    const QMap<int, QString> &blacklist = APPLICATION->getModBlacklist();
-
-    for (auto it = blacklist.constBegin(); it != blacklist.constEnd(); ++it)
-    {
-        int projectId = it.key();
-        QString name = it.value();
-
-        int row = ui->tableWidget->rowCount();
-        ui->tableWidget->insertRow(row);
-
-        // 添加复选框（默认不选中）
-        QTableWidgetItem *checkItem = new QTableWidgetItem();
-        checkItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-        checkItem->setCheckState(Qt::Unchecked);
-        checkItem->setBackground(ui->tableWidget->palette().base());
-        ui->tableWidget->setItem(row, 0, checkItem);
-
-        // Project ID (不可编辑)
-        QTableWidgetItem *idItem = new QTableWidgetItem(QString::number(projectId));
-        idItem->setFlags(idItem->flags() & ~Qt::ItemIsEditable);
-        ui->tableWidget->setItem(row, 1, idItem);
-
-        // Mod名称 (可编辑)
-        ui->tableWidget->setItem(row, 2, new QTableWidgetItem(name));
-    }
-
-    ui->tableWidget->blockSignals(false);
+void ModBlacklistPage::loadWhitelist()
+{
+    loadList(ui->whitelistTableWidget, APPLICATION->getModWhitelist());
 }
 
 void ModBlacklistPage::refreshData()
 {
     loadBlacklist();
+    loadWhitelist();
 }
 
-void ModBlacklistPage::requestModInfo(const QStringList &fingerprints)
+void ModBlacklistPage::onBlacklistCellDoubleClicked(int row, int column)
 {
-    // 构建请求JSON
-    QJsonObject requestObj;
-    QJsonArray fingerprintArray;
+    handleCellDoubleClick(ui->blacklistTableWidget, row, column);
+}
 
-    // 直接将指纹数组添加到JSON数组
-    for (const QString &fp : fingerprints)
-    {
-        bool ok;
-        qlonglong fingerprint = fp.toLongLong(&ok);
-        if(ok)
-        {
-            fingerprintArray.append(QJsonValue(fingerprint));
-        }
+void ModBlacklistPage::onWhitelistCellDoubleClicked(int row, int column)
+{
+    handleCellDoubleClick(ui->whitelistTableWidget, row, column);
+}
+
+void ModBlacklistPage::handleCellDoubleClick(QTableWidget *tableWidget, int row, int column)
+{
+    if (column == MOD_NAME_COLUMN) {
+        return; // 名称列双击不切换复选框状态
     }
 
-    requestObj["fingerprints"] = fingerprintArray;
-    QJsonDocument doc(requestObj);
-    QByteArray data = doc.toJson();
-
-    // 创建网络请求
-    QNetworkRequest request(QUrl("https://api.curseforge.com/v1/fingerprints"));
-    request.setRawHeader("x-api-key", APPLICATION->curseAPIKey().toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    // 发送POST请求
-    auto reply = APPLICATION->network()->post(request, data);
-
-    connect(reply, &QNetworkReply::finished, this, [this, reply]()
-            {
-        reply->deleteLater();
-
-        if(reply->error() != QNetworkReply::NoError) {
-            qWarning() << "Fingerprint lookup failed:" << reply->errorString();
-            return;
-        }
-
-        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        QJsonObject root = doc.object();
-        if(root.contains("data")) {
-            QJsonObject data = root["data"].toObject();
-            if(data.contains("exactMatches")) {
-                QJsonArray matches = data["exactMatches"].toArray();
-
-                // 处理所有匹配的mod
-                for(const QJsonValue &matchValue : matches) {
-                    QJsonObject match = matchValue.toObject();
-                    int projectId = match["id"].toInt();
-
-                    QString name = "Provisional Name"; // 临时名称
-
-                    // 添加到黑名单,使用新的Map接口
-                    APPLICATION->addModToBlacklist(projectId, name);
-                }
-
-                // 刷新显示
-                loadBlacklist();
-            }
-        } });
-}
-
-void ModBlacklistPage::onCellDoubleClicked(int row, int column)
-{
-    if (column != 2)
-    {
-        QTableWidgetItem *checkItem = ui->tableWidget->item(row, 0);
-        if (checkItem)
-        {
-            // 切换复选框状态
-            bool checked = checkItem->checkState() == Qt::Checked;
-            checkItem->setCheckState(checked ? Qt::Unchecked : Qt::Checked);
-        }
+    QTableWidgetItem *checkItem = tableWidget->item(row, CHECKBOX_COLUMN);
+    if (checkItem) {
+        const bool checked = (checkItem->checkState() == Qt::Checked);
+        checkItem->setCheckState(checked ? Qt::Unchecked : Qt::Checked);
     }
 }
 
-void ModBlacklistPage::onCellChanged(int row, int column)
+void ModBlacklistPage::onBlacklistCellChanged(int row, int column)
 {
-    if (column == 2)
-    { // 只处理Mod名称列的修改
-        bool ok;
-        int projectId = ui->tableWidget->item(row, 1)->text().toInt(&ok);
-        if (!ok)
-            return;
+    handleCellChanged(ui->blacklistTableWidget, row, column, false);
+}
 
-        QString newName = ui->tableWidget->item(row, 2)->text();
+void ModBlacklistPage::onWhitelistCellChanged(int row, int column)
+{
+    handleCellChanged(ui->whitelistTableWidget, row, column, true);
+}
+
+void ModBlacklistPage::handleCellChanged(QTableWidget *tableWidget, int row, int column, bool isWhitelist)
+{
+    if (column != MOD_NAME_COLUMN) {
+        return; // 只处理 Mod 名称列的修改
+    }
+
+    bool ok;
+    int projectId = tableWidget->item(row, PROJECT_ID_COLUMN)->text().toInt(&ok);
+    if (!ok) {
+        qWarning() << "Invalid project ID in row" << row;
+        return;
+    }
+
+    QString newName = tableWidget->item(row, MOD_NAME_COLUMN)->text();
+
+    if (isWhitelist) {
+        APPLICATION->updateModWhitelistName(projectId, newName);
+    } else {
         APPLICATION->updateModBlacklistName(projectId, newName);
     }
 }
 
-void ModBlacklistPage::on_removeButton_clicked()
+void ModBlacklistPage::removeSelectedMods(QTableWidget *tableWidget, bool isWhitelist)
 {
-    // 从后向前遍历以避免删除行时索引变化的问题
-    for (int row = ui->tableWidget->rowCount() - 1; row >= 0; row--)
-    {
-        QTableWidgetItem *checkItem = ui->tableWidget->item(row, 0);
-        if (checkItem && checkItem->checkState() == Qt::Checked)
-        {
-            bool ok;
-            int projectId = ui->tableWidget->item(row, 1)->text().toInt(&ok);
-            if (!ok)
-                continue;
+    QList<int> projectIdsToRemove;
 
-            // 从黑名单中删除,使用新的Map接口
-            if (APPLICATION->removeModFromBlacklist(projectId))
-            {
-                ui->tableWidget->removeRow(row);
+    // 收集要删除的项目 ID
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *checkItem = tableWidget->item(row, CHECKBOX_COLUMN);
+        if (checkItem && checkItem->checkState() == Qt::Checked) {
+            bool ok;
+            int projectId = tableWidget->item(row, PROJECT_ID_COLUMN)->text().toInt(&ok);
+            if (ok) {
+                projectIdsToRemove.append(projectId);
             }
         }
     }
+
+    if (projectIdsToRemove.isEmpty()) {
+        showInfoMessage(tr("Information"), tr("No items selected for removal."));
+        return;
+    }
+
+    // 执行删除操作
+    int removedCount = 0;
+    for (int projectId : projectIdsToRemove) {
+        bool success = isWhitelist
+            ? APPLICATION->removeModFromWhitelist(projectId)
+            : APPLICATION->removeModFromBlacklist(projectId);
+
+        if (success) {
+            ++removedCount;
+        }
+    }
+
+    if (removedCount > 0) {
+        refreshData();
+        showInfoMessage(tr("Success"),
+                       tr("Removed %1 mod(s) from %2").arg(removedCount)
+                                                      .arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
+    }
+}
+
+void ModBlacklistPage::showErrorMessage(const QString &title, const QString &message)
+{
+    QMessageBox::warning(this, title, message);
+}
+
+void ModBlacklistPage::showInfoMessage(const QString &title, const QString &message)
+{
+    QMessageBox::information(this, title, message);
 }

@@ -29,6 +29,8 @@ namespace CurseForge
 
     private:
         CurseForge::ComparisonResult compareManifests(const QString &jsonFilePathA);
+        void processWhitelistedMods();
+        void continueExecution();
 
     protected slots:
         void netJobFinished();

@@ -852,12 +852,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         QObject::connect(authlib_netJob, &NetJob::succeeded, this, &Application::requestFinished);
     }
 
-    // 在设置数据路径之后,初始化黑名单文件路径
-    m_modBlacklistPath = FS::PathCombine(applicationDirPath(), "modblacklist.json");
-    qDebug() << "m_modBlacklistPath:" << m_modBlacklistPath;
-
     // 加载MOD黑名单
-    loadModBlacklist();
+    loadModList();
 
     // 获取源
     {
@@ -1850,55 +1846,111 @@ void Application::setUpdating(bool updating)
     this->updating = updating;
 }
 
-void Application::loadModBlacklist()
+void Application::loadModList()
 {
-    QFile file(m_modBlacklistPath);
-    if (!file.exists())
-    {
-        // 如果文件不存在,创建一个空的黑名单文件
-        if (file.open(QFile::WriteOnly))
-        {
-            file.write("{}");
-            file.close();
-        }
-        return;
+    m_modBlacklist.clear();
+    m_modWhitelist.clear(); // 清空白名单
+
+    // 首先尝试加载新文件名
+    QString listFilePath = FS::PathCombine(QDir::currentPath(), "modlist.json");
+    QFile listFile(listFilePath);
+
+    // 如果新文件不存在，尝试加载旧文件
+    if (!listFile.exists()) {
+        listFilePath = FS::PathCombine(QDir::currentPath(), "modblacklist.json");
+        listFile.setFileName(listFilePath);
     }
 
-    if (file.open(QIODevice::ReadOnly))
+    if (listFile.exists() && listFile.open(QIODevice::ReadOnly))
     {
-        QByteArray data = file.readAll();
-        QJsonDocument doc = QJsonDocument::fromJson(data);
-        if (doc.isObject())
+        QJsonDocument doc = QJsonDocument::fromJson(listFile.readAll());
+        QJsonObject rootObj = doc.object();
+
+        // 检查是否是新格式（包含blacklist和whitelist字段）
+        if (rootObj.contains("blacklist"))
         {
-            QJsonObject obj = doc.object();
-            for (auto it = obj.begin(); it != obj.end(); ++it)
+            // 新格式
+            QJsonObject blacklistObj = rootObj.value("blacklist").toObject();
+            for (auto it = blacklistObj.begin(); it != blacklistObj.end(); ++it)
             {
-                m_modBlacklist.insert(it.key().toInt(), it.value().toString());
+                bool ok;
+                int modId = it.key().toInt(&ok);
+                if (ok)
+                {
+                    m_modBlacklist.insert(modId, it.value().toString());
+                }
+            }
+
+            // 加载白名单
+            if (rootObj.contains("whitelist"))
+            {
+                QJsonObject whitelistObj = rootObj.value("whitelist").toObject();
+                for (auto it = whitelistObj.begin(); it != whitelistObj.end(); ++it)
+                {
+                    bool ok;
+                    int modId = it.key().toInt(&ok);
+                    if (ok)
+                    {
+                        m_modWhitelist.insert(modId, it.value().toString());
+                    }
+                }
             }
         }
-        file.close();
+        else
+        {
+            // 旧格式（只有黑名单）
+            for (auto it = rootObj.begin(); it != rootObj.end(); ++it)
+            {
+                bool ok;
+                int modId = it.key().toInt(&ok);
+                if (ok)
+                {
+                    m_modBlacklist.insert(modId, it.value().toString());
+                }
+            }
+        }
+        listFile.close();
     }
 }
 
-bool Application::saveModBlacklist(const QMap<int, QString> &blacklist)
+bool Application::saveModList()
 {
-    QFile file(m_modBlacklistPath);
-    if (!file.open(QFile::WriteOnly))
+    // 使用新文件名保存
+    QString listFilePath = FS::PathCombine(QDir::currentPath(), "modlist.json");
+    QFile listFile(listFilePath);
+    if (listFile.open(QIODevice::WriteOnly))
     {
-        return false;
-    }
+        QJsonObject rootObj;
 
-    QJsonObject obj;
-    for (auto it = blacklist.begin(); it != blacklist.end(); ++it)
-    {
-        obj.insert(QString::number(it.key()), it.value());
-    }
+        // 保存黑名单
+        QJsonObject blacklistObj;
+        for (auto it = m_modBlacklist.constBegin(); it != m_modBlacklist.constEnd(); ++it)
+        {
+            blacklistObj.insert(QString::number(it.key()), it.value());
+        }
+        rootObj.insert("blacklist", blacklistObj);
 
-    QJsonDocument doc(obj);
-    file.write(doc.toJson());
-    file.close();
-    m_modBlacklist = blacklist;
-    return true;
+        // 保存白名单
+        QJsonObject whitelistObj;
+        for (auto it = m_modWhitelist.constBegin(); it != m_modWhitelist.constEnd(); ++it)
+        {
+            whitelistObj.insert(QString::number(it.key()), it.value());
+        }
+        rootObj.insert("whitelist", whitelistObj);
+
+        QJsonDocument doc(rootObj);
+        listFile.write(doc.toJson());
+        listFile.close();
+
+         // 如果旧文件存在，可以选择删除它
+         QString oldFilePath = FS::PathCombine(QDir::currentPath(), "modblacklist.json");
+         QFile oldFile(oldFilePath);
+         if (oldFile.exists()) {
+             oldFile.remove();
+         }
+        return true; // 保存成功
+    }
+    return false; // 打开文件失败
 }
 
 bool Application::isModBlacklisted(const int &projectId) const
@@ -1914,7 +1966,7 @@ bool Application::addModToBlacklist(const int &projectId, const QString &name)
     }
 
     m_modBlacklist.insert(projectId, name);
-    return saveModBlacklist(m_modBlacklist);
+    return saveModList();
 }
 
 bool Application::removeModFromBlacklist(const int &projectId)
@@ -1925,7 +1977,7 @@ bool Application::removeModFromBlacklist(const int &projectId)
     }
 
     m_modBlacklist.remove(projectId);
-    return saveModBlacklist(m_modBlacklist);
+    return saveModList();
 }
 
 bool Application::updateModBlacklistName(const int &projectId, const QString &newName)
@@ -1936,10 +1988,49 @@ bool Application::updateModBlacklistName(const int &projectId, const QString &ne
     }
 
     m_modBlacklist[projectId] = newName;
-    return saveModBlacklist(m_modBlacklist);
+    return saveModList();
 }
 
 QString Application::getModNameFromBlacklist(int projectId) const
 {
     return m_modBlacklist.value(projectId);
+}
+// 添加白名单相关函数
+bool Application::isModWhitelisted(const int &projectId) const
+{
+    return m_modWhitelist.contains(projectId);
+}
+
+bool Application::updateModWhitelistName(const int &projectId, const QString &newName)
+{
+    if (!m_modWhitelist.contains(projectId))
+    {
+        return false;
+    }
+    m_modWhitelist[projectId] = newName;
+    return saveModList(); // 使用同一个保存函数
+}
+bool Application::addModToWhitelist(const int &projectId, const QString &name)
+{
+    if (isModWhitelisted(projectId))
+    {
+        return false;
+    }
+
+    m_modWhitelist.insert(projectId, name);
+    return saveModList();
+}
+bool Application::removeModFromWhitelist(const int &projectId)
+{
+    if (!m_modWhitelist.contains(projectId))
+    {
+        return false;
+    }
+
+    m_modWhitelist.remove(projectId);
+    return saveModList();
+}
+QString Application::getModNameFromWhitelist(int projectId) const
+{
+    return m_modWhitelist.value(projectId);
 }
