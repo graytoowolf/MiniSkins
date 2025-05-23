@@ -20,7 +20,14 @@
       <attribute name="title">
        <string>Blacklist</string>
       </attribute>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QLabel" name="blacklistInfoLabel">
+         <property name="text">
+          <string>Mods on the blacklist will be automatically disabled when installing the modpack.</string>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QTableWidget" name="blacklistTableWidget"/>
        </item>
@@ -30,7 +37,14 @@
       <attribute name="title">
        <string>Whitelist</string>
       </attribute>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QLabel" name="whitelistInfoLabel">
+         <property name="text">
+          <string>Mods on the whitelist will be automatically downloaded when installing the modpack.</string>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QTableWidget" name="whitelistTableWidget"/>
        </item>
@@ -39,11 +53,31 @@
     </widget>
    </item>
    <item>
+    <widget class="QLabel" name="dropHintLabel">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+       <weight>50</weight>
+       <italic>false</italic>
+       <bold>false</bold>
+       <underline>false</underline>
+      </font>
+     </property>
+     <property name="text">
+      <string>Drag and drop MOD files into the table to add them to the blacklist or whitelist. 
+Check the corresponding items, then click &quot;Remove Selected&quot; to delete the entries.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="removeButton">
        <property name="text">
-        <string>Remove</string>
+        <string>Remove Selected</string>
        </property>
       </widget>
      </item>
