@@ -11,8 +11,11 @@
 #include <QJsonArray>
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QPainter>
+#include <QStyleOption>
 
-namespace {
+namespace
+{
     // 常量定义
     constexpr int CHECKBOX_COLUMN = 0;
     constexpr int PROJECT_ID_COLUMN = 1;
@@ -28,8 +31,7 @@ namespace {
 const QStringList ModBlacklistPage::SUPPORTED_EXTENSIONS = {".jar", ".disabled"};
 
 ModBlacklistPage::ModBlacklistPage(QWidget *parent)
-    : QWidget(parent)
-    , ui(new Ui::ModBlacklistPage)
+    : QWidget(parent), ui(new Ui::ModBlacklistPage)
 {
     ui->setupUi(this);
     setupUi();
@@ -45,24 +47,28 @@ ModBlacklistPage::~ModBlacklistPage()
 bool ModBlacklistPage::isSupportedFile(const QString &filePath) const
 {
     return std::any_of(SUPPORTED_EXTENSIONS.begin(), SUPPORTED_EXTENSIONS.end(),
-                       [&filePath](const QString &ext) {
+                       [&filePath](const QString &ext)
+                       {
                            return filePath.endsWith(ext, Qt::CaseInsensitive);
                        });
 }
 
 void ModBlacklistPage::dragEnterEvent(QDragEnterEvent *event)
 {
-    if (!event->mimeData()->hasUrls()) {
+    if (!event->mimeData()->hasUrls())
+    {
         return;
     }
 
     const QList<QUrl> urls = event->mimeData()->urls();
     bool hasValidFile = std::any_of(urls.begin(), urls.end(),
-                                    [this](const QUrl &url) {
+                                    [this](const QUrl &url)
+                                    {
                                         return isSupportedFile(url.toLocalFile());
                                     });
 
-    if (hasValidFile) {
+    if (hasValidFile)
+    {
         event->acceptProposedAction();
     }
 }
@@ -72,19 +78,23 @@ void ModBlacklistPage::dropEvent(QDropEvent *event)
     const QList<QUrl> urls = event->mimeData()->urls();
     QStringList fingerprints;
 
-    for (const QUrl &url : urls) {
+    for (const QUrl &url : urls)
+    {
         const QString filePath = url.toLocalFile();
-        if (!isSupportedFile(filePath)) {
+        if (!isSupportedFile(filePath))
+        {
             continue;
         }
 
         const QString hash = fingerprint::getJarFingerprint(filePath);
-        if (!hash.isEmpty()) {
+        if (!hash.isEmpty())
+        {
             fingerprints.append(hash);
         }
     }
 
-    if (!fingerprints.isEmpty()) {
+    if (!fingerprints.isEmpty())
+    {
         const bool isWhitelist = (ui->tabWidget->currentIndex() == 1);
         requestModInfo(fingerprints, isWhitelist);
     }
@@ -94,7 +104,8 @@ void ModBlacklistPage::dropEvent(QDropEvent *event)
 
 void ModBlacklistPage::requestModInfo(const QStringList &fingerprints, bool isWhitelist)
 {
-    if (fingerprints.isEmpty()) {
+    if (fingerprints.isEmpty())
+    {
         return;
     }
 
@@ -102,15 +113,18 @@ void ModBlacklistPage::requestModInfo(const QStringList &fingerprints, bool isWh
     QJsonObject requestObj;
     QJsonArray fingerprintArray;
 
-    for (const QString &fp : fingerprints) {
+    for (const QString &fp : fingerprints)
+    {
         bool ok;
         qlonglong fingerprint = fp.toLongLong(&ok);
-        if (ok) {
+        if (ok)
+        {
             fingerprintArray.append(QJsonValue(fingerprint));
         }
     }
 
-    if (fingerprintArray.isEmpty()) {
+    if (fingerprintArray.isEmpty())
+    {
         qWarning() << "No valid fingerprints to process";
         return;
     }
@@ -127,7 +141,8 @@ void ModBlacklistPage::requestModInfo(const QStringList &fingerprints, bool isWh
     // 发送 POST 请求
     auto *reply = APPLICATION->network()->post(request, data);
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply, isWhitelist]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, isWhitelist]()
+            {
         reply->deleteLater();
 
         if (reply->error() != QNetworkReply::NoError) {
@@ -137,8 +152,7 @@ void ModBlacklistPage::requestModInfo(const QStringList &fingerprints, bool isWh
             return;
         }
 
-        processModInfoResponse(reply->readAll(), isWhitelist);
-    });
+        processModInfoResponse(reply->readAll(), isWhitelist); });
 }
 
 void ModBlacklistPage::processModInfoResponse(const QByteArray &responseData, bool isWhitelist)
@@ -146,13 +160,15 @@ void ModBlacklistPage::processModInfoResponse(const QByteArray &responseData, bo
     QJsonDocument doc = QJsonDocument::fromJson(responseData);
     QJsonObject root = doc.object();
 
-    if (!root.contains("data")) {
+    if (!root.contains("data"))
+    {
         qWarning() << "Invalid response format: missing 'data' field";
         return;
     }
 
     QJsonObject data = root["data"].toObject();
-    if (!data.contains("exactMatches")) {
+    if (!data.contains("exactMatches"))
+    {
         qWarning() << "Invalid response format: missing 'exactMatches' field";
         return;
     }
@@ -160,28 +176,31 @@ void ModBlacklistPage::processModInfoResponse(const QByteArray &responseData, bo
     QJsonArray matches = data["exactMatches"].toArray();
     int addedCount = 0;
 
-    for (const QJsonValue &matchValue : matches) {
+    for (const QJsonValue &matchValue : matches)
+    {
         QJsonObject match = matchValue.toObject();
         int projectId = match["id"].toInt();
 
-        if (projectId <= 0) {
+        if (projectId <= 0)
+        {
             continue;
         }
 
         bool success = isWhitelist
-            ? APPLICATION->addModToWhitelist(projectId, PROVISIONAL_MOD_NAME)
-            : APPLICATION->addModToBlacklist(projectId, PROVISIONAL_MOD_NAME);
+                           ? APPLICATION->addModToWhitelist(projectId, PROVISIONAL_MOD_NAME)
+                           : APPLICATION->addModToBlacklist(projectId, PROVISIONAL_MOD_NAME);
 
-        if (success) {
+        if (success)
+        {
             ++addedCount;
         }
     }
 
-    if (addedCount > 0) {
+    if (addedCount > 0)
+    {
         refreshData();
         showInfoMessage(tr("Success"),
-                       tr("Added %1 mod(s) to %2").arg(addedCount)
-                                                  .arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
+                        tr("Added %1 mod(s) to %2").arg(addedCount).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
     }
 }
 
@@ -190,6 +209,13 @@ void ModBlacklistPage::setupUi()
     setupTableWidget(ui->blacklistTableWidget);
     setupTableWidget(ui->whitelistTableWidget);
     connectSignals();
+
+    // 为表格的 viewport 安装事件过滤器
+    ui->blacklistTableWidget->viewport()->installEventFilter(this);
+    ui->whitelistTableWidget->viewport()->installEventFilter(this);
+
+    // 初始化提示标签可见性 (延迟调用以确保UI完全设置)
+    QTimer::singleShot(0, this, &ModBlacklistPage::updateDropHintVisibility);
 }
 
 void ModBlacklistPage::setupTableWidget(QTableWidget *tableWidget)
@@ -228,14 +254,18 @@ void ModBlacklistPage::connectSignals()
             this, &ModBlacklistPage::onWhitelistCellChanged);
 
     // 统一处理删除按钮
-    if (ui->removeButton) {
-        connect(ui->removeButton, &QPushButton::clicked, this, [this]() {
+    if (ui->removeButton)
+    {
+        connect(ui->removeButton, &QPushButton::clicked, this, [this]()
+                {
             QTableWidget *currentTable = (ui->tabWidget->currentIndex() == 0)
                 ? ui->blacklistTableWidget
                 : ui->whitelistTableWidget;
-            removeSelectedMods(currentTable, ui->tabWidget->currentIndex() == 1);
-        });
+            removeSelectedMods(currentTable, ui->tabWidget->currentIndex() == 1); });
     }
+
+    // 标签页切换时更新提示标签可见性
+    connect(ui->tabWidget, &QTabWidget::currentChanged, this, &ModBlacklistPage::updateDropHintVisibility);
 }
 
 void ModBlacklistPage::loadList(QTableWidget *tableWidget, const QMap<int, QString> &modList)
@@ -243,7 +273,8 @@ void ModBlacklistPage::loadList(QTableWidget *tableWidget, const QMap<int, QStri
     tableWidget->blockSignals(true);
     tableWidget->setRowCount(0);
 
-    for (auto it = modList.constBegin(); it != modList.constEnd(); ++it) {
+    for (auto it = modList.constBegin(); it != modList.constEnd(); ++it)
+    {
         const int projectId = it.key();
         const QString &name = it.value();
         addModToTable(tableWidget, projectId, name);
@@ -287,6 +318,7 @@ void ModBlacklistPage::refreshData()
 {
     loadBlacklist();
     loadWhitelist();
+    updateDropHintVisibility();
 }
 
 void ModBlacklistPage::onBlacklistCellDoubleClicked(int row, int column)
@@ -301,12 +333,14 @@ void ModBlacklistPage::onWhitelistCellDoubleClicked(int row, int column)
 
 void ModBlacklistPage::handleCellDoubleClick(QTableWidget *tableWidget, int row, int column)
 {
-    if (column == MOD_NAME_COLUMN) {
+    if (column == MOD_NAME_COLUMN)
+    {
         return; // 名称列双击不切换复选框状态
     }
 
     QTableWidgetItem *checkItem = tableWidget->item(row, CHECKBOX_COLUMN);
-    if (checkItem) {
+    if (checkItem)
+    {
         const bool checked = (checkItem->checkState() == Qt::Checked);
         checkItem->setCheckState(checked ? Qt::Unchecked : Qt::Checked);
     }
@@ -324,22 +358,27 @@ void ModBlacklistPage::onWhitelistCellChanged(int row, int column)
 
 void ModBlacklistPage::handleCellChanged(QTableWidget *tableWidget, int row, int column, bool isWhitelist)
 {
-    if (column != MOD_NAME_COLUMN) {
+    if (column != MOD_NAME_COLUMN)
+    {
         return; // 只处理 Mod 名称列的修改
     }
 
     bool ok;
     int projectId = tableWidget->item(row, PROJECT_ID_COLUMN)->text().toInt(&ok);
-    if (!ok) {
+    if (!ok)
+    {
         qWarning() << "Invalid project ID in row" << row;
         return;
     }
 
     QString newName = tableWidget->item(row, MOD_NAME_COLUMN)->text();
 
-    if (isWhitelist) {
+    if (isWhitelist)
+    {
         APPLICATION->updateModWhitelistName(projectId, newName);
-    } else {
+    }
+    else
+    {
         APPLICATION->updateModBlacklistName(projectId, newName);
     }
 }
@@ -349,39 +388,45 @@ void ModBlacklistPage::removeSelectedMods(QTableWidget *tableWidget, bool isWhit
     QList<int> projectIdsToRemove;
 
     // 收集要删除的项目 ID
-    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+    for (int row = 0; row < tableWidget->rowCount(); ++row)
+    {
         QTableWidgetItem *checkItem = tableWidget->item(row, CHECKBOX_COLUMN);
-        if (checkItem && checkItem->checkState() == Qt::Checked) {
+        if (checkItem && checkItem->checkState() == Qt::Checked)
+        {
             bool ok;
             int projectId = tableWidget->item(row, PROJECT_ID_COLUMN)->text().toInt(&ok);
-            if (ok) {
+            if (ok)
+            {
                 projectIdsToRemove.append(projectId);
             }
         }
     }
 
-    if (projectIdsToRemove.isEmpty()) {
+    if (projectIdsToRemove.isEmpty())
+    {
         showInfoMessage(tr("Information"), tr("No items selected for removal."));
         return;
     }
 
     // 执行删除操作
     int removedCount = 0;
-    for (int projectId : projectIdsToRemove) {
+    for (int projectId : projectIdsToRemove)
+    {
         bool success = isWhitelist
-            ? APPLICATION->removeModFromWhitelist(projectId)
-            : APPLICATION->removeModFromBlacklist(projectId);
+                           ? APPLICATION->removeModFromWhitelist(projectId)
+                           : APPLICATION->removeModFromBlacklist(projectId);
 
-        if (success) {
+        if (success)
+        {
             ++removedCount;
         }
     }
 
-    if (removedCount > 0) {
+    if (removedCount > 0)
+    {
         refreshData();
         showInfoMessage(tr("Success"),
-                       tr("Removed %1 mod(s) from %2").arg(removedCount)
-                                                      .arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
+                        tr("Removed %1 mod(s) from %2").arg(removedCount).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
     }
 }
 
@@ -393,4 +438,80 @@ void ModBlacklistPage::showErrorMessage(const QString &title, const QString &mes
 void ModBlacklistPage::showInfoMessage(const QString &title, const QString &message)
 {
     QMessageBox::information(this, title, message);
+}
+
+void ModBlacklistPage::updateDropHintVisibility()
+{
+    // 触发两个表格的 viewport 重绘，以便 eventFilter 处理提示的显示
+    if (ui->blacklistTableWidget && ui->blacklistTableWidget->viewport())
+    {
+        ui->blacklistTableWidget->viewport()->update();
+    }
+    if (ui->whitelistTableWidget && ui->whitelistTableWidget->viewport())
+    {
+        ui->whitelistTableWidget->viewport()->update();
+    }
+}
+
+bool ModBlacklistPage::eventFilter(QObject *watched, QEvent *event)
+{
+    QTableWidget *targetTable = nullptr;
+    bool isBlacklistTabActive = (ui->tabWidget->currentIndex() == 0);
+
+    if (watched == ui->blacklistTableWidget->viewport())
+    {
+        targetTable = ui->blacklistTableWidget;
+        if (!isBlacklistTabActive)
+            return QWidget::eventFilter(watched, event); // 只在当前标签页绘制
+    }
+    else if (watched == ui->whitelistTableWidget->viewport())
+    {
+        targetTable = ui->whitelistTableWidget;
+        if (isBlacklistTabActive)
+            return QWidget::eventFilter(watched, event); // 只在当前标签页绘制
+    }
+
+    if (targetTable && event->type() == QEvent::Paint && targetTable->rowCount() == 0)
+    {
+        QPainter painter(targetTable->viewport());
+        painter.setRenderHint(QPainter::Antialiasing);
+
+        // 定义提示文本和字体
+        QString text = tr("Drag and drop MOD files into the table to add them to the %1.\nCheck the corresponding items, then click \"Remove Selected\" to delete the entries.")
+                           .arg(isBlacklistTabActive ? tr("blacklist") : tr("whitelist"));
+        QFont font = targetTable->font();
+        font.setPointSize(14);
+        font.setBold(true);
+        painter.setFont(font);
+
+        // 计算文本所需的尺寸
+        QFontMetrics fm(font);
+        QRect boundingRect = fm.boundingRect(QRect(0, 0, 400, 200), Qt::AlignCenter | Qt::TextWordWrap, text);
+
+        // 设置背景框大小（比文本稍大一些）
+        int padding = 20;
+        QSize backgroundSize(boundingRect.width() + padding * 2, boundingRect.height() + padding * 2);
+
+        // 计算背景框位置（居中显示）
+        QRect viewportRect = targetTable->viewport()->rect();
+        QPoint centerPos = viewportRect.center();
+        QRect backgroundRect(centerPos.x() - backgroundSize.width() / 2,
+                            centerPos.y() - backgroundSize.height() / 2,
+                            backgroundSize.width(),
+                            backgroundSize.height());
+
+        // 绘制纯黑色背景
+        painter.setBrush(QColor(0, 0, 0, 220));  // 更不透明的黑色背景
+        painter.setPen(Qt::NoPen);
+        painter.drawRoundedRect(backgroundRect, 12, 12); // 圆角背景
+
+        // 设置文本颜色为白色
+        painter.setPen(Qt::white);
+
+        // 绘制文本（在背景框中居中）
+        painter.drawText(backgroundRect, Qt::AlignCenter | Qt::TextWordWrap, text);
+
+        return true; // 事件已处理
+    }
+    return QWidget::eventFilter(watched, event);
 }

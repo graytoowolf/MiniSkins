@@ -10,7 +10,8 @@
 #include "ui/pages/BasePage.h"
 #include <Application.h>
 
-namespace Ui {
+namespace Ui
+{
     class ModBlacklistPage;
 }
 
@@ -55,6 +56,7 @@ protected:
     // 拖放事件处理
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dropEvent(QDropEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     // 数据加载
@@ -95,6 +97,9 @@ private:
     // 用户反馈
     void showErrorMessage(const QString &title, const QString &message);
     void showInfoMessage(const QString &title, const QString &message);
+
+    // 提示标签可见性控制
+    void updateDropHintVisibility();
 
 private:
     Ui::ModBlacklistPage *ui;
