@@ -5,7 +5,7 @@
 
 namespace
 {
-    const char *metabase = "https://api.curseforge.com/v1/mods";
+const char *metabase = "https://api.curseforge.com/v1/mods";
 }
 
 CurseForge::FileResolvingTask::FileResolvingTask(shared_qobject_ptr<QNetworkAccessManager> network, CurseForge::Manifest &toProcess, const QString &path)
@@ -15,6 +15,18 @@ CurseForge::FileResolvingTask::FileResolvingTask(shared_qobject_ptr<QNetworkAcce
 
 void CurseForge::FileResolvingTask::executeTask()
 {
+    // 初始化用于处理MOD依赖的成员变量
+    m_processedModIds.clear();
+    m_modsToQueryQueue.clear();
+    m_activeNetJobs.clear();
+
+    // 记录初始清单中的MOD ID
+    m_initialManifestModIds.clear();
+    for (const auto &file : m_toProcess.files)
+    {
+        m_initialManifestModIds.insert(file.projectId);
+    }
+
     // 处理白名单MOD
     processWhitelistedMods();
 }
@@ -22,6 +34,17 @@ void CurseForge::FileResolvingTask::executeTask()
 // 继续执行后续流程的方法
 void CurseForge::FileResolvingTask::continueExecution()
 {
+    // 检查是否还有待处理的MOD或活动的网络请求
+    if (!m_modsToQueryQueue.isEmpty() || !m_activeNetJobs.isEmpty())
+    {
+        // 如果还有待处理的项目，则先处理它们
+        if (!m_modsToQueryQueue.isEmpty())
+        {
+            processNextModInQueue();
+        }
+        return;
+    }
+
     if (m_toProcess.files.isEmpty())
     {
         emitSucceeded();
@@ -147,7 +170,6 @@ void CurseForge::FileResolvingTask::prepareDownloads()
             }
         }
     }
-
 
     if (!result.filesToDownload.isEmpty())
     {
@@ -365,12 +387,13 @@ void CurseForge::FileResolvingTask::processWhitelistedMods()
     for (const auto &file : m_toProcess.files)
     {
         existingModIds.insert(file.projectId);
+        m_processedModIds.insert(file.projectId); // 将现有MOD添加到已处理集合中
     }
 
     // 获取Minecraft版本和加载器信息
-    QString mcVersion = m_toProcess.minecraft.version;
+    m_currentMcVersion = m_toProcess.minecraft.version;
     QString modLoader;
-    int modLoaderType = 0; // 默认为Any
+    m_currentModLoaderType = 0; // 默认为Any
 
     // 确定当前的模组加载器
     for (const auto &loader : m_toProcess.minecraft.modLoaders)
@@ -387,163 +410,187 @@ void CurseForge::FileResolvingTask::processWhitelistedMods()
     {
         if (modLoader.startsWith("forge-"))
         {
-            modLoaderType = 1; // Forge
+            m_currentModLoaderType = 1; // Forge
         }
         else if (modLoader.startsWith("fabric-"))
         {
-            modLoaderType = 4; // Fabric
+            m_currentModLoaderType = 4; // Fabric
         }
         else if (modLoader.startsWith("neoforge-"))
         {
-            modLoaderType = 6; // NeoForge
+            m_currentModLoaderType = 6; // NeoForge
         }
         else if (modLoader.startsWith("quilt-"))
         {
-            modLoaderType = 5; // Quilt
+            m_currentModLoaderType = 5; // Quilt
         }
     }
 
     setStatus(tr("Processing whitelist mods..."));
 
-    // 统计需要处理的白名单MOD数量
-    int pendingRequests = 0;
+    // 将白名单中的MOD添加到处理队列
     for (auto it = whitelist.constBegin(); it != whitelist.constEnd(); ++it)
     {
         int modId = it.key();
-        if (!existingModIds.contains(modId))
+        if (!existingModIds.contains(modId) && !m_processedModIds.contains(modId))
         {
-            pendingRequests++;
+            m_modsToQueryQueue.enqueue(modId);
+            m_processedModIds.insert(modId); // 标记为已处理，避免重复添加
         }
     }
 
     // 如果没有需要处理的MOD，直接继续
-    if (pendingRequests == 0)
+    if (m_modsToQueryQueue.isEmpty())
     {
         continueExecution();
         return;
     }
 
-    // 使用智能指针管理计数器，确保所有lambda都能访问同一个计数器
-    auto completedRequests = std::make_shared<int>(0);
+    // 开始处理队列中的第一个MOD
+    processNextModInQueue();
+}
 
-    // 遍历白名单中的每个MOD
-    for (auto it = whitelist.constBegin(); it != whitelist.constEnd(); ++it)
+void CurseForge::FileResolvingTask::processNextModInQueue()
+{
+    // 如果队列为空，继续执行后续流程
+    if (m_modsToQueryQueue.isEmpty())
     {
-        int modId = it.key();
+        continueExecution();
+        return;
+    }
 
-        // 如果MOD已经在现有列表中，跳过
-        if (existingModIds.contains(modId))
-        {
-            continue;
+    // 从队列中取出一个MOD ID
+    int modId = m_modsToQueryQueue.dequeue();
+    qDebug() << "Processing mod from queue:" << modId;
+
+    // 创建网络请求获取MOD信息
+    NetJob *netJob = new NetJob(QString("CurseForge::ModFile(%1)").arg(modId), APPLICATION->network());
+    std::shared_ptr<QByteArray> response = std::make_shared<QByteArray>();
+
+    // 构建API请求URL
+    QString apiUrl = QString("%1/%2/files").arg(metabase).arg(modId);
+    QUrlQuery query;
+
+    // 添加查询参数
+    query.addQueryItem("gameVersion", m_currentMcVersion);
+    query.addQueryItem("modLoaderType", QString::number(m_currentModLoaderType));
+    query.addQueryItem("pageSize", "1"); // 只获取一个文件（最新的）
+
+    QUrl url(apiUrl);
+    url.setQuery(query);
+
+    // 创建下载任务
+    auto download = Net::Download::makeByteArray(url, response.get());
+    download->setExtraHeader("x-api-key", APPLICATION->curseAPIKey());
+    netJob->addNetAction(download);
+
+    // 处理请求成功的情况
+    connect(netJob, &NetJob::succeeded, [this, response, modId, netJob]()
+    {
+        // 将网络任务从活动列表中移除
+        m_activeNetJobs.removeOne(netJob);
+        netJob->deleteLater();
+
+        QJsonParseError parse_error;
+        QJsonDocument doc = QJsonDocument::fromJson(*response, &parse_error);
+        if (parse_error.error != QJsonParseError::NoError) {
+            qWarning() << "Error while parsing JSON response from CurseForge at " << parse_error.offset
+                       << " reason: " << parse_error.errorString();
+            qWarning() << *response;
+
+            // 即使解析失败也继续处理下一个MOD
+            processNextModInQueue();
+            return;
         }
 
-        qDebug() << "Processing whitelist mod:" << modId;
+        QJsonObject rootObj = doc.object();
+        QJsonArray dataArray = rootObj["data"].toArray();
 
-        // 创建网络请求获取MOD信息
-        NetJob *netJob = new NetJob(QString("CurseForge::WhitelistMod(%1)").arg(modId), APPLICATION->network());
-        std::shared_ptr<QByteArray> response = std::make_shared<QByteArray>();
+        // 如果没有找到匹配的文件，记录日志但继续处理
+        if (dataArray.isEmpty()) {
+            qDebug() << "No compatible files found for mod" << modId;
+            processNextModInQueue();
+            return;
+        }
 
-        // 构建API请求URL
-        QString apiUrl = QString("%1/%2/files").arg(metabase).arg(modId);
-        QUrlQuery query;
+        // 获取第一个文件（最新的）
+        QJsonObject fileObj = dataArray.first().toObject();
 
-        // 添加查询参数
-        query.addQueryItem("gameVersion", mcVersion);
-        query.addQueryItem("modLoaderType", QString::number(modLoaderType));
-        query.addQueryItem("pageSize", "1"); // 只获取一个文件（最新的）
+        // 获取MOD名称并更新白名单中的名称（如果是临时名称）
+        if (APPLICATION->getModNameFromWhitelist(modId) == "Provisional Name") {
+            QString modName;
 
-        QUrl url(apiUrl);
-        url.setQuery(query);
-
-        // 创建下载任务
-        auto download = Net::Download::makeByteArray(url, response.get());
-        download->setExtraHeader("x-api-key", APPLICATION->curseAPIKey());
-        netJob->addNetAction(download);
-
-        // 处理请求成功的情况
-        connect(netJob, &NetJob::succeeded, [this, response, modId, completedRequests, pendingRequests]() {
-            QJsonParseError parse_error;
-            QJsonDocument doc = QJsonDocument::fromJson(*response, &parse_error);
-            if (parse_error.error != QJsonParseError::NoError) {
-                qWarning() << "Error while parsing JSON response from CurseForge at " << parse_error.offset
-                           << " reason: " << parse_error.errorString();
-                qWarning() << *response;
-
-                // 即使解析失败也要更新计数器
-                (*completedRequests)++;
-                if (*completedRequests >= pendingRequests) {
-                    continueExecution();
+            // 优先使用displayName字段
+            if (fileObj.contains("displayName")) {
+                QString displayName = fileObj["displayName"].toString();
+                // 提取名称部分（去除加载器名称和版本号）
+                QRegExp rx("([\\w\\s\\-]+?)(?:-(?:NeoForge|Forge|Fabric|Quilt)-[\\d\\.]+|$)");
+                if (rx.indexIn(displayName) != -1) {
+                    modName = rx.cap(1).trimmed();
+                } else {
+                    modName = displayName; // 如果无法提取，使用完整名称
                 }
-                return;
             }
 
-            QJsonObject rootObj = doc.object();
-            QJsonArray dataArray = rootObj["data"].toArray();
+            // 如果成功获取到名称，更新白名单
+            if (!modName.isEmpty()) {
+                APPLICATION->updateModWhitelistName(modId, modName);
+                qDebug() << "Updated whitelist mod name for" << modId << "from 'Provisional Name' to" << modName;
+            }
+        }
 
-            // 如果没有找到匹配的文件，记录日志但继续处理
-            if (dataArray.isEmpty()) {
-                qDebug() << "No compatible files found for whitelist mod" << modId;
-            } else {
-                // 获取第一个文件（最新的）
-                QJsonObject fileObj = dataArray.first().toObject();
+        // 创建File对象并添加到下载列表
+        CurseForge::File file;
+        file.projectId = modId;
+        file.fileId = fileObj["id"].toInt();
+        file.fileName = fileObj["fileName"].toString();
+        QString rawUrl = fileObj["downloadUrl"].toString();
+        file.url = QUrl(rawUrl, QUrl::TolerantMode);
+        file.required = true;
+        file.targetFolder = "mods"; // 默认放在mods文件夹
 
-                // 获取MOD名称并更新白名单中的名称（如果是临时名称）
-                if (APPLICATION->getModNameFromWhitelist(modId) == "Provisional Name") {
-                    QString modName;
+        // 添加到下载列表
+        m_toProcess.files.append(file);
+        qDebug() << "Added mod" << modId << "to download list:" << file.fileName;
 
-                    // 优先使用displayName字段
-                    if (fileObj.contains("displayName")) {
-                        QString displayName = fileObj["displayName"].toString();
-                        // 提取名称部分（去除加载器名称和版本号）
-                        QRegExp rx("([\\w\\s\\-]+?)(?:-(?:NeoForge|Forge|Fabric|Quilt)-[\\d\\.]+|$)");
-                        if (rx.indexIn(displayName) != -1) {
-                            modName = rx.cap(1).trimmed();
-                        } else {
-                            modName = displayName; // 如果无法提取，使用完整名称
-                        }
-                    }
+        // 处理MOD依赖关系
+        if (fileObj.contains("dependencies")) {
+            QJsonArray dependencies = fileObj["dependencies"].toArray();
+            for (const auto &depValue : dependencies) {
+                QJsonObject depObj = depValue.toObject();
+                int depModId = depObj["modId"].toInt();
+                int relationType = depObj["relationType"].toInt();
 
-                    // 如果成功获取到名称，更新白名单
-                    if (!modName.isEmpty()) {
-                        APPLICATION->updateModWhitelistName(modId, modName);
-                        qDebug() << "Updated whitelist mod name for" << modId << "from 'Provisional Name' to" << modName;
+                // 只处理必需的依赖（RequiredDependency）
+                if (relationType == 3) {
+                    // 检查依赖的MOD是否已经在处理列表中
+                    if (!m_processedModIds.contains(depModId) && !m_initialManifestModIds.contains(depModId)) {
+                        qDebug() << "Adding dependency mod to queue:" << depModId;
+                        m_modsToQueryQueue.enqueue(depModId);
+                        m_processedModIds.insert(depModId); // 标记为已处理，避免重复添加
                     }
                 }
-
-                // 创建File对象并添加到下载列表
-                CurseForge::File file;
-                file.projectId = modId;
-                file.fileId = fileObj["id"].toInt();
-                file.fileName = fileObj["fileName"].toString();
-                QString rawUrl = fileObj["downloadUrl"].toString();
-                file.url = QUrl(rawUrl, QUrl::TolerantMode);
-                file.required = true;
-                file.targetFolder = "mods"; // 默认放在mods文件夹
-
-                // 添加到下载列表
-                m_toProcess.files.append(file);
-                qDebug() << "Added whitelist mod" << modId << "to download list:" << file.fileName;
             }
+        }
 
-            // 更新完成计数器
-            (*completedRequests)++;
-            if (*completedRequests >= pendingRequests) {
-                continueExecution();
-            }
-        });
+        // 继续处理队列中的下一个MOD
+        processNextModInQueue(); });
 
-        // 处理请求失败的情况
-        connect(netJob, &NetJob::failed, [this, modId, completedRequests, pendingRequests](QString reason) {
-            qDebug() << "Failed to get information for whitelist mod" << modId << ":" << reason;
+    // 处理请求失败的情况
+    connect(netJob, &NetJob::failed, [this, modId, netJob](QString reason)
+    {
+        qDebug() << "Failed to get information for mod" << modId << ":" << reason;
 
-            // 更新完成计数器
-            (*completedRequests)++;
-            if (*completedRequests >= pendingRequests) {
-                continueExecution();
-            }
-        });
+        // 将网络任务从活动列表中移除
+        m_activeNetJobs.removeOne(netJob);
+        netJob->deleteLater();
 
-        // 启动网络请求
-        netJob->start();
-    }
+        // 继续处理队列中的下一个MOD
+        processNextModInQueue(); });
+
+    // 将网络任务添加到活动列表中
+    m_activeNetJobs.append(netJob);
+
+    // 启动网络请求
+    netJob->start();
 }

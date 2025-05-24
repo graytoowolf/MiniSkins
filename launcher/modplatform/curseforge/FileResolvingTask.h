@@ -31,6 +31,7 @@ namespace CurseForge
         CurseForge::ComparisonResult compareManifests(const QString &jsonFilePathA);
         void processWhitelistedMods();
         void continueExecution();
+        void processNextModInQueue();
 
     protected slots:
         void netJobFinished();
@@ -48,5 +49,13 @@ namespace CurseForge
         QString m_path;
         QString m_filePath;
         QNetworkReply *m_rep;
+
+        // 用于处理MOD依赖的成员变量
+        QQueue<int> m_modsToQueryQueue; // 待处理的MOD ID队列
+        QSet<int> m_processedModIds; // 已处理的MOD ID集合
+        QList<NetJob*> m_activeNetJobs; // 活动的网络请求任务
+        QString m_currentMcVersion; // 当前Minecraft版本
+        int m_currentModLoaderType; // 当前模组加载器类型
+        QSet<int> m_initialManifestModIds; // 初始清单中的MOD ID集合
     };
 }
