@@ -477,39 +477,38 @@ bool ModBlacklistPage::eventFilter(QObject *watched, QEvent *event)
         painter.setRenderHint(QPainter::Antialiasing);
 
         // 定义提示文本和字体
-        QString text = tr("Drag and drop MOD files into the table to add them to the %1.\nCheck the corresponding items, then click \"Remove Selected\" to delete the entries.")
+        QString text = tr("Drag and drop MOD files into the table to add them to %1.\nSelect the items you want to remove, then click \"Remove Selected\".")
                            .arg(isBlacklistTabActive ? tr("blacklist") : tr("whitelist"));
-        QFont font = targetTable->font();
-        font.setPointSize(14);
+        QFont font("sans", 16);
         font.setBold(true);
         painter.setFont(font);
 
-        // 计算文本所需的尺寸
-        QFontMetrics fm(font);
-        QRect boundingRect = fm.boundingRect(QRect(0, 0, 400, 200), Qt::AlignCenter | Qt::TextWordWrap, text);
+        QRect bounds = targetTable->viewport()->rect();
+        bounds.moveTop(0);
+        auto innerBounds = bounds;
+        innerBounds.adjust(10, 10, -10, -10);
 
-        // 设置背景框大小（比文本稍大一些）
-        int padding = 20;
-        QSize backgroundSize(boundingRect.width() + padding * 2, boundingRect.height() + padding * 2);
+        // 根据用户提供的图片2样式，背景设置为黑色，文本设置为白色
+        QColor backgroundColor = Qt::black;
+        QColor textColor = Qt::white;
 
-        // 计算背景框位置（居中显示）
-        QRect viewportRect = targetTable->viewport()->rect();
-        QPoint centerPos = viewportRect.center();
-        QRect backgroundRect(centerPos.x() - backgroundSize.width() / 2,
-                            centerPos.y() - backgroundSize.height() / 2,
-                            backgroundSize.width(),
-                            backgroundSize.height());
+        painter.setFont(font);
+        auto fontMetrics = painter.fontMetrics();
+        auto textRect = fontMetrics.boundingRect(innerBounds, Qt::AlignHCenter | Qt::TextWordWrap, text);
+        textRect.moveCenter(bounds.center());
 
-        // 绘制纯黑色背景
-        painter.setBrush(QColor(0, 0, 0, 220));  // 更不透明的黑色背景
-        painter.setPen(Qt::NoPen);
-        painter.drawRoundedRect(backgroundRect, 12, 12); // 圆角背景
+        auto wrapRect = textRect;
+        wrapRect.adjust(-10, -10, 10, 10); // 与 VersionListView 保持一致的padding
 
-        // 设置文本颜色为白色
-        painter.setPen(Qt::white);
+        // 绘制背景
+        painter.setBrush(QBrush(backgroundColor));
+        painter.setPen(Qt::NoPen); // VersionListView 中有Pen，但这里为了纯色背景，可以设为NoPen
+        // painter.setPen(textColor); // 如果需要边框，则使用textColor
+        painter.drawRoundedRect(wrapRect, 5.0, 5.0); // 与 VersionListView 保持一致的圆角
 
-        // 绘制文本（在背景框中居中）
-        painter.drawText(backgroundRect, Qt::AlignCenter | Qt::TextWordWrap, text);
+        // 绘制文本
+        painter.setPen(textColor);
+        painter.drawText(textRect, Qt::AlignHCenter | Qt::TextWordWrap, text);
 
         return true; // 事件已处理
     }
