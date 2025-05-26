@@ -154,23 +154,41 @@ void BsLoginDialog::onTaskProgress(qint64 current, qint64 total)
     ui->progressBar->setMaximum(total);
     ui->progressBar->setValue(current);
 }
-
-// Public interface
-MinecraftAccountPtr BsLoginDialog::newAccount(QWidget *parent, QString msg, QString initialAccount /*= ""*/, QString yggUrl /*= ""*/)
+// 辅助函数：标准化URL
+QString BsLoginDialog::normalizeUrl(const QString &url)
+{
+    QString normalized = url.trimmed();
+    if (normalized.endsWith('/')) {
+        normalized.chop(1);
+    }
+    return normalized;
+}
+MinecraftAccountPtr BsLoginDialog::newAccount(QWidget *parent, QString msg, QString initialAccount /*= ""*/, QString yggUrl /*= ""*/, QString yggName /*= ""*/)
 {
     BsLoginDialog dlg(parent);
     dlg.ui->label->setText(msg);
     dlg.ui->userTextBox->setText(initialAccount);
 
     if (!yggUrl.isEmpty()) {
-        QString cleanedUrl = yggUrl.endsWith('/') ? yggUrl.left(yggUrl.length() - 1) : yggUrl;
+        QString normalizedYggUrl = normalizeUrl(yggUrl);
 
-        int index = dlg.ui->yggurlcomboBox->findData(cleanedUrl);
-        if (index != -1) {
-            dlg.ui->yggurlcomboBox->setCurrentIndex(index);
+        int foundIndex = -1;
+        for (int i = 0; i < dlg.ui->yggurlcomboBox->count(); ++i) {
+            QString itemData = dlg.ui->yggurlcomboBox->itemData(i).toString();
+            QString normalizedItemData = normalizeUrl(itemData);
+
+            if (normalizedItemData == normalizedYggUrl) {
+                foundIndex = i;
+                break;
+            }
+        }
+
+        if (foundIndex != -1) {
+            dlg.ui->yggurlcomboBox->setCurrentIndex(foundIndex);
         } else {
             int customIndex = dlg.ui->yggurlcomboBox->count() - 1;
-            dlg.ui->yggurlcomboBox->insertItem(customIndex, cleanedUrl);
+            QString displayName = yggName.isEmpty() ? yggUrl : yggName;
+            dlg.ui->yggurlcomboBox->insertItem(customIndex, displayName, yggUrl);
             dlg.ui->yggurlcomboBox->setCurrentIndex(customIndex);
         }
     }

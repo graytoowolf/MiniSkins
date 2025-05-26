@@ -34,10 +34,11 @@ class BsLoginDialog : public QDialog
 public:
     ~BsLoginDialog();
 
-    static MinecraftAccountPtr newAccount(QWidget *parent, QString message, QString initialAccount = "", QString yggUrl = "");
+    static MinecraftAccountPtr newAccount(QWidget *parent, QString message, QString initialAccount = "", QString yggUrl = "", QString yggName = "");
 
 private:
     explicit BsLoginDialog(QWidget *parent = 0);
+    static QString normalizeUrl(const QString &url);
 
     void setUserInputsEnabled(bool enable);
 

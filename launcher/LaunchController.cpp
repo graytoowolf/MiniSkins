@@ -239,6 +239,7 @@ void LaunchController::login() {
                     bool isDefault = accounts->defaultAccount() == m_accountToUse;
                     auto m_profiletype = m_accountToUse->typeString();
                     auto m_yggurl = m_accountToUse->yggurl();
+                    auto m_yggname = m_accountToUse->yggname();
                     accounts->removeAccount(accounts->index(accounts->findAccountByProfileId(m_accountToUse)));
                     MinecraftAccountPtr newAccount = nullptr;
                     if (m_profiletype == "msa") {
@@ -249,7 +250,8 @@ void LaunchController::login() {
                                 m_parentWidget,
                                 tr("Please enter your Yggdrasil account email and password to add your account."),
                                 m_accountToUse->mojangUserName(),
-                                m_yggurl
+                                m_yggurl,
+                                m_yggname
                         );
                     }
                     if (newAccount) {

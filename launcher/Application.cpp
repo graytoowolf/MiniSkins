@@ -1710,23 +1710,28 @@ void Application::addYggSource(const YggSource &source, int position)
     {
         normalizedUrl.chop(1); // 如果末尾有 "/"，移除它
     }
+
     // 检查 URL 是否已存在
     if (yggSourceUrls.contains(normalizedUrl))
     {
         return; // 如果已存在，则直接返回
     }
+
+    // 创建标准化后的源对象
+    YggSource normalizedSource = source;
+    normalizedSource.setUrl(normalizedUrl); // 假设有setUrl方法，或者直接用构造函数
+
     // 如果未指定插入位置，添加到末尾
     if (position < 0 || position > yggSources.size())
     {
-        yggSources.append(source);
+        yggSources.append(normalizedSource);
     }
     else
     {
-        yggSources.insert(position, source); // 指定位置插入
+        yggSources.insert(position, normalizedSource); // 指定位置插入
     }
 
-    // 添加到列表并记录 URL
-    yggSources.append(source);
+    // 记录 URL（移除了重复的 append 调用）
     yggSourceUrls.insert(normalizedUrl);
 }
 
