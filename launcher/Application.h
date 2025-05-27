@@ -202,6 +202,8 @@ public:
     void addModsToWhitelist(const QMap<int, QString> &mods);
     void removeModsFromWhitelist(const QList<int> &modIds);
 
+    bool saveModList(); // 保持bool返回，以便知道是否保存成功
+
 signals:
     void updateAllowedChanged(bool status);
     void globalSettingsAboutToOpen();
@@ -324,5 +326,4 @@ public:
 
 private:
     void loadModList();
-    bool saveModList(); // 保持bool返回，以便知道是否保存成功
 };

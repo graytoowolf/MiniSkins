@@ -6,13 +6,15 @@
 #include <QMimeData>
 #include <QTableWidget>
 #include <QPushButton>
+#include <QMenu> // 新增：包含 QMenu 头文件
 
 #include "ui/pages/BasePage.h"
 #include <Application.h>
 
+#include <QMainWindow>
 namespace Ui
 {
-    class ModBlacklistPage;
+    class ModFilterPage;
 }
 
 class QNetworkReply;
@@ -23,13 +25,13 @@ class QNetworkReply;
  * 提供拖放文件添加 Mod 到黑名单或白名单的功能
  * 支持编辑和删除已添加的 Mod 条目
  */
-class ModBlacklistPage : public QWidget, public BasePage
+class ModFilterPage : public QMainWindow, public BasePage
 {
     Q_OBJECT
 
 public:
-    explicit ModBlacklistPage(QWidget *parent = nullptr);
-    ~ModBlacklistPage() override;
+    explicit ModFilterPage(QWidget *parent = nullptr);
+    ~ModFilterPage() override;
 
     // BasePage 接口实现
     QString displayName() const override
@@ -51,6 +53,7 @@ public:
     {
         return "Mod-Lists";
     }
+    bool apply() override;
 
 protected:
     // 拖放事件处理
@@ -101,8 +104,9 @@ private:
     // 提示标签可见性控制
     void updateDropHintVisibility();
 
+
 private:
-    Ui::ModBlacklistPage *ui;
+    Ui::ModFilterPage *ui;
 
     // 支持的文件扩展名
     static const QStringList SUPPORTED_EXTENSIONS;
