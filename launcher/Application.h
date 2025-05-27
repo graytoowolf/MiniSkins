@@ -182,19 +182,26 @@ public:
     // MOD黑名单相关方法
     const QMap<int, QString> &getModBlacklist() const { return m_modBlacklist; } // 修改返回类型
     bool isModBlacklisted(const int &projectId) const;
-    bool addModToBlacklist(const int &projectId, const QString &name);
-    bool removeModFromBlacklist(const int &projectId);
-    bool updateModBlacklistName(const int &projectId, const QString &newName); // 新增方法
+    void addModToBlacklist(const int &projectId, const QString &name);         // 返回void，不再直接保存
+    void removeModFromBlacklist(const int &projectId);                         // 返回void
+    void updateModBlacklistName(const int &projectId, const QString &newName); // 返回void
     // 通过 projectId 获取黑名单中的 mod 名称
     QString getModNameFromBlacklist(int projectId) const;
+    // 批量操作黑名单
+    void addModsToBlacklist(const QMap<int, QString> &mods);
+    void removeModsFromBlacklist(const QList<int> &modIds);
 
     // MOD白名单相关方法
     const QMap<int, QString> &getModWhitelist() const { return m_modWhitelist; }
     bool isModWhitelisted(const int &projectId) const;
-    bool addModToWhitelist(const int &projectId, const QString &name);
-    bool removeModFromWhitelist(const int &projectId);
-    bool updateModWhitelistName(const int &projectId, const QString &newName);
+    void addModToWhitelist(const int &projectId, const QString &name);         // 返回void
+    void removeModFromWhitelist(const int &projectId);                         // 返回void
+    void updateModWhitelistName(const int &projectId, const QString &newName); // 返回void
     QString getModNameFromWhitelist(int projectId) const;
+    // 批量操作白名单
+    void addModsToWhitelist(const QMap<int, QString> &mods);
+    void removeModsFromWhitelist(const QList<int> &modIds);
+
 signals:
     void updateAllowedChanged(bool status);
     void globalSettingsAboutToOpen();
@@ -270,6 +277,7 @@ private:
 
     QMap<int, QString> m_modBlacklist;
     QMap<int, QString> m_modWhitelist;
+    bool m_modListDirty = false; // 标记mod列表是否被修改
 
 #if defined Q_OS_WIN32
     // used on Windows to attach the standard IO streams
@@ -316,6 +324,5 @@ public:
 
 private:
     void loadModList();
-    bool saveModList(); // 修改参数类型
-
+    bool saveModList(); // 保持bool返回，以便知道是否保存成功
 };

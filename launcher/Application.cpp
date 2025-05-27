@@ -1855,13 +1855,15 @@ void Application::loadModList()
 {
     m_modBlacklist.clear();
     m_modWhitelist.clear(); // 清空白名单
+    m_modListDirty = false; // 初始化时，列表是干净的
 
     // 首先尝试加载新文件名
     QString listFilePath = FS::PathCombine(QDir::currentPath(), "modlist.json");
     QFile listFile(listFilePath);
 
     // 如果新文件不存在，尝试加载旧文件
-    if (!listFile.exists()) {
+    if (!listFile.exists())
+    {
         listFilePath = FS::PathCombine(QDir::currentPath(), "modblacklist.json");
         listFile.setFileName(listFilePath);
     }
@@ -1920,6 +1922,11 @@ void Application::loadModList()
 
 bool Application::saveModList()
 {
+    if (!m_modListDirty) // 如果列表没有被修改，则不保存
+    {
+        return true; // 视为保存成功
+    }
+
     // 使用新文件名保存
     QString listFilePath = FS::PathCombine(QDir::currentPath(), "modlist.json");
     QFile listFile(listFilePath);
@@ -1946,13 +1953,15 @@ bool Application::saveModList()
         QJsonDocument doc(rootObj);
         listFile.write(doc.toJson());
         listFile.close();
+        m_modListDirty = false; // 保存后，列表是干净的
 
-         // 如果旧文件存在，可以选择删除它
-         QString oldFilePath = FS::PathCombine(QDir::currentPath(), "modblacklist.json");
-         QFile oldFile(oldFilePath);
-         if (oldFile.exists()) {
-             oldFile.remove();
-         }
+        // 如果旧文件存在，可以选择删除它
+        QString oldFilePath = FS::PathCombine(QDir::currentPath(), "modblacklist.json");
+        QFile oldFile(oldFilePath);
+        if (oldFile.exists())
+        {
+            oldFile.remove();
+        }
         return true; // 保存成功
     }
     return false; // 打开文件失败
@@ -1963,79 +1972,137 @@ bool Application::isModBlacklisted(const int &projectId) const
     return m_modBlacklist.contains(projectId);
 }
 
-bool Application::addModToBlacklist(const int &projectId, const QString &name)
+void Application::addModToBlacklist(const int &projectId, const QString &name)
 {
     if (isModBlacklisted(projectId))
     {
-        return false;
+        return;
     }
-
     m_modBlacklist.insert(projectId, name);
-    return saveModList();
+    m_modListDirty = true;
 }
 
-bool Application::removeModFromBlacklist(const int &projectId)
+void Application::removeModFromBlacklist(const int &projectId)
 {
     if (!m_modBlacklist.contains(projectId))
     {
-        return false;
+        return;
     }
-
     m_modBlacklist.remove(projectId);
-    return saveModList();
+    m_modListDirty = true;
 }
 
-bool Application::updateModBlacklistName(const int &projectId, const QString &newName)
+void Application::updateModBlacklistName(const int &projectId, const QString &newName)
 {
     if (!m_modBlacklist.contains(projectId))
     {
-        return false;
+        return;
     }
-
     m_modBlacklist[projectId] = newName;
-    return saveModList();
+    m_modListDirty = true;
 }
 
 QString Application::getModNameFromBlacklist(int projectId) const
 {
     return m_modBlacklist.value(projectId);
 }
+
+// 批量操作黑名单
+void Application::addModsToBlacklist(const QMap<int, QString> &mods)
+{
+    bool changed = false;
+    for (auto it = mods.constBegin(); it != mods.constEnd(); ++it)
+    {
+        if (!isModBlacklisted(it.key()))
+        {
+            m_modBlacklist.insert(it.key(), it.value());
+            changed = true;
+        }
+    }
+    if (changed)
+        m_modListDirty = true;
+}
+
+void Application::removeModsFromBlacklist(const QList<int> &modIds)
+{
+    bool changed = false;
+    for (int modId : modIds)
+    {
+        if (m_modBlacklist.contains(modId))
+        {
+            m_modBlacklist.remove(modId);
+            changed = true;
+        }
+    }
+    if (changed)
+        m_modListDirty = true;
+}
+
 // 添加白名单相关函数
 bool Application::isModWhitelisted(const int &projectId) const
 {
     return m_modWhitelist.contains(projectId);
 }
 
-bool Application::updateModWhitelistName(const int &projectId, const QString &newName)
+void Application::updateModWhitelistName(const int &projectId, const QString &newName)
 {
     if (!m_modWhitelist.contains(projectId))
     {
-        return false;
+        return;
     }
     m_modWhitelist[projectId] = newName;
-    return saveModList(); // 使用同一个保存函数
+    m_modListDirty = true;
 }
-bool Application::addModToWhitelist(const int &projectId, const QString &name)
+void Application::addModToWhitelist(const int &projectId, const QString &name)
 {
     if (isModWhitelisted(projectId))
     {
-        return false;
+        return;
     }
-
     m_modWhitelist.insert(projectId, name);
-    return saveModList();
+    m_modListDirty = true;
 }
-bool Application::removeModFromWhitelist(const int &projectId)
+void Application::removeModFromWhitelist(const int &projectId)
 {
     if (!m_modWhitelist.contains(projectId))
     {
-        return false;
+        return;
     }
-
     m_modWhitelist.remove(projectId);
-    return saveModList();
+    m_modListDirty = true;
 }
 QString Application::getModNameFromWhitelist(int projectId) const
 {
     return m_modWhitelist.value(projectId);
+}
+
+// 批量操作白名单
+void Application::addModsToWhitelist(const QMap<int, QString> &mods)
+{
+    bool changed = false;
+    for (auto it = mods.constBegin(); it != mods.constEnd(); ++it)
+    {
+        if (!isModWhitelisted(it.key()))
+        {
+            m_modWhitelist.insert(it.key(), it.value());
+            changed = true;
+        }
+    }
+    if (changed)
+        m_modListDirty = true;
+}
+
+void Application::removeModsFromWhitelist(const QList<int> &modIds)
+{
+    bool changed = false;
+    for (int modId : modIds)
+    {
+        if (m_modWhitelist.contains(modId))
+        {
+            m_modWhitelist.remove(modId);
+            changed = true;
+        }
+    }
+    if (changed)
+        m_modListDirty = true;
 }

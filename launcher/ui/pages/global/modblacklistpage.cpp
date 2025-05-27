@@ -174,7 +174,7 @@ void ModBlacklistPage::processModInfoResponse(const QByteArray &responseData, bo
     }
 
     QJsonArray matches = data["exactMatches"].toArray();
-    int addedCount = 0;
+    QMap<int, QString> modsToAdd;
 
     for (const QJsonValue &matchValue : matches)
     {
@@ -185,22 +185,22 @@ void ModBlacklistPage::processModInfoResponse(const QByteArray &responseData, bo
         {
             continue;
         }
-
-        bool success = isWhitelist
-                           ? APPLICATION->addModToWhitelist(projectId, PROVISIONAL_MOD_NAME)
-                           : APPLICATION->addModToBlacklist(projectId, PROVISIONAL_MOD_NAME);
-
-        if (success)
-        {
-            ++addedCount;
-        }
+        modsToAdd.insert(projectId, PROVISIONAL_MOD_NAME);
     }
 
-    if (addedCount > 0)
+    if (!modsToAdd.isEmpty())
     {
+        if (isWhitelist)
+        {
+            APPLICATION->addModsToWhitelist(modsToAdd);
+        }
+        else
+        {
+            APPLICATION->addModsToBlacklist(modsToAdd);
+        }
         refreshData();
         showInfoMessage(tr("Success"),
-                        tr("Added %1 mod(s) to %2").arg(addedCount).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
+                        tr("Processed %1 mod(s) for %2.").arg(modsToAdd.size()).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
     }
 }
 
@@ -409,25 +409,18 @@ void ModBlacklistPage::removeSelectedMods(QTableWidget *tableWidget, bool isWhit
     }
 
     // 执行删除操作
-    int removedCount = 0;
-    for (int projectId : projectIdsToRemove)
+    if (isWhitelist)
     {
-        bool success = isWhitelist
-                           ? APPLICATION->removeModFromWhitelist(projectId)
-                           : APPLICATION->removeModFromBlacklist(projectId);
-
-        if (success)
-        {
-            ++removedCount;
-        }
+        APPLICATION->removeModsFromWhitelist(projectIdsToRemove);
+    }
+    else
+    {
+        APPLICATION->removeModsFromBlacklist(projectIdsToRemove);
     }
 
-    if (removedCount > 0)
-    {
-        refreshData();
-        showInfoMessage(tr("Success"),
-                        tr("Removed %1 mod(s) from %2").arg(removedCount).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
-    }
+    refreshData();
+    showInfoMessage(tr("Success"),
+                    tr("Attempted to remove %1 mod(s) from %2.").arg(projectIdsToRemove.size()).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
 }
 
 void ModBlacklistPage::showErrorMessage(const QString &title, const QString &message)
