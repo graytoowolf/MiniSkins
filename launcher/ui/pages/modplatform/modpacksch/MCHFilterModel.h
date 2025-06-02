@@ -30,6 +30,7 @@ public:
         ByPlays,
         ByInstalls,
         ByName,
+        ById,
     };
     const QMap<QString, Sorting> getAvailableSortings();
     QString translateCurrentSorting();
