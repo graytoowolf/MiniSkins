@@ -7,6 +7,7 @@
 #include "ui/pages/instance/LogPage.h"
 #include "ui/pages/instance/VersionPage.h"
 #include "ui/pages/instance/ModFolderPage.h"
+#include "ui/pages/instance/ModDownloadPage.h"
 #include "ui/pages/instance/ResourcePackPage.h"
 #include "ui/pages/instance/TexturePackPage.h"
 #include "ui/pages/instance/ShaderPackPage.h"
@@ -41,6 +42,7 @@ public:
             modsPage->setFilter("%1 (*.zip *.jar *.litemod)");
             values.append(modsPage);
             values.append(new CoreModFolderPage(onesix.get(), onesix->coreModList(), "coremods", "coremods", tr("Core mods"), "Core-mods"));
+            values.append(new ModDownloadPage(onesix.get()));
             values.append(new ResourcePackPage(onesix.get()));
             values.append(new TexturePackPage(onesix.get()));
             values.append(new ShaderPackPage(onesix.get()));

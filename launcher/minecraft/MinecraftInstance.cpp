@@ -216,6 +216,10 @@ QString MinecraftInstance::modsCacheLocation() const
 {
     return FS::PathCombine(instanceRoot(), "mods.cache");
 }
+QString MinecraftInstance::modlist() const
+{
+    return FS::PathCombine(instanceRoot(), "mod.json");
+}
 
 QString MinecraftInstance::coreModsDir() const
 {

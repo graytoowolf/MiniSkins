@@ -44,6 +44,7 @@ public:
     QString modsRoot() const override;
     QString coreModsDir() const;
     QString modsCacheLocation() const;
+    QString modlist() const;
     QString libDir() const;
     QString worldDir() const;
     QString resourcesDir() const;
