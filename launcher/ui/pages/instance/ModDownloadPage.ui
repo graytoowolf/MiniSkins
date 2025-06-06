@@ -19,240 +19,98 @@
   <property name="windowTitle">
    <string>Mod Manager</string>
   </property>
-  <property name="styleSheet">
-   <string>QMainWindow {
-    color: #000000;
-}
 
-QLabel {
-    color: #000000;
-}
-
-QLineEdit {
-    border: 1px solid #cccccc;
-    border-radius: 4px;
-    padding: 6px;
-    color: #000000;
-}
-
-QComboBox {
-    border: 1px solid #cccccc;
-    border-radius: 4px;
-    padding: 6px;
-    color: #000000;
-    min-height: 20px;
-}
-
-QComboBox::drop-down {
-    border: none;
-    width: 20px;
-}
-
-QComboBox::down-arrow {
-    image: url(:/icons/arrow_down.png);
-    width: 12px;
-    height: 12px;
-}
-
-QComboBox QAbstractItemView {
-    border: 1px solid #cccccc;
-    selection-background-color: #f0f0f0;
-}
-
-QPushButton {
-    border: 1px solid #cccccc;
-    border-radius: 4px;
-    padding: 8px 16px;
-}
-
-QPushButton#installButton {
-    color: #000000;
-}
-
-QPushButton#installButton:hover {
-    background-color: #f0f0f0;
-}
-
-QPushButton#installButton:pressed {
-    background-color: #e0e0e0;
-}
-
-QPushButton#searchButton {
-    color: #000000;
-}
-
-QPushButton#searchButton:hover {
-    background-color: #f0f0f0;
-}
-
-QPushButton#searchButton:pressed {
-    background-color: #e0e0e0;
-}
-
-QPushButton#searchButton:pressed {
-    background-color: #2d6a30;
-}
-
-QFrame#iconFrame {
-    border: 1px solid #555555;
-    border-radius: 8px;
-}
-
-QLabel#iconLabel {
-    color: #000000;
-    font-size: 24px;
-}
-
-QLabel#titleLabel {
-    font-size: 16px;
-    color: #000000;
-}
-
-QLabel#descriptionLabel {
-    font-size: 12px;
-    color: #000000;
-}
-
-QLabel#authorLabel {
-    font-size: 12px;
-    color: #000000;
-}
-
-QLabel.statsLabel {
-    font-size: 11px;
-    color: #000000;
-    padding: 2px 6px;
-    margin: 2px;
-}
-
-QScrollArea {
-    border: none;
-}
-
-QScrollBar:vertical {
-    width: 12px;
-    border-radius: 6px;
-    background-color: #f0f0f0;
-}
-
-QScrollBar::handle:vertical {
-    border-radius: 6px;
-    min-height: 20px;
-    background-color: #c0c0c0;
-}
-
-QScrollBar::handle:vertical:hover {
-    background-color: #a0a0a0;
-}
-
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-
-QWidget#modItemWidget {
-    border: 1px solid #cccccc;
-    border-radius: 6px;
-    margin: 4px;
-}
-
-QWidget#searchWidget {
-    margin: 4px 4px 8px 4px;
-    padding: 8px;
-}</string>
-  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="mainLayout">
+    <property name="spacing">
+     <number>6</number>
+    </property>
     <property name="leftMargin">
-     <number>0</number>
+     <number>9</number>
     </property>
     <property name="topMargin">
-     <number>0</number>
+     <number>9</number>
     </property>
     <property name="rightMargin">
-     <number>0</number>
+     <number>9</number>
     </property>
     <property name="bottomMargin">
-     <number>0</number>
+     <number>9</number>
     </property>
     <item>
-     <layout class="QHBoxLayout" name="searchLayout">
-      <property name="leftMargin">
-       <number>12</number>
+     <widget class="QGroupBox" name="searchGroupBox">
+      <property name="title">
+       <string>Search and Filter</string>
       </property>
-      <property name="topMargin">
-       <number>8</number>
-      </property>
-      <property name="rightMargin">
-       <number>12</number>
-      </property>
-      <property name="bottomMargin">
-       <number>8</number>
-      </property>
-      <item>
-       <widget class="QLineEdit" name="searchEdit">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>1</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="placeholderText">
-         <string>Search mods...</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="sortCombo">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>34</height>
-         </size>
-        </property>
-        <item>
+      <layout class="QGridLayout" name="searchGridLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="searchLabel">
          <property name="text">
-          <string>Downloads</string>
+          <string>&amp;Search:</string>
          </property>
-        </item>
-        <item>
+         <property name="buddy">
+          <cstring>searchEdit</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="searchEdit">
+         <property name="placeholderText">
+          <string>Search mods...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QLabel" name="sortLabel">
          <property name="text">
-          <string>Last Updated</string>
+          <string>Sort &amp;by:</string>
          </property>
-        </item>
-        <item>
+         <property name="buddy">
+          <cstring>sortCombo</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="QComboBox" name="sortCombo">
+         <property name="minimumSize">
+          <size>
+           <width>120</width>
+           <height>0</height>
+          </size>
+         </property>
+         <item>
+          <property name="text">
+           <string>Downloads</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Last Updated</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Name</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="0" column="4">
+        <widget class="QPushButton" name="searchButton">
          <property name="text">
-          <string>Name</string>
+          <string>Search</string>
          </property>
-        </item>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="searchButton">
-        <property name="text">
-         <string>Search</string>
-        </property>
-        <property name="icon">
-         <iconset theme="search">
-          <normaloff>.</normaloff>.</iconset>
-        </property>
-       </widget>
-      </item>
-     </layout>
+         <property name="icon">
+           <iconset>
+            <normaloff>:/icons/toolbar/search</normaloff>:/icons/toolbar/search</iconset>
+          </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </item>
     <item>
      <widget class="QScrollArea" name="scrollArea">
-      <property name="verticalScrollBarPolicy">
-       <enum>Qt::ScrollBarAsNeeded</enum>
-      </property>
-      <property name="horizontalScrollBarPolicy">
-       <enum>Qt::ScrollBarAlwaysOff</enum>
-      </property>
       <property name="widgetResizable">
        <bool>true</bool>
       </property>
@@ -261,16 +119,16 @@ QWidget#searchWidget {
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>871</width>
-         <height>544</height>
+         <width>851</width>
+         <height>69</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="scrollLayout">
         <property name="spacing">
-         <number>4</number>
+         <number>8</number>
         </property>
         <property name="leftMargin">
-         <number>0</number>
+         <number>4</number>
         </property>
         <property name="topMargin">
          <number>4</number>
@@ -281,19 +139,6 @@ QWidget#searchWidget {
         <property name="bottomMargin">
          <number>4</number>
         </property>
-        <item>
-         <spacer name="verticalSpacer3">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
        </layout>
       </widget>
      </widget>
