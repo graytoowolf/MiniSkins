@@ -628,6 +628,20 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModInfo &mo
     progressBar->setTextVisible(true);
     progressBar->setFormat("%p%");
     progressBar->setFixedHeight(16);
+    progressBar->setStyleSheet(
+        "QProgressBar {"
+        "    background-color: palette(base);"
+        "    border: 1px solid palette(mid);"
+        "    border-radius: 8px;"
+        "    text-align: center;"
+        "    font-size: 11px;"
+        "    color: palette(window-text);"
+        "}"
+        "QProgressBar::chunk {"
+        "    background-color: palette(highlight);"
+        "    border-radius: 6px;"
+        "    margin: 1px;"
+        "}");
     progressBar->hide();
 
     contentLayout->addLayout(titleLayout);
