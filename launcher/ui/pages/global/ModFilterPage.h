@@ -17,8 +17,6 @@ namespace Ui
     class ModFilterPage;
 }
 
-class QNetworkReply;
-
 /**
  * @brief Mod 黑名单/白名单管理页面
  *
@@ -90,9 +88,7 @@ private:
     void handleCellDoubleClick(QTableWidget *tableWidget, int row, int column);
     void handleCellChanged(QTableWidget *tableWidget, int row, int column, bool isWhitelist);
 
-    // 网络请求处理
-    void requestModInfo(const QStringList &fingerprints, bool isWhitelist);
-    void processModInfoResponse(const QByteArray &responseData, bool isWhitelist);
+
 
     // 文件处理
     bool isSupportedFile(const QString &filePath) const;

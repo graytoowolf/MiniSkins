@@ -1,4 +1,6 @@
 #include <iostream>
+#pragma once
+
 #include <vector>
 #include <QString>
 
@@ -14,4 +16,23 @@ namespace fingerprint
 
   // 改名为getJarFingerprint
   QString getJarFingerprint(const QString &jarPath);
+  
+  // 模组信息结构体
+  struct ModInfo {
+    QString filePath;        // 文件路径
+    QString fileFingerprint; // 文件指纹
+    int projectId;           // 项目ID
+    int fileId;              // 文件ID
+    QString name;            // 文件名
+    bool isValid;            // 是否有效
+    
+    ModInfo() : projectId(0), fileId(0), isValid(false) {}
+    ModInfo(const QString& path) : filePath(path), projectId(0), fileId(0), isValid(false) {}
+  };
+  
+  // 处理单个模组文件信息
+  ModInfo processModInfo(const ModInfo &modInfo);
+  
+  // 批量处理模组文件信息
+  QList<ModInfo> processModInfoList(const QList<ModInfo> &modInfoList);
 }

@@ -84,20 +84,12 @@ void Mod::repath(const QFileInfo &file)
 
 void Mod::loadModsJson(const QString &jsonPath)
 {
-    if (!s_modsJsonMap.contains(jsonPath))
+    // 每次都重新加载JSON文件，确保数据是最新的
+    QFile jsonFile(jsonPath);
+    if (jsonFile.open(QIODevice::ReadOnly))
     {
-        // 如果是新的json文件，先清空现有缓存
-        if (!s_modsJsonMap.isEmpty())
-        {
-            s_modsJsonMap.clear();
-        }
-
-        QFile jsonFile(jsonPath);
-        if (jsonFile.open(QIODevice::ReadOnly))
-        {
-            s_modsJsonMap[jsonPath] = QJsonDocument::fromJson(jsonFile.readAll());
-            jsonFile.close();
-        }
+        s_modsJsonMap[jsonPath] = QJsonDocument::fromJson(jsonFile.readAll());
+        jsonFile.close();
     }
 }
 
@@ -117,6 +109,96 @@ bool Mod::saveModsJson(const QString &jsonPath)
     jsonFile.write(s_modsJsonMap[jsonPath].toJson());
     jsonFile.close();
     return true;
+}
+
+// 获取MOD对应的JSON文件路径
+QString Mod::getModJsonPath() const
+{
+    return QDir::cleanPath(m_file.absoluteDir().absoluteFilePath("../../mod.json"));
+}
+
+// 在JSON数组中查找指定名称的MOD，返回索引，未找到返回-1
+int Mod::findModInJson(const QJsonArray &modsArray, const QString &modName)
+{
+    for (int i = 0; i < modsArray.size(); i++)
+    {
+        QJsonObject mod = modsArray[i].toObject();
+        if (mod["name"].toString() == modName)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// 更新JSON中的MOD条目
+bool Mod::updateModInJson(const QString &jsonPath, const QString &oldName, const QString &newName, bool required)
+{
+    if (!QFile::exists(jsonPath))
+    {
+        return false;
+    }
+
+    loadModsJson(jsonPath);
+
+    if (!s_modsJsonMap[jsonPath].isArray())
+    {
+        return false;
+    }
+
+    QJsonArray modsArray = s_modsJsonMap[jsonPath].array();
+    int index = findModInJson(modsArray, oldName);
+
+    if (index != -1)
+    {
+        QJsonObject mod = modsArray[index].toObject();
+        mod["name"] = newName;
+        mod["required"] = required;
+        modsArray[index] = mod;
+        s_modsJsonMap[jsonPath].setArray(modsArray);
+        return saveModsJson(jsonPath);
+    }
+
+    return false;
+}
+
+// 批量从JSON中删除MOD条目
+bool Mod::removeModsFromJson(const QString &jsonPath, const QStringList &modNames)
+{
+    if (!QFile::exists(jsonPath) || modNames.isEmpty())
+    {
+        return false;
+    }
+
+    loadModsJson(jsonPath);
+
+    if (!s_modsJsonMap[jsonPath].isArray())
+    {
+        return false;
+    }
+
+    QJsonArray modsArray = s_modsJsonMap[jsonPath].array();
+    bool hasChanges = false;
+
+    // 从后往前删除，避免索引变化问题
+    for (int i = modsArray.size() - 1; i >= 0; --i)
+    {
+        QJsonObject mod = modsArray[i].toObject();
+        QString modName = mod["name"].toString();
+        if (modNames.contains(modName))
+        {
+            modsArray.removeAt(i);
+            hasChanges = true;
+        }
+    }
+
+    if (hasChanges)
+    {
+        s_modsJsonMap[jsonPath].setArray(modsArray);
+        return saveModsJson(jsonPath);
+    }
+
+    return false;
 }
 
 bool Mod::enable(bool value)
@@ -151,38 +233,10 @@ bool Mod::enable(bool value)
             return false;
     }
 
-    // 处理JSON文件
-    QString newJsonPath = QDir::cleanPath(QDir(QFileInfo(path).dir().absolutePath()).filePath("../../mod.json"));
+    // 使用通用函数处理JSON文件
+    QString jsonPath = getModJsonPath();
 
-    if (QFile::exists(newJsonPath))
-    {
-        loadModsJson(newJsonPath);
-
-        if (s_modsJsonMap[newJsonPath].isArray())
-        {
-            QJsonArray modsArray = s_modsJsonMap[newJsonPath].array();
-            bool found = false;
-
-            for (int i = 0; i < modsArray.size(); i++)
-            {
-                QJsonObject mod = modsArray[i].toObject();
-                if (mod["name"].toString() == oldName)
-                {
-                    mod["name"] = newName;
-                    mod["required"] = value;
-                    modsArray[i] = mod;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (found)
-            {
-                s_modsJsonMap[newJsonPath].setArray(modsArray);
-                saveModsJson(newJsonPath);
-            }
-        }
-    }
+    updateModInJson(jsonPath, oldName, newName, value);
 
     repath(QFileInfo(path));
     m_enabled = value;
@@ -192,6 +246,13 @@ bool Mod::enable(bool value)
 bool Mod::destroy()
 {
     m_type = MOD_UNKNOWN;
+
+    // 使用通用函数处理JSON文件，删除对应的MOD数据
+    QString jsonPath = getModJsonPath();
+    QString modFileName = m_file.fileName();
+
+    removeModsFromJson(jsonPath, QStringList{modFileName});
+
     return FS::deletePath(m_file.filePath());
 }
 
@@ -230,4 +291,125 @@ QString Mod::description() const
 QStringList Mod::authors() const
 {
     return details().authors;
+}
+
+// 用于ModDownloadPage的静态函数实现
+bool Mod::isModInstalled(const QString &jsonPath, int projectId, const QString &modsRoot)
+{
+    // 加载mod.json文件
+    loadModsJson(jsonPath);
+
+    // 获取JSON文档
+    if (!s_modsJsonMap.contains(jsonPath))
+    {
+        return false;
+    }
+
+    QJsonArray modsArray = s_modsJsonMap[jsonPath].array();
+    for (const QJsonValue &value : modsArray)
+    {
+        QJsonObject modObj = value.toObject();
+        if (modObj["projectID"].toInt() == projectId)
+        {
+            // 检查MOD文件是否实际存在
+            QString modFileName = modObj["name"].toString();
+            QString modFilePath = QDir(modsRoot).absoluteFilePath(modFileName);
+            if (!QFile::exists(modFilePath))
+            {
+                return false;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+// 批量添加模组到JSON
+bool Mod::addModsToJson(const QString &jsonPath, const QList<fingerprint::ModInfo> &modInfos, bool required)
+{
+    if (modInfos.isEmpty())
+    {
+        return false;
+    }
+
+    // 加载mod.json文件
+    loadModsJson(jsonPath);
+
+    QJsonArray modsArray;
+    if (s_modsJsonMap.contains(jsonPath))
+    {
+        modsArray = s_modsJsonMap[jsonPath].array();
+    }
+
+    bool hasChanges = false;
+
+    for (const fingerprint::ModInfo &modInfo : modInfos)
+        {
+            // 检查是否已存在该projectID的模组
+            bool found = false;
+            for (int i = 0; i < modsArray.size(); ++i)
+            {
+                QJsonObject modObj = modsArray[i].toObject();
+                if (modObj["projectID"].toInt() == modInfo.projectId)
+                {
+                    // 更新现有条目
+                    modObj["fileID"] = modInfo.fileId;
+                    modObj["name"] = modInfo.name;
+                    modObj["required"] = required;
+                    modsArray[i] = modObj;
+                    found = true;
+                    hasChanges = true;
+                    break;
+                }
+            }
+            if (!found && !modInfo.name.isEmpty())
+            {
+                // 添加新模组
+                QJsonObject newMod;
+                newMod["fileID"] = modInfo.fileId;
+                newMod["name"] = modInfo.name;
+                newMod["projectID"] = modInfo.projectId;
+                newMod["required"] = required;
+
+                modsArray.append(newMod);
+                hasChanges = true;
+            }
+        }
+
+    if (hasChanges)
+    {
+        s_modsJsonMap[jsonPath] = QJsonDocument(modsArray);
+        return saveModsJson(jsonPath);
+    }
+
+    return false;
+}
+
+// 通过mod名字检查mod.json中是否存在该mod
+bool Mod::isModExistsByName(const QString &jsonPath, const QString &modName)
+{
+    if (!QFile::exists(jsonPath) || modName.isEmpty())
+    {
+        return false;
+    }
+
+    // 加载mod.json文件
+    loadModsJson(jsonPath);
+
+    if (!s_modsJsonMap.contains(jsonPath))
+    {
+        return false;
+    }
+
+    if (!s_modsJsonMap[jsonPath].isArray())
+    {
+        return false;
+    }
+
+    QJsonArray modsArray = s_modsJsonMap[jsonPath].array();
+
+    // 使用现有的findModInJson函数查找mod
+    int index = findModInJson(modsArray, modName);
+
+    return index != -1;
 }

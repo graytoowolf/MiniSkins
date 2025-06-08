@@ -35,7 +35,7 @@ class ModDownloadPage : public QMainWindow, public BasePage
     Q_OBJECT
 
 public:
-    struct ModInfo
+    struct ModDownloadInfo
     {
         QString name;
         QString author;
@@ -98,7 +98,7 @@ private:
     QString m_modLoader;                        // 模组加载器类型
     QNetworkAccessManager *m_network = nullptr; // 网络管理器
 
-    void downloadLogo(const ModInfo &modInfo, QLabel *iconLabel, MetaEntryPtr entry);
+    void downloadLogo(const ModDownloadInfo &modInfo, QLabel *iconLabel, MetaEntryPtr entry);
     static QMap<QString, QIcon> logoCache;
 
     // 初始化UI
@@ -119,13 +119,14 @@ private:
     bool isModInstalled(int modId);
 
     // 将模组信息添加到mod.json文件
-    void addModToJson(const ModInfo &modInfo);
+    void addModToJson(const ModDownloadInfo &modInfo);
 
     // 创建模组项目小部件
-    QWidget *createModItemWidget(const ModInfo &mod);
+    QWidget *createModItemWidget(const ModDownloadInfo &mod);
 
     // 新的下载队列机制
     QList<DownloadItem> m_downloadQueue;
+    QList<ModDownloadInfo> m_completedMods; // 存储下载完成的模组信息，用于批量写入
     void fetchModDownloadInfo(int modId, std::function<void(const DownloadItem &)> callback);
     void buildDownloadQueue(int modId, std::function<void()> onComplete);
     void processDownloadQueue(QProgressBar *progressBar, QHBoxLayout *statsLayout);

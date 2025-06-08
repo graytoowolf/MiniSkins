@@ -10,7 +10,9 @@
 #include <QDir>
 #include "net/NetJob.h"
 #include "net/Download.h"
+#include "minecraft/mod/Mod.h"
 #include <memory>
+#include "minecraft/mod/Mod.h"
 
 namespace
 {
@@ -308,7 +310,7 @@ void ModDownloadPage::loadMoreMods()
         for (const QJsonValue &modValue : modsArray) {
             QJsonObject modObj = modValue.toObject();
 
-            ModInfo mod;
+            ModDownloadInfo mod;
             mod.name = modObj["name"].toString();
             mod.description = modObj["summary"].toString();
             mod.modId = modObj["id"].toInt();
@@ -430,7 +432,7 @@ void ModDownloadPage::loadMoreMods()
     job->start();
 }
 
-QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModInfo &modInfo)
+QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownloadInfo &modInfo)
 {
     QWidget *modItemWidget = new QWidget();
     modItemWidget->setObjectName("modItemWidget");
@@ -722,48 +724,11 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModInfo &mo
 
 bool ModDownloadPage::isModInstalled(int modId)
 {
-    // 检查mod.json文件中是否已存在该模组ID
+    // 直接调用Mod类的静态函数
     QString modJsonPath = m_inst->modlist();
+    QString modsRoot = m_inst->modsRoot();
 
-    QFile file(modJsonPath);
-    if (!file.exists())
-    {
-        return false;
-    }
-
-    if (!file.open(QIODevice::ReadOnly))
-    {
-        return false;
-    }
-
-    QByteArray data = file.readAll();
-    file.close();
-
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-    if (error.error != QJsonParseError::NoError)
-    {
-        return false;
-    }
-
-    QJsonArray modsArray = doc.array();
-    for (const QJsonValue &value : modsArray)
-    {
-        QJsonObject modObj = value.toObject();
-        if (modObj["projectID"].toInt() == modId)
-        {
-            // 检查MOD文件是否实际存在
-            QString modFileName = modObj["name"].toString();
-            QString modFilePath = QDir(m_inst->modsRoot()).absoluteFilePath(modFileName);
-            if (!QFile::exists(modFilePath))
-            {
-                return false;
-            }
-            return true;
-        }
-    }
-
-    return false;
+    return Mod::isModInstalled(modJsonPath, modId, modsRoot);
 }
 
 void ModDownloadPage::fetchModDownloadInfo(int modId, std::function<void(const DownloadItem &)> callback)
@@ -863,7 +828,6 @@ void ModDownloadPage::buildDownloadQueue(int modId, std::function<void()> onComp
         if (!isModInstalled(item.modId)) {
             m_downloadQueue.append(item);
         }
-        qDebug()<<"isModInstalled:"<<item.modId;
 
         // 递归处理依赖
         if (item.requiredDependencies.isEmpty()) {
@@ -908,7 +872,7 @@ void ModDownloadPage::downloadNextInQueue(QProgressBar *progressBar, QHBoxLayout
 {
     if (index >= m_downloadQueue.size())
     {
-        // 所有下载完成
+        // 所有下载完成，批量写入模组信息
         progressBar->hide();
         for (int i = 0; i < statsLayout->count(); i++)
         {
@@ -917,6 +881,23 @@ void ModDownloadPage::downloadNextInQueue(QProgressBar *progressBar, QHBoxLayout
             {
                 item->widget()->show();
             }
+        }
+
+        // 批量写入所有下载完成的模组信息
+        if (!m_completedMods.isEmpty()) {
+            QList<fingerprint::ModInfo> modInfoList;
+            QString jsonPath = m_inst->modlist();
+
+            for (const auto &modInfo : m_completedMods) {
+                fingerprint::ModInfo jsonInfo;
+                jsonInfo.projectId = modInfo.modId;
+                jsonInfo.fileId = modInfo.fileID;
+                jsonInfo.name = modInfo.name;
+                modInfoList.append(jsonInfo);
+            }
+
+            Mod::addModsToJson(jsonPath, modInfoList, false);
+            m_completedMods.clear();
         }
 
         QString message = tr("Successfully downloaded and installed %1 mods.").arg(m_downloadQueue.size());
@@ -960,12 +941,12 @@ void ModDownloadPage::downloadSingleItem(const DownloadItem &item, QProgressBar 
     // 连接任务完成信号
     connect(job, &NetJob::succeeded, this, [this, item, onComplete, job]()
             {
-        // 将模组信息写入mod.json文件
-        ModInfo modInfo;
+        // 将模组信息添加到完成列表，等待批量写入
+        ModDownloadInfo modInfo;
         modInfo.modId = item.modId;
         modInfo.name = item.fileName;
         modInfo.fileID = item.fileID;
-        addModToJson(modInfo);
+        m_completedMods.append(modInfo);
 
         job->deleteLater();
         onComplete(); });
@@ -991,7 +972,7 @@ void ModDownloadPage::downloadSingleItem(const DownloadItem &item, QProgressBar 
     job->start();
 }
 
-void ModDownloadPage::downloadLogo(const ModInfo &modInfo, QLabel *iconLabel, MetaEntryPtr entry)
+void ModDownloadPage::downloadLogo(const ModDownloadInfo &modInfo, QLabel *iconLabel, MetaEntryPtr entry)
 {
     NetJob *job = new NetJob(QString("CurseForge Icon Download %1").arg(modInfo.logoFileName), APPLICATION->network());
     job->addNetAction(Net::Download::makeCached(QUrl(modInfo.logoUrl), entry));
@@ -1032,66 +1013,19 @@ void ModDownloadPage::clearModList()
     }
 }
 
-void ModDownloadPage::addModToJson(const ModInfo &modInfo)
+void ModDownloadPage::addModToJson(const ModDownloadInfo &modInfo)
 {
+    // 直接调用Mod类的静态函数
     QString jsonPath = m_inst->modlist();
 
-    QJsonArray modsArray;
+    fingerprint::ModInfo modJsonInfo;
+    modJsonInfo.projectId = modInfo.modId;
+    modJsonInfo.fileId = modInfo.fileID;
+    modJsonInfo.name = modInfo.name;
 
-    // 如果文件存在，先读取现有内容
-    if (QFile::exists(jsonPath))
-    {
-        QFile jsonFile(jsonPath);
-        if (jsonFile.open(QIODevice::ReadOnly))
-        {
-            QJsonParseError parseError;
-            QJsonDocument doc = QJsonDocument::fromJson(jsonFile.readAll(), &parseError);
-            jsonFile.close();
-
-            if (parseError.error == QJsonParseError::NoError && doc.isArray())
-            {
-                modsArray = doc.array();
-            }
-        }
-    }
-
-    // 检查是否已存在，如果存在则更新，否则添加新的
-    bool exists = false;
-    for (int i = 0; i < modsArray.size(); ++i)
-    {
-        QJsonObject modObj = modsArray[i].toObject();
-        if (modObj["projectID"].toInt() == modInfo.modId)
-        {
-            // 更新现有条目的其他值
-            modObj["fileID"] = modInfo.fileID;
-            modObj["name"] = modInfo.name;
-            modObj["required"] = true;
-            modsArray[i] = modObj;
-            exists = true;
-            break;
-        }
-    }
-
-    // 如果不存在，添加新的模组信息
-    if (!exists)
-    {
-        QJsonObject newMod;
-        newMod["fileID"] = modInfo.fileID;
-        newMod["name"] = modInfo.name;
-        newMod["projectID"] = modInfo.modId;
-        newMod["required"] = true;
-
-        modsArray.append(newMod);
-    }
-
-    // 写入文件
-    QFile jsonFile(jsonPath);
-    if (jsonFile.open(QIODevice::WriteOnly))
-    {
-        QJsonDocument doc(modsArray);
-        jsonFile.write(doc.toJson());
-        jsonFile.close();
-    }
+    QList<fingerprint::ModInfo> modInfoList;
+    modInfoList.append(modJsonInfo);
+    Mod::addModsToJson(jsonPath, modInfoList, true);
 }
 
 void ModDownloadPage::onSearch()

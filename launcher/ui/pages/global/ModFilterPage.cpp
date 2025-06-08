@@ -5,10 +5,6 @@
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDropEvent>
-#include <QNetworkReply>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QPainter>
@@ -25,8 +21,6 @@ constexpr int PROJECT_ID_COLUMN = 1;
 constexpr int MOD_NAME_COLUMN = 2;
 constexpr int CHECKBOX_COLUMN_WIDTH = 20;
 
-// API 相关常量
-const QString CURSEFORGE_API_URL = "https://api.curseforge.com/v1/fingerprints";
 const QString PROVISIONAL_MOD_NAME = "Provisional Name";
 }
 
@@ -85,120 +79,46 @@ void ModFilterPage::dragEnterEvent(QDragEnterEvent *event)
 void ModFilterPage::dropEvent(QDropEvent *event)
 {
     const QList<QUrl> urls = event->mimeData()->urls();
-    QStringList fingerprints;
+    QStringList validFilePaths;
 
+    // 收集所有有效的文件路径
     for (const QUrl &url : urls)
     {
         const QString filePath = url.toLocalFile();
-        if (!isSupportedFile(filePath))
+        if (isSupportedFile(filePath))
         {
-            continue;
-        }
-
-        const QString hash = fingerprint::getJarFingerprint(filePath);
-        if (!hash.isEmpty())
-        {
-            fingerprints.append(hash);
+            validFilePaths.append(filePath);
         }
     }
 
-    if (!fingerprints.isEmpty())
+    if (validFilePaths.isEmpty())
     {
-        const bool isWhitelist = (ui->tabWidget->currentIndex() == 1);
-        requestModInfo(fingerprints, isWhitelist);
-    }
-
-    event->acceptProposedAction();
-}
-
-void ModFilterPage::requestModInfo(const QStringList &fingerprints, bool isWhitelist)
-{
-    if (fingerprints.isEmpty())
-    {
+        event->acceptProposedAction();
         return;
     }
 
-    // 构建请求 JSON
-    QJsonObject requestObj;
-    QJsonArray fingerprintArray;
-
-    for (const QString &fp : fingerprints)
+    // 创建ModInfo列表
+    QList<fingerprint::ModInfo> modInfoList;
+    for (const QString &filePath : validFilePaths)
     {
-        bool ok;
-        qlonglong fingerprint = fp.toLongLong(&ok);
-        if (ok)
-        {
-            fingerprintArray.append(QJsonValue(fingerprint));
-        }
+        modInfoList.append(fingerprint::ModInfo(filePath));
     }
-
-    if (fingerprintArray.isEmpty())
-    {
-        qWarning() << "No valid fingerprints to process";
-        return;
-    }
-
-    requestObj["fingerprints"] = fingerprintArray;
-    QJsonDocument doc{requestObj};
-    QByteArray data = doc.toJson();
-
-    // 创建网络请求
-    QNetworkRequest request{QUrl(CURSEFORGE_API_URL)};
-    request.setRawHeader("x-api-key", APPLICATION->curseAPIKey().toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    // 发送 POST 请求
-    auto *reply = APPLICATION->network()->post(request, data);
-
-    connect(reply, &QNetworkReply::finished, this, [this, reply, isWhitelist]()
-    {
-        reply->deleteLater();
-
-        if (reply->error() != QNetworkReply::NoError) {
-            qWarning() << "Fingerprint lookup failed:" << reply->errorString();
-            showErrorMessage(tr("Network Error"),
-                             tr("Failed to lookup mod information: %1").arg(reply->errorString()));
-            return;
-        }
-
-        processModInfoResponse(reply->readAll(), isWhitelist); });
-}
-
-void ModFilterPage::processModInfoResponse(const QByteArray &responseData, bool isWhitelist)
-{
-    QJsonDocument doc = QJsonDocument::fromJson(responseData);
-    QJsonObject root = doc.object();
-
-    if (!root.contains("data"))
-    {
-        qWarning() << "Invalid response format: missing 'data' field";
-        return;
-    }
-
-    QJsonObject data = root["data"].toObject();
-    if (!data.contains("exactMatches"))
-    {
-        qWarning() << "Invalid response format: missing 'exactMatches' field";
-        return;
-    }
-
-    QJsonArray matches = data["exactMatches"].toArray();
+    
+    // 批量处理模组信息
+    QList<fingerprint::ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
     QMap<int, QString> modsToAdd;
 
-    for (const QJsonValue &matchValue : matches)
+    for (const fingerprint::ModInfo &modInfo : processedModInfos)
     {
-        QJsonObject match = matchValue.toObject();
-        int projectId = match["id"].toInt();
-
-        if (projectId <= 0)
+        if (modInfo.isValid)
         {
-            continue;
+            modsToAdd.insert(modInfo.projectId, PROVISIONAL_MOD_NAME);
         }
-        modsToAdd.insert(projectId, PROVISIONAL_MOD_NAME);
     }
 
     if (!modsToAdd.isEmpty())
     {
+        const bool isWhitelist = (ui->tabWidget->currentIndex() == 1);
         if (isWhitelist)
         {
             APPLICATION->addModsToWhitelist(modsToAdd);
@@ -211,7 +131,11 @@ void ModFilterPage::processModInfoResponse(const QByteArray &responseData, bool 
         showInfoMessage(tr("Success"),
                         tr("Processed %1 mod(s) for %2.").arg(modsToAdd.size()).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
     }
+
+    event->acceptProposedAction();
 }
+
+
 
 void ModFilterPage::setupUi()
 {

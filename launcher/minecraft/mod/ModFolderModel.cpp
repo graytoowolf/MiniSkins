@@ -25,6 +25,7 @@
 #include <QThreadPool>
 #include <algorithm>
 #include "LocalModParseTask.h"
+#include "minecraft/mod/fingerprint.h"
 
 ModFolderModel::ModFolderModel(const QString &dir) : QAbstractListModel(), m_dir(dir)
 {
@@ -119,20 +120,35 @@ void ModFolderModel::finishUpdate()
     {
         QSet<QString> removed = currentSet;
         QList<int> removedRows;
+        QStringList removedModNames;
         removed.subtract(newSet);
         for(auto & removedMod: removed) {
             removedRows.append(modsIndex[removedMod]);
         }
         std::sort(removedRows.begin(), removedRows.end(), std::greater<int>());
+
+        // 在删除前获取JSON路径，避免所有mod被删除后无法获取
+        QString jsonPath;
+        if (!mods.isEmpty()) {
+            jsonPath = mods.first().getModJsonPath();
+        }
+
         for(auto iter = removedRows.begin(); iter != removedRows.end(); iter++) {
             int removedIndex = *iter;
             beginRemoveRows(QModelIndex(), removedIndex, removedIndex);
             auto removedIter = mods.begin() + removedIndex;
+            removedModNames.append(removedIter->filename().fileName());
             if(removedIter->isResolving()) {
                 activeTickets.remove(removedIter->resolutionTicket());
+
             }
             mods.erase(removedIter);
             endRemoveRows();
+        }
+
+        // 从JSON中删除被移除的mod
+        if (!removedModNames.isEmpty() && !jsonPath.isEmpty()) {
+            Mod::removeModsFromJson(jsonPath, removedModNames);
         }
     }
 
@@ -142,9 +158,18 @@ void ModFolderModel::finishUpdate()
         added.subtract(currentSet);
         if (!added.isEmpty()) {
             beginInsertRows(QModelIndex(), mods.size(), mods.size() + added.size() - 1);
+            QList<fingerprint::ModInfo> modInfoList;
             for(auto & addedMod: added) {
                 mods.append(newMods[addedMod]);
                 resolveMod(mods.last());
+                if (!Mod::isModExistsByName(mods.last().getModJsonPath(), addedMod)) {
+                    modInfoList.append(fingerprint::ModInfo(mods.last().filename().absoluteFilePath()));
+                }
+            }
+            if (!modInfoList.isEmpty()) {
+                QList<fingerprint::ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
+
+                Mod::addModsToJson(mods.last().getModJsonPath(), processedModInfos, true);
             }
             endInsertRows();
         }
