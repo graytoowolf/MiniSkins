@@ -23,6 +23,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
+using fingerprint::ModInfo;
+
 namespace
 {
 
@@ -325,7 +327,7 @@ bool Mod::isModInstalled(const QString &jsonPath, int projectId, const QString &
 }
 
 // 批量添加模组到JSON
-bool Mod::addModsToJson(const QString &jsonPath, const QList<fingerprint::ModInfo> &modInfos, bool required)
+bool Mod::addModsToJson(const QString &jsonPath, const QList<ModInfo> &modInfos, bool required)
 {
     if (modInfos.isEmpty())
     {
@@ -343,7 +345,7 @@ bool Mod::addModsToJson(const QString &jsonPath, const QList<fingerprint::ModInf
 
     bool hasChanges = false;
 
-    for (const fingerprint::ModInfo &modInfo : modInfos)
+    for (const ModInfo &modInfo : modInfos)
         {
             // 检查是否已存在该projectID的模组
             bool found = false;

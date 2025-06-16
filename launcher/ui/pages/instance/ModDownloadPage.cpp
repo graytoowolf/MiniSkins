@@ -14,6 +14,8 @@
 #include <memory>
 #include "minecraft/mod/Mod.h"
 
+using fingerprint::ModInfo;
+
 namespace
 {
     const QString CURSEFORGE_API_V1_BASE = "https://api.curseforge.com/v1";
@@ -885,11 +887,11 @@ void ModDownloadPage::downloadNextInQueue(QProgressBar *progressBar, QHBoxLayout
 
         // 批量写入所有下载完成的模组信息
         if (!m_completedMods.isEmpty()) {
-            QList<fingerprint::ModInfo> modInfoList;
+            QList<ModInfo> modInfoList;
             QString jsonPath = m_inst->modlist();
 
             for (const auto &modInfo : m_completedMods) {
-                fingerprint::ModInfo jsonInfo;
+                ModInfo jsonInfo;
                 jsonInfo.projectId = modInfo.modId;
                 jsonInfo.fileId = modInfo.fileID;
                 jsonInfo.name = modInfo.name;
@@ -1018,12 +1020,12 @@ void ModDownloadPage::addModToJson(const ModDownloadInfo &modInfo)
     // 直接调用Mod类的静态函数
     QString jsonPath = m_inst->modlist();
 
-    fingerprint::ModInfo modJsonInfo;
+    ModInfo modJsonInfo;
     modJsonInfo.projectId = modInfo.modId;
     modJsonInfo.fileId = modInfo.fileID;
     modJsonInfo.name = modInfo.name;
 
-    QList<fingerprint::ModInfo> modInfoList;
+    QList<ModInfo> modInfoList;
     modInfoList.append(modJsonInfo);
     Mod::addModsToJson(jsonPath, modInfoList, true);
 }

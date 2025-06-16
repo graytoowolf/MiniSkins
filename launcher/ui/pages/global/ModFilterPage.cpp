@@ -13,6 +13,8 @@
 #include <QClipboard>
 #include <QAction>
 
+using fingerprint::ModInfo;
+
 namespace
 {
 // 常量定义
@@ -98,17 +100,17 @@ void ModFilterPage::dropEvent(QDropEvent *event)
     }
 
     // 创建ModInfo列表
-    QList<fingerprint::ModInfo> modInfoList;
+    QList<ModInfo> modInfoList;
     for (const QString &filePath : validFilePaths)
     {
-        modInfoList.append(fingerprint::ModInfo(filePath));
+        modInfoList.append(ModInfo(filePath));
     }
-    
+
     // 批量处理模组信息
-    QList<fingerprint::ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
+    QList<ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
     QMap<int, QString> modsToAdd;
 
-    for (const fingerprint::ModInfo &modInfo : processedModInfos)
+    for (const ModInfo &modInfo : processedModInfos)
     {
         if (modInfo.isValid)
         {

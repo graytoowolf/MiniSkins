@@ -120,7 +120,7 @@ namespace fingerprint
     if (!contents.empty())
     {
       uint32_t hash = compute_hash(contents);
-      return QString::number(hash);
+      return QString::number(static_cast<qulonglong>(hash));
     }
     return QString();
   }
@@ -141,7 +141,7 @@ namespace fingerprint
     QJsonArray fingerprintArray;
 
     bool ok;
-    qlonglong fingerprintValue = result.fileFingerprint.toLongLong(&ok);
+    qlonglong fingerprintValue = result.fileFingerprint.toULongLong(&ok);
     if (!ok)
     {
       return result;
@@ -204,7 +204,7 @@ namespace fingerprint
                 // 从响应中获取文件指纹（如果存在）
                 if (fileObj.contains("fileFingerprint"))
                 {
-                  result.fileFingerprint = QString::number(fileObj["fileFingerprint"].toVariant().toLongLong());
+                  result.fileFingerprint = QString::number(fileObj["fileFingerprint"].toVariant().toULongLong());
                 }
 
                 result.isValid = true;
@@ -241,7 +241,7 @@ namespace fingerprint
       if (!modInfo.fileFingerprint.isEmpty())
       {
         bool ok;
-        qlonglong fingerprintValue = modInfo.fileFingerprint.toLongLong(&ok);
+        qlonglong fingerprintValue = modInfo.fileFingerprint.toULongLong(&ok);
         if (ok)
         {
           fingerprintArray.append(QJsonValue(fingerprintValue));
@@ -314,7 +314,7 @@ namespace fingerprint
                 // 通过文件指纹找到对应的ModInfo
                 if (fileObj.contains("fileFingerprint"))
                 {
-                  qlonglong responseFingerprint = fileObj["fileFingerprint"].toVariant().toLongLong();
+                  qlonglong responseFingerprint = fileObj["fileFingerprint"].toVariant().toULongLong();
 
                   if (fingerprintToIndex.contains(responseFingerprint))
                   {

@@ -27,6 +27,8 @@
 #include "LocalModParseTask.h"
 #include "minecraft/mod/fingerprint.h"
 
+using fingerprint::ModInfo;
+
 ModFolderModel::ModFolderModel(const QString &dir) : QAbstractListModel(), m_dir(dir)
 {
     FS::ensureFolderPathExists(m_dir.absolutePath());
@@ -158,16 +160,16 @@ void ModFolderModel::finishUpdate()
         added.subtract(currentSet);
         if (!added.isEmpty()) {
             beginInsertRows(QModelIndex(), mods.size(), mods.size() + added.size() - 1);
-            QList<fingerprint::ModInfo> modInfoList;
+            QList<ModInfo> modInfoList;
             for(auto & addedMod: added) {
                 mods.append(newMods[addedMod]);
                 resolveMod(mods.last());
                 if (!Mod::isModExistsByName(mods.last().getModJsonPath(), addedMod)) {
-                    modInfoList.append(fingerprint::ModInfo(mods.last().filename().absoluteFilePath()));
+                    modInfoList.append(ModInfo(mods.last().filename().absoluteFilePath()));
                 }
             }
             if (!modInfoList.isEmpty()) {
-                QList<fingerprint::ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
+                QList<ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
 
                 Mod::addModsToJson(mods.last().getModJsonPath(), processedModInfos, true);
             }
