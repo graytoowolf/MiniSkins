@@ -42,13 +42,17 @@ public:
         QString description;
         QString downloads;
         QString updateTime;
-        QString iconLetter;
-        QString iconColor;
+    
         QString category; // 添加分类字段
         QString logoUrl;  // 添加logo URL字段
         QString logoFileName;
         int modId; // 添加模组ID字段
         int fileID;
+
+        // 获取默认图标的辅助方法
+        QIcon getDefaultIcon() const {
+            return APPLICATION->getThemedIcon("screenshot-placeholder");
+        }
     };
 
     struct DownloadItem

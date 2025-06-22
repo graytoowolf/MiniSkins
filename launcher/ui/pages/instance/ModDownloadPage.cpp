@@ -359,17 +359,7 @@ void ModDownloadPage::loadMoreMods()
                 mod.category = tr("Other");
             }
 
-            // 生成图标信息
-            mod.iconLetter = mod.name.left(1).toUpper();
 
-            // 生成随机但一致的颜色（基于模组名称）
-            int hash = 0;
-            for (const QChar &c : mod.name) {
-                hash = hash * 31 + c.unicode();
-            }
-            QList<QString> colors = {"#4CAF50", "#2196F3", "#FF5722", "#9C27B0", "#607D8B",
-                                     "#795548", "#FF9800", "#E91E63", "#3F51B5", "#009688"};
-            mod.iconColor = colors[qAbs(hash) % colors.size()];
 
             // 获取logo URL
             QString logoFileName;
@@ -464,17 +454,15 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownload
     iconFrame->setMinimumSize(68, 68); // 稍微增大图标框架
     iconFrame->setMaximumSize(68, 68);
     iconFrame->setFrameShape(QFrame::NoFrame);
-    iconFrame->setStyleSheet(QString(
+    iconFrame->setStyleSheet(
                                  "QFrame#iconFrame {"
-                                 "    background-color: %1;"
                                  "    border: 2px solid palette(light);"
                                  "    border-radius: 10px;"
                                  "    margin: 2px;"
                                  "}"
                                  "QFrame#iconFrame:hover {"
                                  "    border: 2px solid palette(highlight);"
-                                 "}")
-                                 .arg(modInfo.iconColor));
+                                 "}");
 
     QVBoxLayout *iconLayout = new QVBoxLayout(iconFrame);
     iconLayout->setContentsMargins(0, 0, 0, 0);
@@ -516,7 +504,7 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownload
                 {
                     // 缓存文件损坏，删除并重新下载
                     QFile::remove(cachedFilePath);
-                    iconLabel->setText(modInfo.iconLetter);
+                    iconLabel->setPixmap(modInfo.getDefaultIcon().pixmap(68, 68));
                     downloadLogo(modInfo, iconLabel, entry);
                 }
             }
@@ -524,13 +512,13 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownload
         else
         {
             // 缓存文件不存在，显示默认图标并开始下载
-            iconLabel->setText(modInfo.iconLetter);
+            iconLabel->setPixmap(modInfo.getDefaultIcon().pixmap(68, 68));
             downloadLogo(modInfo, iconLabel, entry);
         }
     }
     else
     {
-        iconLabel->setText(modInfo.iconLetter);
+        iconLabel->setPixmap(modInfo.getDefaultIcon().pixmap(68, 68));
     }
 
     iconLayout->addWidget(iconLabel);
