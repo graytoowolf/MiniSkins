@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -272,7 +272,7 @@ public:
         }
         auto blockedPath = relPath(fsm->filePath(sourceIndex));
         auto found = blocked.find(blockedPath);
-        if(found)
+        if (found)
         {
             return !found->leaf();
         }
@@ -287,7 +287,7 @@ public:
         endResetModel();
     }
 
-    const SeparatorPrefixTree<'/'> & blockedPaths() const
+    const SeparatorPrefixTree<'/'> &blockedPaths() const
     {
         return blocked;
     }
@@ -323,7 +323,7 @@ ExportInstanceDialog::ExportInstanceDialog(InstancePtr instance, QWidget *parent
     ui->treeView->setRootIndex(proxyModel->mapFromSource(model->index(root)));
     ui->treeView->sortByColumn(0, Qt::AscendingOrder);
 
-    connect(proxyModel, SIGNAL(rowsInserted(QModelIndex,int,int)), SLOT(rowsInserted(QModelIndex,int,int)));
+    connect(proxyModel, SIGNAL(rowsInserted(QModelIndex, int, int)), SLOT(rowsInserted(QModelIndex, int, int)));
 
     model->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Hidden);
     model->setRootPath(root);
@@ -343,19 +343,21 @@ void SaveIcon(InstancePtr m_instance)
     auto iconKey = m_instance->iconKey();
     auto iconList = APPLICATION->icons();
     auto mmcIcon = iconList->icon(iconKey);
-    if(!mmcIcon || mmcIcon->isBuiltIn()) {
+    if (!mmcIcon || mmcIcon->isBuiltIn())
+    {
         return;
     }
     auto path = mmcIcon->getFilePath();
-    if(!path.isNull()) {
-        QFileInfo inInfo (path);
-        FS::copy(path, FS::PathCombine(m_instance->instanceRoot(), inInfo.fileName())) ();
+    if (!path.isNull())
+    {
+        QFileInfo inInfo(path);
+        FS::copy(path, FS::PathCombine(m_instance->instanceRoot(), inInfo.fileName()))();
         return;
     }
-    auto & image = mmcIcon->m_images[mmcIcon->type()];
-    auto & icon = image.icon;
+    auto &image = mmcIcon->m_images[mmcIcon->type()];
+    auto &icon = image.icon;
     auto sizes = icon.availableSizes();
-    if(sizes.size() == 0)
+    if (sizes.size() == 0)
     {
         return;
     }
@@ -365,9 +367,9 @@ void SaveIcon(InstancePtr m_instance)
     };
     QSize largest = sizes[0];
     // find variant with largest area
-    for(auto size: sizes)
+    for (auto size : sizes)
     {
-        if(areaOf(largest) < areaOf(size))
+        if (areaOf(largest) < areaOf(size))
         {
             largest = size;
         }
@@ -401,7 +403,7 @@ bool ExportInstanceDialog::doExport()
 
     SaveIcon(m_instance);
 
-    auto & blocked = proxyModel->blockedPaths();
+    auto &blocked = proxyModel->blockedPaths();
     using std::placeholders::_1;
     if (!JlCompress::compressDir(output, m_instance->instanceRoot(), name, std::bind(&SeparatorPrefixTree<'/'>::covers, blocked, _1)))
     {
@@ -431,14 +433,14 @@ void ExportInstanceDialog::done(int result)
 
 void ExportInstanceDialog::rowsInserted(QModelIndex parent, int top, int bottom)
 {
-    //WARNING: possible off-by-one?
-    for(int i = top; i < bottom; i++)
+    // WARNING: possible off-by-one?
+    for (int i = top; i < bottom; i++)
     {
         auto node = parent.child(i, 0);
-        if(proxyModel->shouldExpand(node))
+        if (proxyModel->shouldExpand(node))
         {
             auto expNode = node.parent();
-            if(!expNode.isValid())
+            if (!expNode.isValid())
             {
                 continue;
             }
@@ -456,7 +458,7 @@ void ExportInstanceDialog::loadPackIgnore()
 {
     auto filename = ignoreFileName();
     QFile ignoreFile(filename);
-    if(!ignoreFile.open(QIODevice::ReadOnly))
+    if (!ignoreFile.open(QIODevice::ReadOnly))
     {
         return;
     }

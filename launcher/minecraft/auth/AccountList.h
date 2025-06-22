@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,8 +62,8 @@ public:
     void addAccount(const MinecraftAccountPtr account);
     void removeAccount(QModelIndex index);
     int findAccountByProfileId(const MinecraftAccountPtr &m_account) const;
-    MinecraftAccountPtr getAccountByProfileName(const AuthSessionPtr& m_session) const;
-    MinecraftAccountPtr getAccountByProfileName(const QString& profileName) const;
+    MinecraftAccountPtr getAccountByProfileName(const AuthSessionPtr &m_session) const;
+    MinecraftAccountPtr getAccountByProfileName(const QString &profileName) const;
     QStringList profileNames() const;
 
     // requesting a refresh pushes it to the front of the queue
@@ -96,7 +96,7 @@ protected:
     void endActivity();
 
 private:
-    const char* m_name;
+    const char *m_name;
     uint32_t m_activityCount = 0;
 signals:
     void listChanged();

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,8 +92,7 @@ signals:
      */
     void settingReset(const Setting &setting);
 
-public
-slots:
+public slots:
     /*!
      * \brief Changes the setting's value.
      * This is done by emitting the SettingChanged() signal which will then be
@@ -111,7 +110,7 @@ slots:
 
 protected:
     friend class SettingsObject;
-    SettingsObject * m_storage;
+    SettingsObject *m_storage;
     QStringList m_synonyms;
     QVariant m_defVal;
 };

@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ void DirectJavaLaunch::executeTask()
     args.append(mcArgs);
 
     QString wrapperCommandStr = instance->getWrapperCommand().trimmed();
-    if(!wrapperCommandStr.isEmpty())
+    if (!wrapperCommandStr.isEmpty())
     {
         auto wrapperArgs = Commandline::splitArgs(wrapperCommandStr);
         auto wrapperCommand = wrapperArgs.takeFirst();
@@ -83,46 +83,46 @@ void DirectJavaLaunch::executeTask()
 
 void DirectJavaLaunch::on_state(LoggedProcess::State state)
 {
-    switch(state)
+    switch (state)
     {
-        case LoggedProcess::FailedToStart:
+    case LoggedProcess::FailedToStart:
+    {
+        //: Error message displayed if instance can't start
+        const char *reason = QT_TR_NOOP("Could not launch minecraft!");
+        emit logLine(reason, MessageLevel::Fatal);
+        emitFailed(tr(reason));
+        return;
+    }
+    case LoggedProcess::Aborted:
+    case LoggedProcess::Crashed:
+    {
+        m_parent->setPid(-1);
+        emitFailed(tr("Game crashed."));
+        return;
+    }
+    case LoggedProcess::Finished:
+    {
+        m_parent->setPid(-1);
+        // if the exit code wasn't 0, report this as a crash
+        auto exitCode = m_process.exitCode();
+        if (exitCode != 0)
         {
-            //: Error message displayed if instance can't start
-            const char *reason = QT_TR_NOOP("Could not launch minecraft!");
-            emit logLine(reason, MessageLevel::Fatal);
-            emitFailed(tr(reason));
-            return;
-        }
-        case LoggedProcess::Aborted:
-        case LoggedProcess::Crashed:
-        {
-            m_parent->setPid(-1);
             emitFailed(tr("Game crashed."));
             return;
         }
-        case LoggedProcess::Finished:
-        {
-            m_parent->setPid(-1);
-            // if the exit code wasn't 0, report this as a crash
-            auto exitCode = m_process.exitCode();
-            if(exitCode != 0)
-            {
-                emitFailed(tr("Game crashed."));
-                return;
-            }
-            //FIXME: make this work again
-            // m_postlaunchprocess.processEnvironment().insert("INST_EXITCODE", QString(exitCode));
-            // run post-exit
-            emitSucceeded();
-            break;
-        }
-        case LoggedProcess::Running:
-            emit logLine(QString("Minecraft process ID: %1\n\n").arg(m_process.processId()), MessageLevel::Launcher);
-            m_parent->setPid(m_process.processId());
-            m_parent->instance()->setLastLaunch();
-            break;
-        default:
-            break;
+        // FIXME: make this work again
+        //  m_postlaunchprocess.processEnvironment().insert("INST_EXITCODE", QString(exitCode));
+        //  run post-exit
+        emitSucceeded();
+        break;
+    }
+    case LoggedProcess::Running:
+        emit logLine(QString("Minecraft process ID: %1\n\n").arg(m_process.processId()), MessageLevel::Launcher);
+        m_parent->setPid(m_process.processId());
+        m_parent->instance()->setLastLaunch();
+        break;
+    default:
+        break;
     }
 }
 
@@ -145,4 +145,3 @@ bool DirectJavaLaunch::abort()
     }
     return true;
 }
-

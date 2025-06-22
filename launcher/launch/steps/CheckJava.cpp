@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,13 +34,15 @@ void CheckJava::executeTask()
         {
             emit logLine(
                 QString("The java binary \"%1\" couldn't be found. Please fix the java path "
-                   "override in the instance's settings or disable it.").arg(m_javaPath),
+                        "override in the instance's settings or disable it.")
+                    .arg(m_javaPath),
                 MessageLevel::Warning);
         }
         else
         {
             emit logLine(QString("The java binary \"%1\" couldn't be found. Please set up java in "
-                            "the settings.").arg(m_javaPath),
+                                 "the settings.")
+                             .arg(m_javaPath),
                          MessageLevel::Warning);
         }
         emitFailed(QString("Java path is not valid."));
@@ -82,51 +84,51 @@ void CheckJava::checkJavaFinished(JavaCheckResult result)
 {
     switch (result.validity)
     {
-        case JavaCheckResult::Validity::Errored:
-        {
-            // Error message displayed if java can't start
-            emit logLine(QString("Could not start java:"), MessageLevel::Error);
-            emit logLines(result.errorLog.split('\n'), MessageLevel::Error);
-            emit logLine("\nCheck your MultiMC Java settings.", MessageLevel::Launcher);
-            printSystemInfo(false, Sys::Architecture{});
-            emitFailed(QString("Could not start java!"));
-            return;
-        }
-        case JavaCheckResult::Validity::ReturnedInvalidData:
-        {
-            emit logLine(QString("Java checker returned some invalid data MultiMC doesn't understand:"), MessageLevel::Error);
-            emit logLines(result.outLog.split('\n'), MessageLevel::Warning);
-            emit logLine("\nMinecraft might not start properly.", MessageLevel::Launcher);
-            printSystemInfo(false, Sys::Architecture{});
-            emitSucceeded();
-            return;
-        }
-        case JavaCheckResult::Validity::Valid:
-        {
-            auto instance = m_parent->instance();
-            printJavaInfo(result.javaVersion.toString(), result.architecture, result.javaVendor);
-            instance->settings()->set("JavaVersion", result.javaVersion.toString());
-            instance->settings()->set("JavaArchitecture", result.architecture.serialize());
-            instance->settings()->set("JavaVendor", result.javaVendor);
-            instance->settings()->set("JavaTimestamp", m_javaUnixTime);
-            emitSucceeded();
-            return;
-        }
+    case JavaCheckResult::Validity::Errored:
+    {
+        // Error message displayed if java can't start
+        emit logLine(QString("Could not start java:"), MessageLevel::Error);
+        emit logLines(result.errorLog.split('\n'), MessageLevel::Error);
+        emit logLine("\nCheck your MultiMC Java settings.", MessageLevel::Launcher);
+        printSystemInfo(false, Sys::Architecture{});
+        emitFailed(QString("Could not start java!"));
+        return;
+    }
+    case JavaCheckResult::Validity::ReturnedInvalidData:
+    {
+        emit logLine(QString("Java checker returned some invalid data MultiMC doesn't understand:"), MessageLevel::Error);
+        emit logLines(result.outLog.split('\n'), MessageLevel::Warning);
+        emit logLine("\nMinecraft might not start properly.", MessageLevel::Launcher);
+        printSystemInfo(false, Sys::Architecture{});
+        emitSucceeded();
+        return;
+    }
+    case JavaCheckResult::Validity::Valid:
+    {
+        auto instance = m_parent->instance();
+        printJavaInfo(result.javaVersion.toString(), result.architecture, result.javaVendor);
+        instance->settings()->set("JavaVersion", result.javaVersion.toString());
+        instance->settings()->set("JavaArchitecture", result.architecture.serialize());
+        instance->settings()->set("JavaVendor", result.javaVendor);
+        instance->settings()->set("JavaTimestamp", m_javaUnixTime);
+        emitSucceeded();
+        return;
+    }
     }
 }
 
-void CheckJava::printJavaInfo(const QString& version, const Sys::Architecture& architecture, const QString & vendor)
+void CheckJava::printJavaInfo(const QString &version, const Sys::Architecture &architecture, const QString &vendor)
 {
     emit logLine(QString("Java is version %1, using %2 architecture, from %3.\n\n").arg(version, architecture.serialize(), vendor), MessageLevel::Launcher);
     printSystemInfo(true, architecture);
 }
 
-void CheckJava::printSystemInfo(bool javaIsKnown, const Sys::Architecture& javaArchitecture)
+void CheckJava::printSystemInfo(bool javaIsKnown, const Sys::Architecture &javaArchitecture)
 {
-    if(javaIsKnown)
+    if (javaIsKnown)
     {
         auto systemArch = Sys::systemArchitecture();
-        if(javaArchitecture != systemArch)
+        if (javaArchitecture != systemArch)
         {
             emit logLine(QString("Your Java architecture is not matching your system architecture. You might want to use a different Java version.\n\n"), MessageLevel::Error);
         }

@@ -788,7 +788,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_settings->registerSetting("UpdateDialogGeometry", "");
 
         // paste.ee API key
-        m_settings->registerSetting("PasteEEAPIKey", "multimc");
+        m_settings->registerSetting("PasteEEAPIKey", "miniskins");
         m_settings->registerSetting("LogPlatform", "mclo.gs");
 
         // Init page provider
@@ -869,10 +869,10 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         auto setting = APPLICATION->settings()->getSetting("IconsDir");
         QStringList instFolders =
             {
-                ":/icons/multimc/32x32/instances/",
-                ":/icons/multimc/50x50/instances/",
-                ":/icons/multimc/128x128/instances/",
-                ":/icons/multimc/scalable/instances/"};
+                ":/icons/miniskins/32x32/instances/",
+                ":/icons/miniskins/50x50/instances/",
+                ":/icons/miniskins/128x128/instances/",
+                ":/icons/miniskins/scalable/instances/"};
         m_icons.reset(new IconList(instFolders, setting->get().toString()));
         connect(setting.get(), &Setting::SettingChanged, [&](const Setting &, QVariant value)
                 { m_icons->directoryChanged(value.toString()); });

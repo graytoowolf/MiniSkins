@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Authors: Orochimarufan <orochimarufan.x3@gmail.com>
  *
@@ -31,28 +31,30 @@
 #include "flows/MSA.h"
 #include "flows/Bs.h"
 
-MinecraftAccount::MinecraftAccount(QObject* parent) : QObject(parent) {
+MinecraftAccount::MinecraftAccount(QObject *parent) : QObject(parent)
+{
     data.internalId = QUuid::createUuid().toString().remove(QRegExp("[{}-]"));
 }
-
 
 MinecraftAccountPtr MinecraftAccount::loadFromJsonV4(const QJsonObject &json)
 {
     MinecraftAccountPtr account(new MinecraftAccount());
-    if (account->data.resumeStateFromV4(json)) {
+    if (account->data.resumeStateFromV4(json))
+    {
         return account;
     }
     return nullptr;
 }
 
-MinecraftAccountPtr MinecraftAccount::loadFromJsonV3(const QJsonObject& json) {
+MinecraftAccountPtr MinecraftAccount::loadFromJsonV3(const QJsonObject &json)
+{
     MinecraftAccountPtr account(new MinecraftAccount());
-    if(account->data.resumeStateFromV3(json)) {
+    if (account->data.resumeStateFromV3(json))
+    {
         return account;
     }
     return nullptr;
 }
-
 
 MinecraftAccountPtr MinecraftAccount::createBlessings(const QString &username, const QString &yggurl, const QString &yggname)
 {
@@ -72,19 +74,21 @@ MinecraftAccountPtr MinecraftAccount::createBlankMSA()
     return account;
 }
 
-
 QJsonObject MinecraftAccount::saveToJson() const
 {
     return data.saveState();
 }
 
-AccountState MinecraftAccount::accountState() const {
+AccountState MinecraftAccount::accountState() const
+{
     return data.accountState;
 }
 
-QPixmap MinecraftAccount::getFace() const {
+QPixmap MinecraftAccount::getFace() const
+{
     QPixmap skinTexture;
-    if(!skinTexture.loadFromData(data.minecraftProfile.skin.data, "PNG")) {
+    if (!skinTexture.loadFromData(data.minecraftProfile.skin.data, "PNG"))
+    {
         return QPixmap();
     }
     QPixmap skin = QPixmap(8, 8);
@@ -105,7 +109,8 @@ shared_qobject_ptr<AccountTask> MinecraftAccount::bslogin(QString password)
     return m_currentTask;
 }
 
-shared_qobject_ptr<AccountTask> MinecraftAccount::loginMSA() {
+shared_qobject_ptr<AccountTask> MinecraftAccount::loginMSA()
+{
     Q_ASSERT(m_currentTask.get() == nullptr);
 
     m_currentTask.reset(new MSAInteractive(&data));
@@ -115,15 +120,19 @@ shared_qobject_ptr<AccountTask> MinecraftAccount::loginMSA() {
     return m_currentTask;
 }
 
-shared_qobject_ptr<AccountTask> MinecraftAccount::refresh() {
-    if(m_currentTask) {
+shared_qobject_ptr<AccountTask> MinecraftAccount::refresh()
+{
+    if (m_currentTask)
+    {
         return m_currentTask;
     }
 
-    if(data.type == AccountType::MSA) {
+    if (data.type == AccountType::MSA)
+    {
         m_currentTask.reset(new MSASilent(&data));
     }
-    else if (data.type == AccountType::Bs){
+    else if (data.type == AccountType::Bs)
+    {
         m_currentTask.reset(new BsRefresh(&data));
     }
 
@@ -133,10 +142,10 @@ shared_qobject_ptr<AccountTask> MinecraftAccount::refresh() {
     return m_currentTask;
 }
 
-shared_qobject_ptr<AccountTask> MinecraftAccount::currentTask() {
+shared_qobject_ptr<AccountTask> MinecraftAccount::currentTask()
+{
     return m_currentTask;
 }
-
 
 void MinecraftAccount::authSucceeded()
 {
@@ -147,20 +156,25 @@ void MinecraftAccount::authSucceeded()
 
 void MinecraftAccount::authFailed(QString reason)
 {
-    switch (m_currentTask->taskState()) {
-        case AccountTaskState::STATE_OFFLINE:
-        case AccountTaskState::STATE_FAILED_MUST_MIGRATE:
-        case AccountTaskState::STATE_FAILED_SOFT: {
-            // NOTE: this doesn't do much. There was an error of some sort.
+    switch (m_currentTask->taskState())
+    {
+    case AccountTaskState::STATE_OFFLINE:
+    case AccountTaskState::STATE_FAILED_MUST_MIGRATE:
+    case AccountTaskState::STATE_FAILED_SOFT:
+    {
+        // NOTE: this doesn't do much. There was an error of some sort.
     }
     break;
-    case AccountTaskState::STATE_FAILED_HARD: {
-        if(isMSA()) {
+    case AccountTaskState::STATE_FAILED_HARD:
+    {
+        if (isMSA())
+        {
             data.msaToken.token = QString();
             data.msaToken.refresh_token = QString();
             data.msaToken.validity = Katabasis::Validity::None;
         }
-        else {
+        else
+        {
             data.yggdrasilToken.token = QString();
             data.yggdrasilToken.validity = Katabasis::Validity::None;
         }
@@ -168,14 +182,16 @@ void MinecraftAccount::authFailed(QString reason)
         emit changed();
     }
     break;
-    case AccountTaskState::STATE_FAILED_GONE: {
+    case AccountTaskState::STATE_FAILED_GONE:
+    {
         data.validity_ = Katabasis::Validity::None;
         emit changed();
     }
     break;
     case AccountTaskState::STATE_CREATED:
     case AccountTaskState::STATE_WORKING:
-    case AccountTaskState::STATE_SUCCEEDED: {
+    case AccountTaskState::STATE_SUCCEEDED:
+    {
         // Not reachable here, as they are not failures.
     }
     }
@@ -183,28 +199,35 @@ void MinecraftAccount::authFailed(QString reason)
     emit activityChanged(false);
 }
 
-bool MinecraftAccount::isActive() const {
+bool MinecraftAccount::isActive() const
+{
     return m_currentTask;
 }
 
-bool MinecraftAccount::shouldRefresh() const {
+bool MinecraftAccount::shouldRefresh() const
+{
     /*
      * Never refresh accounts that are being used by the game, it breaks the game session.
      * Always refresh accounts that have not been refreshed yet during this session.
      * Don't refresh broken accounts.
      * Refresh accounts that would expire in the next 12 hours (fresh token validity is 24 hours).
      */
-    if(isInUse()) {
+    if (isInUse())
+    {
         return false;
     }
-    switch(data.validity_) {
-    case Katabasis::Validity::Certain: {
+    switch (data.validity_)
+    {
+    case Katabasis::Validity::Certain:
+    {
         break;
     }
-    case Katabasis::Validity::None: {
+    case Katabasis::Validity::None:
+    {
         return false;
     }
-    case Katabasis::Validity::Assumed: {
+    case Katabasis::Validity::Assumed:
+    {
         return true;
     }
     }
@@ -212,10 +235,12 @@ bool MinecraftAccount::shouldRefresh() const {
     auto issuedTimestamp = data.yggdrasilToken.issueInstant;
     auto expiresTimestamp = data.yggdrasilToken.notAfter;
 
-    if(!expiresTimestamp.isValid()) {
+    if (!expiresTimestamp.isValid())
+    {
         expiresTimestamp = issuedTimestamp.addSecs(24 * 3600);
     }
-    if (now.secsTo(expiresTimestamp) < (12 * 3600)) {
+    if (now.secsTo(expiresTimestamp) < (12 * 3600))
+    {
         return true;
     }
     return false;
@@ -223,14 +248,18 @@ bool MinecraftAccount::shouldRefresh() const {
 
 void MinecraftAccount::fillSession(AuthSessionPtr session)
 {
-    if(ownsMinecraft() && !hasProfile()) {
+    if (ownsMinecraft() && !hasProfile())
+    {
         session->status = AuthSession::RequiresProfileSetup;
     }
-    else {
-        if(session->wants_online) {
+    else
+    {
+        if (session->wants_online)
+        {
             session->status = AuthSession::PlayableOnline;
         }
-        else {
+        else
+        {
             session->status = AuthSession::PlayableOffline;
         }
     }
@@ -263,7 +292,7 @@ void MinecraftAccount::fillSession(AuthSessionPtr session)
 void MinecraftAccount::decrementUses()
 {
     Usable::decrementUses();
-    if(!isInUse())
+    if (!isInUse())
     {
         emit changed();
         // FIXME: we now need a better way to identify accounts...
@@ -275,7 +304,7 @@ void MinecraftAccount::incrementUses()
 {
     bool wasInUse = isInUse();
     Usable::incrementUses();
-    if(!wasInUse)
+    if (!wasInUse)
     {
         emit changed();
         // FIXME: we now need a better way to identify accounts...

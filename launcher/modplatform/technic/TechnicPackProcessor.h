@@ -1,4 +1,4 @@
-/* Copyright 2020-2021 MultiMC Contributors
+/* Copyright 2020-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,6 @@ namespace Technic
         void failed(QString reason);
 
     public:
-        void run(SettingsObjectPtr globalSettings, const QString &instName, const QString &instIcon, const QString &stagingPath, const QString &minecraftVersion=QString(), const bool isSolder = false);
+        void run(SettingsObjectPtr globalSettings, const QString &instName, const QString &instIcon, const QString &stagingPath, const QString &minecraftVersion = QString(), const bool isSolder = false);
     };
 }

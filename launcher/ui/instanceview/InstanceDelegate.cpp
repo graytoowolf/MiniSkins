@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -150,8 +150,7 @@ void drawBadges(QPainter *painter, const QStyleOptionViewItem &option, BaseInsta
                 option.rect.width() - x * itemSide + qMax(x - 1, 0) * spacing - itemSide,
                 y * itemSide + qMax(y - 1, 0) * spacing,
                 itemSide,
-                itemSide
-            );
+                itemSide);
             icon.paint(painter, badgeRect, Qt::AlignCenter, mode, state);
         }
     }
@@ -314,8 +313,8 @@ void ListViewDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
     }
 
     // FIXME: this really has no business of being here. Make generic.
-    auto instance = (BaseInstance*)index.data(InstanceList::InstancePointerRole)
-            .value<void *>();
+    auto instance = (BaseInstance *)index.data(InstanceList::InstancePointerRole)
+                        .value<void *>();
     if (instance)
     {
         drawBadges(painter, opt, instance, mode, state);
@@ -347,7 +346,7 @@ QSize ListViewDelegate::sizeHint(const QStyleOptionViewItem &option,
     return sz;
 }
 
-class NoReturnTextEdit: public QTextEdit
+class NoReturnTextEdit : public QTextEdit
 {
     Q_OBJECT
 public:
@@ -357,10 +356,10 @@ public:
         setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
         setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     }
-    bool event(QEvent * event) override
+    bool event(QEvent *event) override
     {
         auto eventType = event->type();
-        if(eventType == QEvent::KeyPress || eventType == QEvent::KeyRelease)
+        if (eventType == QEvent::KeyPress || eventType == QEvent::KeyRelease)
         {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
             auto key = keyEvent->key();
@@ -369,7 +368,7 @@ public:
                 emit editingDone();
                 return true;
             }
-            if(key == Qt::Key_Tab)
+            if (key == Qt::Key_Tab)
             {
                 return true;
             }
@@ -380,7 +379,7 @@ signals:
     void editingDone();
 };
 
-void ListViewDelegate::updateEditorGeometry(QWidget* editor, const QStyleOptionViewItem& option, const QModelIndex& index) const
+void ListViewDelegate::updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     const int iconSize = 48;
     QRect textRect = option.rect;
@@ -389,29 +388,29 @@ void ListViewDelegate::updateEditorGeometry(QWidget* editor, const QStyleOptionV
     editor->setGeometry(textRect);
 }
 
-void ListViewDelegate::setEditorData(QWidget* editor, const QModelIndex& index) const
+void ListViewDelegate::setEditorData(QWidget *editor, const QModelIndex &index) const
 {
     auto text = index.data(Qt::EditRole).toString();
-    QTextEdit * realeditor = qobject_cast<NoReturnTextEdit *>(editor);
+    QTextEdit *realeditor = qobject_cast<NoReturnTextEdit *>(editor);
     realeditor->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
     realeditor->append(text);
     realeditor->selectAll();
     realeditor->document()->clearUndoRedoStacks();
 }
 
-void ListViewDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const
+void ListViewDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const
 {
-    QTextEdit * realeditor = qobject_cast<NoReturnTextEdit *>(editor);
+    QTextEdit *realeditor = qobject_cast<NoReturnTextEdit *>(editor);
     QString text = realeditor->toPlainText();
     text.replace(QChar('\n'), QChar(' '));
     text = text.trimmed();
-    if(text.size() != 0)
+    if (text.size() != 0)
     {
         model->setData(index, text);
     }
 }
 
-QWidget * ListViewDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const
+QWidget *ListViewDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     auto editor = new NoReturnTextEdit(parent);
     connect(editor, &NoReturnTextEdit::editingDone, this, &ListViewDelegate::editingDone);

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ IconList::IconList(const QStringList &builtinPaths, QString path, QObject *paren
     builtinNames.insert("logo");
 
     // add builtin icons
-    for(auto & builtinPath: builtinPaths)
+    for (auto &builtinPath : builtinPaths)
     {
         QDir instance_icons(builtinPath);
         auto file_info_list = instance_icons.entryInfoList(QDir::Files, QDir::Name);
@@ -42,7 +42,7 @@ IconList::IconList(const QStringList &builtinPaths, QString path, QObject *paren
     }
     QStringList builtinList = builtinNames.toList();
     builtinList.sort();
-    for(auto & builtinName : builtinList)
+    for (auto &builtinName : builtinList)
     {
         addThemeIcon(builtinName);
     }
@@ -58,17 +58,17 @@ IconList::IconList(const QStringList &builtinPaths, QString path, QObject *paren
 
 void IconList::directoryChanged(const QString &path)
 {
-    QDir new_dir (path);
-    if(m_dir.absolutePath() != new_dir.absolutePath())
+    QDir new_dir(path);
+    if (m_dir.absolutePath() != new_dir.absolutePath())
     {
         m_dir.setPath(path);
         m_dir.refresh();
-        if(is_watching)
+        if (is_watching)
             stopWatching();
         startWatching();
     }
-    if(!m_dir.exists())
-        if(!FS::ensureFolderPathExists(m_dir.absolutePath()))
+    if (!m_dir.exists())
+        if (!FS::ensureFolderPathExists(m_dir.absolutePath()))
             return;
     m_dir.refresh();
     auto new_list = m_dir.entryList(QDir::Files, QDir::Name);
@@ -151,7 +151,7 @@ void IconList::fileChanged(const QString &path)
 
 void IconList::SettingChanged(const Setting &setting, QVariant value)
 {
-    if(setting.id() != "IconsDir")
+    if (setting.id() != "IconsDir")
         return;
 
     directoryChanged(value.toString());
@@ -274,7 +274,7 @@ void IconList::installIcons(const QStringList &iconFiles)
 void IconList::installIcon(const QString &file, const QString &name)
 {
     QFileInfo fileinfo(file);
-    if(!fileinfo.isReadable() || !fileinfo.isFile())
+    if (!fileinfo.isReadable() || !fileinfo.isFile())
         return;
 
     QString target = FS::PathCombine(m_dir.dirName(), name);
@@ -285,7 +285,7 @@ void IconList::installIcon(const QString &file, const QString &name)
 bool IconList::iconFileExists(const QString &key) const
 {
     auto iconEntry = icon(key);
-    if(!iconEntry)
+    if (!iconEntry)
     {
         return false;
     }
@@ -313,7 +313,7 @@ bool IconList::deleteIcon(const QString &key)
     return false;
 }
 
-bool IconList::addThemeIcon(const QString& key)
+bool IconList::addThemeIcon(const QString &key)
 {
     auto iter = name_index.find(key);
     if (iter != name_index.end())
@@ -371,13 +371,12 @@ bool IconList::addIcon(const QString &key, const QString &name, const QString &p
     }
 }
 
-void IconList::saveIcon(const QString &key, const QString &path, const char * format) const
+void IconList::saveIcon(const QString &key, const QString &path, const char *format) const
 {
     auto icon = getIcon(key);
     auto pixmap = icon.pixmap(128, 128);
     pixmap.save(path, format);
 }
-
 
 void IconList::reindex()
 {
@@ -419,4 +418,4 @@ QString IconList::getDirectory() const
     return m_dir.absolutePath();
 }
 
-//#include "IconList.moc"
+// #include "IconList.moc"

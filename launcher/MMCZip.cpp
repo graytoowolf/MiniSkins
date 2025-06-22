@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,13 +36,13 @@ bool MMCZip::mergeZipFiles(QuaZip *into, QFileInfo from, QSet<QString> &containe
         if (filter && !filter(filename))
         {
             qDebug() << "Skipping file " << filename << " from "
-                        << from.fileName() << " - filtered";
+                     << from.fileName() << " - filtered";
             continue;
         }
         if (contained.contains(filename))
         {
             qDebug() << "Skipping already contained file " << filename << " from "
-                        << from.fileName();
+                     << from.fileName();
             continue;
         }
         contained.insert(filename);
@@ -75,7 +75,7 @@ bool MMCZip::mergeZipFiles(QuaZip *into, QFileInfo from, QSet<QString> &containe
 }
 
 // ours
-bool MMCZip::createModdedJar(QString sourceJarPath, QString targetJarPath, const QList<Mod>& mods)
+bool MMCZip::createModdedJar(QString sourceJarPath, QString targetJarPath, const QList<Mod> &mods)
 {
     QuaZip zipOut(targetJarPath);
     if (!zipOut.open(QuaZip::mdCreate))
@@ -136,7 +136,7 @@ bool MMCZip::createModdedJar(QString sourceJarPath, QString targetJarPath, const
                 return false;
             }
             qDebug() << "Adding folder " << filename.fileName() << " from "
-                        << filename.absoluteFilePath();
+                     << filename.absoluteFilePath();
         }
         else
         {
@@ -148,7 +148,8 @@ bool MMCZip::createModdedJar(QString sourceJarPath, QString targetJarPath, const
         }
     }
 
-    if (!mergeZipFiles(&zipOut, QFileInfo(sourceJarPath), addedFiles, [](const QString key){return !key.contains("META-INF");}))
+    if (!mergeZipFiles(&zipOut, QFileInfo(sourceJarPath), addedFiles, [](const QString key)
+                       { return !key.contains("META-INF"); }))
     {
         zipOut.close();
         QFile::remove(targetJarPath);
@@ -168,18 +169,18 @@ bool MMCZip::createModdedJar(QString sourceJarPath, QString targetJarPath, const
 }
 
 // ours
-QString MMCZip::findFolderOfFileInZip(QuaZip * zip, const QString & what, const QString &root)
+QString MMCZip::findFolderOfFileInZip(QuaZip *zip, const QString &what, const QString &root)
 {
     QuaZipDir rootDir(zip, root);
-    for(auto fileName: rootDir.entryList(QDir::Files))
+    for (auto fileName : rootDir.entryList(QDir::Files))
     {
-        if(fileName == what)
+        if (fileName == what)
             return root;
     }
-    for(auto fileName: rootDir.entryList(QDir::Dirs))
+    for (auto fileName : rootDir.entryList(QDir::Dirs))
     {
         QString result = findFolderOfFileInZip(zip, what, root + fileName);
-        if(!result.isEmpty())
+        if (!result.isEmpty())
         {
             return result;
         }
@@ -191,21 +192,21 @@ QString MMCZip::findFolderOfFileInZip(QuaZip * zip, const QString & what, const 
 QString MMCZip::findFolderOfFileInZipList(QuaZip *zip, const QStringList &what, QString &foundFileName, const QString &root)
 {
     QuaZipDir rootDir(zip, root);
-    for(auto fileName: rootDir.entryList(QDir::Files))
+    for (auto fileName : rootDir.entryList(QDir::Files))
     {
-        for (const auto& file : what) {
-            if(fileName == file){
+        for (const auto &file : what)
+        {
+            if (fileName == file)
+            {
                 foundFileName = file;
                 return root;
             }
         }
-
-
     }
-    for(auto fileName: rootDir.entryList(QDir::Dirs))
+    for (auto fileName : rootDir.entryList(QDir::Dirs))
     {
-        QString result = findFolderOfFileInZipList(zip, what,foundFileName, root + fileName);
-        if(!result.isEmpty())
+        QString result = findFolderOfFileInZipList(zip, what, foundFileName, root + fileName);
+        if (!result.isEmpty())
         {
             return result;
         }
@@ -214,38 +215,39 @@ QString MMCZip::findFolderOfFileInZipList(QuaZip *zip, const QStringList &what, 
 }
 
 // ours
-bool MMCZip::findFilesInZip(QuaZip * zip, const QString & what, QStringList & result, const QString &root)
+bool MMCZip::findFilesInZip(QuaZip *zip, const QString &what, QStringList &result, const QString &root)
 {
     QuaZipDir rootDir(zip, root);
-    for(auto fileName: rootDir.entryList(QDir::Files))
+    for (auto fileName : rootDir.entryList(QDir::Files))
     {
-        if(fileName == what)
+        if (fileName == what)
         {
             result.append(root);
             return true;
         }
     }
-    for(auto fileName: rootDir.entryList(QDir::Dirs))
+    for (auto fileName : rootDir.entryList(QDir::Dirs))
     {
         findFilesInZip(zip, what, result, root + fileName);
     }
     return !result.isEmpty();
 }
 
-
 // ours
-nonstd::optional<QStringList> MMCZip::extractSubDir(QuaZip *zip, const QString & subdir, const QString &target)
+nonstd::optional<QStringList> MMCZip::extractSubDir(QuaZip *zip, const QString &subdir, const QString &target)
 {
     QDir directory(target);
     QStringList extracted;
 
     qDebug() << "Extracting subdir" << subdir << "from" << zip->getZipName() << "to" << target;
     auto numEntries = zip->getEntriesCount();
-    if(numEntries < 0) {
+    if (numEntries < 0)
+    {
         qWarning() << "Failed to enumerate files in archive";
         return nonstd::nullopt;
     }
-    else if(numEntries == 0) {
+    else if (numEntries == 0)
+    {
         qDebug() << "Extracting empty archives seems odd...";
         return extracted;
     }
@@ -258,13 +260,13 @@ nonstd::optional<QStringList> MMCZip::extractSubDir(QuaZip *zip, const QString &
     do
     {
         QString name = zip->getCurrentFileName();
-        if(!name.startsWith(subdir))
+        if (!name.startsWith(subdir))
         {
             continue;
         }
         name.remove(0, subdir.size());
         QString absFilePath = directory.absoluteFilePath(name);
-        if(name.isEmpty())
+        if (name.isEmpty())
         {
             absFilePath += "/";
         }
@@ -294,10 +296,12 @@ nonstd::optional<QStringList> MMCZip::extractDir(QString fileCompressed, QString
     {
         // check if this is a minimum size empty zip file...
         QFileInfo fileInfo(fileCompressed);
-        if(fileInfo.size() == 22) {
+        if (fileInfo.size() == 22)
+        {
             return QStringList();
         }
-        qWarning() << "Could not open archive for unzipping:" << fileCompressed << "Error:" << zip.getZipError();;
+        qWarning() << "Could not open archive for unzipping:" << fileCompressed << "Error:" << zip.getZipError();
+        ;
         return nonstd::nullopt;
     }
     return MMCZip::extractSubDir(&zip, "", dir);
@@ -311,10 +315,12 @@ nonstd::optional<QStringList> MMCZip::extractDir(QString fileCompressed, QString
     {
         // check if this is a minimum size empty zip file...
         QFileInfo fileInfo(fileCompressed);
-        if(fileInfo.size() == 22) {
+        if (fileInfo.size() == 22)
+        {
             return QStringList();
         }
-        qWarning() << "Could not open archive for unzipping:" << fileCompressed << "Error:" << zip.getZipError();;
+        qWarning() << "Could not open archive for unzipping:" << fileCompressed << "Error:" << zip.getZipError();
+        ;
         return nonstd::nullopt;
     }
     return MMCZip::extractSubDir(&zip, subdir, dir);
@@ -328,7 +334,8 @@ bool MMCZip::extractFile(QString fileCompressed, QString file, QString target)
     {
         // check if this is a minimum size empty zip file...
         QFileInfo fileInfo(fileCompressed);
-        if(fileInfo.size() == 22) {
+        if (fileInfo.size() == 22)
+        {
             return true;
         }
         qWarning() << "Could not open archive for unzipping:" << fileCompressed << "Error:" << zip.getZipError();

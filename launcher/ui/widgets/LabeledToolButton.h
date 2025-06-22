@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,17 +24,18 @@ class LabeledToolButton : public QToolButton
 {
     Q_OBJECT
 
-    QLabel * m_label;
+    QLabel *m_label;
     QIcon m_icon;
 
 public:
-    LabeledToolButton(QWidget * parent = 0);
+    LabeledToolButton(QWidget *parent = 0);
 
     QString text() const;
-    void setText(const QString & text);
+    void setText(const QString &text);
     void setIcon(QIcon icon);
     virtual QSize sizeHint() const;
+
 protected:
-    void resizeEvent(QResizeEvent * event);
+    void resizeEvent(QResizeEvent *event);
     void resetIcon();
 };

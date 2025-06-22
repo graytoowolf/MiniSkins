@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ void BsYggdrasil::sendRequest(QUrl endpoint, QByteArray content)
 
     QNetworkRequest netRequest(endpoint);
     netRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    netRequest.setHeader(QNetworkRequest::UserAgentHeader,BuildConfig.USER_AGENT);
+    netRequest.setHeader(QNetworkRequest::UserAgentHeader, BuildConfig.USER_AGENT);
     m_netReply = APPLICATION->network()->post(netRequest, content);
     connect(m_netReply, &QNetworkReply::finished, this, &BsYggdrasil::processReply);
     connect(m_netReply, &QNetworkReply::uploadProgress, this, &BsYggdrasil::refreshTimers);
@@ -135,8 +135,7 @@ void BsYggdrasil::login(QString password)
 
     QJsonDocument doc(req);
 
-
-    QUrl reqUrl(m_data->yggurl() +"authserver/authenticate");
+    QUrl reqUrl(m_data->yggurl() + "authserver/authenticate");
     QNetworkRequest netRequest(reqUrl);
     QByteArray requestData = doc.toJson();
 
@@ -214,7 +213,7 @@ void BsYggdrasil::processResponse(QJsonObject responseData)
 
     // Now, we set the access token.
     qDebug() << "Getting access token.";
-    //selectedProfile
+    // selectedProfile
     m_data->minecraftProfile.id = responseData.value("selectedProfile").toObject().value("id").toString();
     m_data->minecraftProfile.name = responseData.value("selectedProfile").toObject().value("name").toString();
     QString accessToken = responseData.value("accessToken").toString("");

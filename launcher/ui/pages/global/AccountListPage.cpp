@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,8 +43,7 @@ AccountListPage::AccountListPage(QWidget *parent)
     ui->setupUi(this);
     ui->listView->setEmptyString(tr(
         "Welcome!\n"
-        "If you're new here, you can click the \"Add\" button to add your yggdrasil or Minecraft account."
-    ));
+        "If you're new here, you can click the \"Add\" button to add your yggdrasil or Minecraft account."));
     ui->listView->setEmptyMode(VersionListView::String);
     ui->listView->setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -60,9 +59,8 @@ AccountListPage::AccountListPage(QWidget *parent)
 
     QItemSelectionModel *selectionModel = ui->listView->selectionModel();
 
-    connect(selectionModel, &QItemSelectionModel::selectionChanged, [this](const QItemSelection &sel, const QItemSelection &dsel) {
-        updateButtonStates();
-    });
+    connect(selectionModel, &QItemSelectionModel::selectionChanged, [this](const QItemSelection &sel, const QItemSelection &dsel)
+            { updateButtonStates(); });
     connect(ui->listView, &VersionListView::customContextMenuRequested, this, &AccountListPage::ShowContextMenu);
 
     connect(m_accounts.get(), &AccountList::listChanged, this, &AccountListPage::listChanged);
@@ -80,14 +78,14 @@ AccountListPage::~AccountListPage()
     delete ui;
 }
 
-void AccountListPage::ShowContextMenu(const QPoint& pos)
+void AccountListPage::ShowContextMenu(const QPoint &pos)
 {
     auto menu = ui->toolBar->createContextMenu(this, tr("Context menu"));
     menu->exec(ui->listView->mapToGlobal(pos));
     delete menu;
 }
 
-void AccountListPage::changeEvent(QEvent* event)
+void AccountListPage::changeEvent(QEvent *event)
 {
     if (event->type() == QEvent::LanguageChange)
     {
@@ -96,13 +94,12 @@ void AccountListPage::changeEvent(QEvent* event)
     QMainWindow::changeEvent(event);
 }
 
-QMenu * AccountListPage::createPopupMenu()
+QMenu *AccountListPage::createPopupMenu()
 {
-    QMenu* filteredMenu = QMainWindow::createPopupMenu();
-    filteredMenu->removeAction(ui->toolBar->toggleViewAction() );
+    QMenu *filteredMenu = QMainWindow::createPopupMenu();
+    filteredMenu->removeAction(ui->toolBar->toggleViewAction());
     return filteredMenu;
 }
-
 
 void AccountListPage::listChanged()
 {
@@ -115,7 +112,8 @@ void AccountListPage::on_actionAddMicrosoft_triggered()
     if (account)
     {
         m_accounts->addAccount(account);
-        if (m_accounts->count() == 1) {
+        if (m_accounts->count() == 1)
+        {
             m_accounts->setDefaultAccount(account);
         }
     }
@@ -131,15 +129,16 @@ void AccountListPage::on_actionRemove_triggered()
     }
 }
 
-void AccountListPage::on_actionRefresh_triggered() {
+void AccountListPage::on_actionRefresh_triggered()
+{
     QModelIndexList selection = ui->listView->selectionModel()->selectedIndexes();
-    if (selection.size() > 0) {
+    if (selection.size() > 0)
+    {
         QModelIndex selected = selection.first();
         MinecraftAccountPtr account = selected.data(AccountList::PointerRole).value<MinecraftAccountPtr>();
         m_accounts->requestRefresh(account->internalId());
     }
 }
-
 
 void AccountListPage::on_actionSetDefault_triggered()
 {
@@ -170,7 +169,8 @@ void AccountListPage::updateButtonStates()
         MinecraftAccountPtr account = selected.data(AccountList::PointerRole).value<MinecraftAccountPtr>();
         accountIsReady = !account->isActive();
         UploadSkin = accountIsReady;
-        if(account->typeString() == "bs"){
+        if (account->typeString() == "bs")
+        {
             UploadSkin = false;
         }
     }
@@ -180,11 +180,13 @@ void AccountListPage::updateButtonStates()
     ui->actionDeleteSkin->setEnabled(UploadSkin);
     ui->actionRefresh->setEnabled(accountIsReady);
 
-    if(m_accounts->defaultAccount().get() == nullptr) {
+    if (m_accounts->defaultAccount().get() == nullptr)
+    {
         ui->actionNoDefault->setEnabled(false);
         ui->actionNoDefault->setChecked(true);
     }
-    else {
+    else
+    {
         ui->actionNoDefault->setEnabled(true);
         ui->actionNoDefault->setChecked(false);
     }
@@ -212,7 +214,8 @@ void AccountListPage::on_actionDeleteSkin_triggered()
     MinecraftAccountPtr account = selected.data(AccountList::PointerRole).value<MinecraftAccountPtr>();
     ProgressDialog prog(this);
     auto deleteSkinTask = std::make_shared<SkinDelete>(this, account->accessToken());
-    if (prog.execWithTask((Task*)deleteSkinTask.get()) != QDialog::Accepted) {
+    if (prog.execWithTask((Task *)deleteSkinTask.get()) != QDialog::Accepted)
+    {
         CustomMessageBox::selectable(this, tr("Skin Delete"), tr("Failed to delete current skin!"), QMessageBox::Warning)->exec();
         return;
     }
@@ -221,8 +224,8 @@ void AccountListPage::on_actionDeleteSkin_triggered()
 void AccountListPage::on_actionAddBs_triggered()
 {
     MinecraftAccountPtr account = BsLoginDialog::newAccount(
-                this,
-                tr("Please enter your skin site account email and password to add your account."));
+        this,
+        tr("Please enter your skin site account email and password to add your account."));
 
     if (account)
     {
@@ -233,4 +236,3 @@ void AccountListPage::on_actionAddBs_triggered()
         }
     }
 }
-

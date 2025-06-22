@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,7 +111,7 @@ InstanceWindow::InstanceWindow(InstancePtr instance, QWidget *parent)
 
 void InstanceWindow::on_instanceStatusChanged(BaseInstance::Status, BaseInstance::Status newStatus)
 {
-    if(newStatus == BaseInstance::Status::Gone)
+    if (newStatus == BaseInstance::Status::Gone)
     {
         m_doNotSave = true;
         close();
@@ -120,14 +120,14 @@ void InstanceWindow::on_instanceStatusChanged(BaseInstance::Status, BaseInstance
 
 void InstanceWindow::updateLaunchButtons()
 {
-    if(m_instance->isRunning())
+    if (m_instance->isRunning())
     {
         m_launchOfflineButton->setEnabled(false);
         m_killButton->setText(tr("Kill"));
         m_killButton->setObjectName("killButton");
         m_killButton->setToolTip(tr("Kill the running instance"));
     }
-    else if(!m_instance->canLaunch())
+    else if (!m_instance->canLaunch())
     {
         m_launchOfflineButton->setEnabled(false);
         m_killButton->setText(tr("Launch"));
@@ -161,7 +161,8 @@ void InstanceWindow::on_RunningState_changed(bool running)
 {
     updateLaunchButtons();
     m_container->refreshContainer();
-    if(running) {
+    if (running)
+    {
         selectPage("log");
     }
 }
@@ -174,12 +175,12 @@ void InstanceWindow::on_closeButton_clicked()
 void InstanceWindow::closeEvent(QCloseEvent *event)
 {
     bool proceed = true;
-    if(!m_doNotSave)
+    if (!m_doNotSave)
     {
         proceed &= m_container->prepareToClose();
     }
 
-    if(!proceed)
+    if (!proceed)
     {
         return;
     }
@@ -197,7 +198,7 @@ bool InstanceWindow::saveAll()
 
 void InstanceWindow::on_btnKillMinecraft_clicked()
 {
-    if(m_instance->isRunning())
+    if (m_instance->isRunning())
     {
         APPLICATION->kill(m_instance);
     }
@@ -228,7 +229,7 @@ InstanceWindow::~InstanceWindow()
 
 bool InstanceWindow::requestClose()
 {
-    if(m_container->prepareToClose())
+    if (m_container->prepareToClose())
     {
         close();
         return true;

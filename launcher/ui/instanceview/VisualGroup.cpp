@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,19 +44,19 @@ void VisualGroup::update()
     int positionInRow = 0;
     int currentRow = 0;
     int offsetFromTop = 0;
-    for (auto item: temp_items)
+    for (auto item : temp_items)
     {
-        if(positionInRow == itemsPerRow)
+        if (positionInRow == itemsPerRow)
         {
             rows[currentRow].height = maxRowHeight;
             rows[currentRow].top = offsetFromTop;
-            currentRow ++;
+            currentRow++;
             offsetFromTop += maxRowHeight + 5;
             positionInRow = 0;
             maxRowHeight = 0;
         }
         auto itemHeight = view->itemDelegate()->sizeHint(view->viewOptions(), item).height();
-        if(itemHeight > maxRowHeight)
+        if (itemHeight > maxRowHeight)
         {
             maxRowHeight = itemHeight;
         }
@@ -70,13 +70,13 @@ void VisualGroup::update()
 QPair<int, int> VisualGroup::positionOf(const QModelIndex &index) const
 {
     int y = 0;
-    for (auto & row: rows)
+    for (auto &row : rows)
     {
-        for(auto x = 0; x < row.items.size(); x++)
+        for (auto x = 0; x < row.items.size(); x++)
         {
-            if(row.items[x] == index)
+            if (row.items[x] == index)
             {
-                return qMakePair(x,y);
+                return qMakePair(x, y);
             }
         }
         y++;
@@ -140,7 +140,7 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
     QColor outlineColor = option.palette.text().color();
     outlineColor.setAlphaF(0.35);
 
-    //BEGIN: top left corner
+    // BEGIN: top left corner
     {
         painter->save();
         painter->setPen(outlineColor);
@@ -150,9 +150,9 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
         painter->drawArc(arc, 1440, 1440);
         painter->restore();
     }
-    //END: top left corner
+    // END: top left corner
 
-    //BEGIN: left vertical line
+    // BEGIN: left vertical line
     {
         QPoint start(optRect.topLeft());
         start.ry() += 3;
@@ -163,9 +163,9 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
         gradient.setColorAt(1, Qt::transparent);
         painter->fillRect(QRect(start, QSize(1, fontMetrics.height() + 5)), gradient);
     }
-    //END: left vertical line
+    // END: left vertical line
 
-    //BEGIN: horizontal line
+    // BEGIN: horizontal line
     {
         QPoint start(optRect.topLeft());
         start.rx() += 3;
@@ -173,9 +173,9 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
         horizontalGradTop.rx() += optRect.width() - 6;
         painter->fillRect(QRect(start, QSize(optRect.width() - 6, 1)), outlineColor);
     }
-    //END: horizontal line
+    // END: horizontal line
 
-    //BEGIN: top right corner
+    // BEGIN: top right corner
     {
         painter->save();
         painter->setPen(outlineColor);
@@ -186,9 +186,9 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
         painter->drawArc(arc, 0, 1440);
         painter->restore();
     }
-    //END: top right corner
+    // END: top right corner
 
-    //BEGIN: right vertical line
+    // BEGIN: right vertical line
     {
         QPoint start(optRect.topRight());
         start.ry() += 3;
@@ -199,9 +199,9 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
         gradient.setColorAt(1, Qt::transparent);
         painter->fillRect(QRect(start, QSize(1, fontMetrics.height() + 5)), gradient);
     }
-    //END: right vertical line
+    // END: right vertical line
 
-    //BEGIN: checkboxy thing
+    // BEGIN: checkboxy thing
     {
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing, false);
@@ -214,12 +214,11 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
         iconSubRect.setLeft(iconSubRect.left() + 7);
 
         int sizing = fontMetrics.height();
-        int even = ( (sizing - 1) % 2 );
+        int even = ((sizing - 1) % 2);
 
         iconSubRect.setHeight(sizing - even);
         iconSubRect.setWidth(sizing - even);
         painter->drawRect(iconSubRect);
-
 
         /*
         if(collapsed)
@@ -238,9 +237,9 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
 
         painter->restore();
     }
-    //END: checkboxy thing
+    // END: checkboxy thing
 
-    //BEGIN: text
+    // BEGIN: text
     {
         QRect textRect(option.rect);
         textRect.setTop(textRect.top() + 7);
@@ -256,7 +255,7 @@ void VisualGroup::drawHeader(QPainter *painter, const QStyleOptionViewItem &opti
         painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, text);
         painter->restore();
     }
-    //END: text
+    // END: text
 }
 
 int VisualGroup::totalHeight() const
@@ -271,7 +270,7 @@ int VisualGroup::headerHeight() const
     QFontMetrics fontMetrics(font);
 
     const int height = fontMetrics.height() + 1 /* 1 pixel-width gradient */
-                                            + 11 /* top and bottom separation */;
+                       + 11 /* top and bottom separation */;
     return height;
     /*
     int raw = view->viewport()->fontMetrics().height() + 4;

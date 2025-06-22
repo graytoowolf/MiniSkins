@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@
 #include <java/JavaChecker.h>
 #include <sys.h>
 
-class CheckJava: public LaunchStep
+class CheckJava : public LaunchStep
 {
     Q_OBJECT
 public:
-    explicit CheckJava(LaunchTask *parent) :LaunchStep(parent){};
+    explicit CheckJava(LaunchTask *parent) : LaunchStep(parent) {};
     virtual ~CheckJava() {};
 
     virtual void executeTask();
@@ -36,8 +36,8 @@ private slots:
     void checkJavaFinished(JavaCheckResult result);
 
 private:
-    void printJavaInfo(const QString & version, const Sys::Architecture& architecture, const QString & vendor);
-    void printSystemInfo(bool javaIsKnown, const Sys::Architecture& architecture);
+    void printJavaInfo(const QString &version, const Sys::Architecture &architecture, const QString &vendor);
+    void printSystemInfo(bool javaIsKnown, const Sys::Architecture &architecture);
 
 private:
     QString m_javaPath;

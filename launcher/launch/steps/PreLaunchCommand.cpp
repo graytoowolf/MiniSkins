@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ PreLaunchCommand::PreLaunchCommand(LaunchTask *parent) : LaunchStep(parent)
 
 void PreLaunchCommand::executeTask()
 {
-    //FIXME: where to put this?
+    // FIXME: where to put this?
     QString prelaunch_cmd = m_parent->substituteVariables(m_command);
     emit logLine(tr("Running Pre-Launch command: %1").arg(prelaunch_cmd), MessageLevel::Launcher);
     m_process.start(prelaunch_cmd);
@@ -39,33 +39,33 @@ void PreLaunchCommand::on_state(LoggedProcess::State state)
     {
         return tr("Pre-Launch command failed with code %1.\n\n").arg(m_process.exitCode());
     };
-    switch(state)
+    switch (state)
     {
-        case LoggedProcess::Aborted:
-        case LoggedProcess::Crashed:
-        case LoggedProcess::FailedToStart:
+    case LoggedProcess::Aborted:
+    case LoggedProcess::Crashed:
+    case LoggedProcess::FailedToStart:
+    {
+        auto error = getError();
+        emit logLine(error, MessageLevel::Fatal);
+        emitFailed(error);
+        return;
+    }
+    case LoggedProcess::Finished:
+    {
+        if (m_process.exitCode() != 0)
         {
             auto error = getError();
             emit logLine(error, MessageLevel::Fatal);
             emitFailed(error);
-            return;
         }
-        case LoggedProcess::Finished:
+        else
         {
-            if(m_process.exitCode() != 0)
-            {
-                auto error = getError();
-                emit logLine(error, MessageLevel::Fatal);
-                emitFailed(error);
-            }
-            else
-            {
-                emit logLine(tr("Pre-Launch command ran successfully.\n\n"), MessageLevel::Launcher);
-                emitSucceeded();
-            }
+            emit logLine(tr("Pre-Launch command ran successfully.\n\n"), MessageLevel::Launcher);
+            emitSucceeded();
         }
-        default:
-            break;
+    }
+    default:
+        break;
     }
 }
 

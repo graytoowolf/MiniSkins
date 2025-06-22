@@ -1,4 +1,4 @@
-/* Copyright 2017-2021 MultiMC Contributors
+/* Copyright 2017-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 namespace Ui
 {
-class SetupWizard;
+    class SetupWizard;
 }
 
 class BaseWizardPage;
@@ -32,7 +32,7 @@ public: /* con/destructors */
     explicit SetupWizard(QWidget *parent = 0);
     virtual ~SetupWizard();
 
-    void changeEvent(QEvent * event) override;
+    void changeEvent(QEvent *event) override;
     BaseWizardPage *getBasePage(int id);
     BaseWizardPage *getCurrentBasePage();
 
@@ -42,4 +42,3 @@ private slots:
 private: /* methods */
     void retranslate();
 };
-

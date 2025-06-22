@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,11 @@
 #include <QStringList>
 
 class LaunchTask;
-class LaunchStep: public Task
+class LaunchStep : public Task
 {
     Q_OBJECT
 public: /* methods */
-    explicit LaunchStep(LaunchTask *parent):Task(nullptr), m_parent(parent)
+    explicit LaunchStep(LaunchTask *parent) : Task(nullptr), m_parent(parent)
     {
         bind(parent);
     };

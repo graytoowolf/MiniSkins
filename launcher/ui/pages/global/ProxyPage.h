@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 
 namespace Ui
 {
-class ProxyPage;
+    class ProxyPage;
 }
 
 class ProxyPage : public QWidget, public BasePage
@@ -57,8 +57,7 @@ private:
     void applySettings();
     void loadSettings();
 
-private
-slots:
+private slots:
     void proxyChanged(int);
 
 private:

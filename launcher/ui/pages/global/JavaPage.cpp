@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ void JavaPage::applySettings()
     // Memory
     int min = ui->minMemSpinBox->value();
     int max = ui->maxMemSpinBox->value();
-    if(min < max)
+    if (min < max)
     {
         s->set("MinMemAlloc", min);
         s->set("MaxMemAlloc", max);
@@ -83,7 +83,7 @@ void JavaPage::loadSettings()
     // Memory
     int min = s->get("MinMemAlloc").toInt();
     int max = s->get("MaxMemAlloc").toInt();
-    if(min < max)
+    if (min < max)
     {
         ui->minMemSpinBox->setValue(min);
         ui->maxMemSpinBox->setValue(max);
@@ -120,14 +120,15 @@ void JavaPage::on_javaBrowseBtn_clicked()
     QString raw_path = QFileDialog::getOpenFileName(this, tr("Find Java executable"));
 
     // do not allow current dir - it's dirty. Do not allow dirs that don't exist
-    if(raw_path.isEmpty())
+    if (raw_path.isEmpty())
     {
         return;
     }
 
     QString cooked_path = FS::NormalizePath(raw_path);
-    QFileInfo javaInfo(cooked_path);;
-    if(!javaInfo.exists() || !javaInfo.isExecutable())
+    QFileInfo javaInfo(cooked_path);
+    ;
+    if (!javaInfo.exists() || !javaInfo.isExecutable())
     {
         return;
     }
@@ -136,7 +137,7 @@ void JavaPage::on_javaBrowseBtn_clicked()
 
 void JavaPage::on_javaTestBtn_clicked()
 {
-    if(checker)
+    if (checker)
     {
         return;
     }

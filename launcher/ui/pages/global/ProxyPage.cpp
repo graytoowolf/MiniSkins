@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,8 +82,7 @@ void ProxyPage::applySettings()
         ui->proxyAddrEdit->text(),
         ui->proxyPortEdit->value(),
         ui->proxyUserEdit->text(),
-        ui->proxyPassEdit->text()
-    );
+        ui->proxyPassEdit->text());
 }
 void ProxyPage::loadSettings()
 {

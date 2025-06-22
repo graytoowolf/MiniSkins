@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 
 namespace Ui
 {
-class LogPage;
+    class LogPage;
 }
 class QTextCharFormat;
 class LogFormatProxyModel;
@@ -81,6 +81,6 @@ private:
     InstancePtr m_instance;
     shared_qobject_ptr<LaunchTask> m_process;
 
-    LogFormatProxyModel * m_proxy;
-    shared_qobject_ptr <LogModel> m_model;
+    LogFormatProxyModel *m_proxy;
+    shared_qobject_ptr<LogModel> m_model;
 };

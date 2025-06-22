@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@
 #include "InstanceList.h"
 
 CopyInstanceDialog::CopyInstanceDialog(InstancePtr original, QWidget *parent)
-    :QDialog(parent), ui(new Ui::CopyInstanceDialog), m_original(original)
+    : QDialog(parent), ui(new Ui::CopyInstanceDialog), m_original(original)
 {
     ui->setupUi(this);
     resize(minimumSizeHint());
@@ -46,7 +46,7 @@ CopyInstanceDialog::CopyInstanceDialog(InstancePtr original, QWidget *parent)
     groupList.push_front("");
     ui->groupBox->addItems(groupList);
     int index = groupList.indexOf(APPLICATION->instances()->getInstanceGroup(m_original->id()));
-    if(index == -1)
+    if (index == -1)
     {
         index = 0;
     }
@@ -65,7 +65,7 @@ void CopyInstanceDialog::updateDialogState()
 {
     auto allowOK = !instName().isEmpty();
     auto OkButton = ui->buttonBox->button(QDialogButtonBox::Ok);
-    if(OkButton->isEnabled() != allowOK)
+    if (OkButton->isEnabled() != allowOK)
     {
         OkButton->setEnabled(allowOK);
     }
@@ -74,7 +74,7 @@ void CopyInstanceDialog::updateDialogState()
 QString CopyInstanceDialog::instName() const
 {
     auto result = ui->instNameTextBox->text().trimmed();
-    if(result.size())
+    if (result.size())
     {
         return result;
     }
@@ -115,11 +115,11 @@ bool CopyInstanceDialog::shouldCopySaves() const
 
 void CopyInstanceDialog::on_copySavesCheckbox_stateChanged(int state)
 {
-    if(state == Qt::Unchecked)
+    if (state == Qt::Unchecked)
     {
         m_copySaves = false;
     }
-    else if(state == Qt::Checked)
+    else if (state == Qt::Checked)
     {
         m_copySaves = true;
     }
@@ -130,14 +130,13 @@ bool CopyInstanceDialog::shouldKeepPlaytime() const
     return m_keepPlaytime;
 }
 
-
 void CopyInstanceDialog::on_keepPlaytimeCheckbox_stateChanged(int state)
 {
-    if(state == Qt::Unchecked)
+    if (state == Qt::Unchecked)
     {
         m_keepPlaytime = false;
     }
-    else if(state == Qt::Checked)
+    else if (state == Qt::Checked)
     {
         m_keepPlaytime = true;
     }

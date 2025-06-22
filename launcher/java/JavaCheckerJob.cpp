@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ void JavaCheckerJob::partFinished(JavaCheckResult result)
 {
     num_finished++;
     qDebug() << m_job_name.toLocal8Bit() << "progress:" << num_finished << "/"
-                << javacheckers.size();
+             << javacheckers.size();
     setProgress(num_finished, javacheckers.size());
 
     javaresults.replace(result.id, result);

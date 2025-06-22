@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
  */
 class LoggedProcess : public QProcess
 {
-Q_OBJECT
+    Q_OBJECT
 public:
     enum State
     {
@@ -38,7 +38,7 @@ public:
     };
 
 public:
-    explicit LoggedProcess(QObject* parent = 0);
+    explicit LoggedProcess(QObject *parent = 0);
     virtual ~LoggedProcess();
 
     State state() const;
@@ -56,7 +56,6 @@ public slots:
      * @brief kill the process - equivalent to kill -9
      */
     void kill();
-
 
 private slots:
     void on_stdErr();

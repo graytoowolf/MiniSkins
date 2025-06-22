@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 
 namespace Ui
 {
-class ProfileSelectDialog;
+    class ProfileSelectDialog;
 }
 
 class ProfileSelectDialog : public QDialog
@@ -52,7 +52,7 @@ public:
      * Constructs a new account select dialog with the given parent and message.
      * The message will be shown at the top of the dialog. It is an empty string by default.
      */
-    explicit ProfileSelectDialog(const QString& message="", int flags=0, QWidget *parent = 0);
+    explicit ProfileSelectDialog(const QString &message = "", int flags = 0, QWidget *parent = 0);
     ~ProfileSelectDialog();
 
     /*!
@@ -73,8 +73,7 @@ public:
      */
     bool useAsInstDefaullt() const;
 
-public
-slots:
+public slots:
     void on_buttonBox_accepted();
 
     void on_buttonBox_rejected();

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ public:
     /*!
      * Constructs a news reader to read from the given RSS feed URL.
      */
-    NewsChecker(shared_qobject_ptr<QNetworkAccessManager> network, const QString& feedUrl);
+    NewsChecker(shared_qobject_ptr<QNetworkAccessManager> network, const QString &feedUrl);
 
     /*!
      * Returns the error message for the last time the news was loaded.
@@ -100,6 +100,5 @@ protected slots:
     void succeed();
 
     /// Emits newsLoadingFailed() and sets m_lastLoadError to the given message.
-    void fail(const QString& errorMsg);
+    void fail(const QString &errorMsg);
 };
-

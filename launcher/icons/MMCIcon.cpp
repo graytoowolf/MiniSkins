@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,12 +61,12 @@ QIcon MMCIcon::icon() const
     {
         return QIcon();
     }
-    if(m_current_type == IconType::Builtin && m_key == "logo")
+    if (m_current_type == IconType::Builtin && m_key == "logo")
     {
         return QIcon(":/logo.svg");
     }
-    auto & icon = m_images[m_current_type].icon;
-    if(!icon.isNull())
+    auto &icon = m_images[m_current_type].icon;
+    if (!icon.isNull())
         return icon;
     // FIXME: inject this.
     return XdgIcon::fromTheme(m_images[m_current_type].key);
@@ -98,7 +98,7 @@ void MMCIcon::replace(IconType new_type, QIcon icon, QString path)
     m_images[new_type].key = QString();
 }
 
-void MMCIcon::replace(IconType new_type, const QString& key)
+void MMCIcon::replace(IconType new_type, const QString &key)
 {
     if (new_type > m_current_type || m_current_type == IconType::ToBeDeleted)
     {
@@ -111,12 +111,12 @@ void MMCIcon::replace(IconType new_type, const QString& key)
 
 QString MMCIcon::getFilePath() const
 {
-    if(m_current_type == IconType::ToBeDeleted){
+    if (m_current_type == IconType::ToBeDeleted)
+    {
         return QString();
     }
     return m_images[m_current_type].filename;
 }
-
 
 bool MMCIcon::isBuiltIn() const
 {

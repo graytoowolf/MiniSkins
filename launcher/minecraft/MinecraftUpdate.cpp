@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,13 +49,13 @@ void MinecraftUpdate::executeTask()
     // add metadata update task if necessary
     {
         auto components = m_inst->getPackProfile();
-        if(!components->reload(Net::Mode::Online))
+        if (!components->reload(Net::Mode::Online))
         {
             emitFailed(tr("Failed to load version components - mmc-pack.json is probably corrupted."));
             return;
         }
         auto task = components->getCurrentTask();
-        if(task)
+        if (task)
         {
             m_tasks.append(task.unwrap());
         }
@@ -76,7 +76,7 @@ void MinecraftUpdate::executeTask()
         m_tasks.append(std::make_shared<AssetUpdateTask>(m_inst));
     }
 
-    if(!m_preFailure.isEmpty())
+    if (!m_preFailure.isEmpty())
     {
         emitFailed(m_preFailure);
         return;
@@ -86,18 +86,18 @@ void MinecraftUpdate::executeTask()
 
 void MinecraftUpdate::next()
 {
-    if(m_abort)
+    if (m_abort)
     {
         emitFailed(tr("Aborted by user."));
         return;
     }
-    if(m_failed_out_of_order)
+    if (m_failed_out_of_order)
     {
         emitFailed(m_fail_reason);
         return;
     }
-    m_currentTask ++;
-    if(m_currentTask > 0)
+    m_currentTask++;
+    if (m_currentTask > 0)
     {
         auto task = m_tasks[m_currentTask - 1];
         disconnect(task.get(), &Task::succeeded, this, &MinecraftUpdate::subtaskSucceeded);
@@ -105,14 +105,14 @@ void MinecraftUpdate::next()
         disconnect(task.get(), &Task::progress, this, &MinecraftUpdate::progress);
         disconnect(task.get(), &Task::status, this, &MinecraftUpdate::setStatus);
     }
-    if(m_currentTask == m_tasks.size())
+    if (m_currentTask == m_tasks.size())
     {
         emitSucceeded();
         return;
     }
     auto task = m_tasks[m_currentTask];
     // if the task is already finished by the time we look at it, skip it
-    if(task->isFinished())
+    if (task->isFinished())
     {
         qCritical() << "MinecraftUpdate: Skipping finished subtask" << m_currentTask << ":" << task.get();
         next();
@@ -122,7 +122,7 @@ void MinecraftUpdate::next()
     connect(task.get(), &Task::progress, this, &MinecraftUpdate::progress);
     connect(task.get(), &Task::status, this, &MinecraftUpdate::setStatus);
     // if the task is already running, do not start it again
-    if(!task->isRunning())
+    if (!task->isRunning())
     {
         task->start();
     }
@@ -130,14 +130,14 @@ void MinecraftUpdate::next()
 
 void MinecraftUpdate::subtaskSucceeded()
 {
-    if(isFinished())
+    if (isFinished())
     {
         qCritical() << "MinecraftUpdate: Subtask" << sender() << "succeeded, but work was already done!";
         return;
     }
     auto senderTask = QObject::sender();
     auto currentTask = m_tasks[m_currentTask].get();
-    if(senderTask != currentTask)
+    if (senderTask != currentTask)
     {
         qDebug() << "MinecraftUpdate: Subtask" << sender() << "succeeded out of order.";
         return;
@@ -147,14 +147,14 @@ void MinecraftUpdate::subtaskSucceeded()
 
 void MinecraftUpdate::subtaskFailed(QString error)
 {
-    if(isFinished())
+    if (isFinished())
     {
         qCritical() << "MinecraftUpdate: Subtask" << sender() << "failed, but work was already done!";
         return;
     }
     auto senderTask = QObject::sender();
     auto currentTask = m_tasks[m_currentTask].get();
-    if(senderTask != currentTask)
+    if (senderTask != currentTask)
     {
         qDebug() << "MinecraftUpdate: Subtask" << sender() << "failed out of order.";
         m_failed_out_of_order = true;
@@ -164,14 +164,13 @@ void MinecraftUpdate::subtaskFailed(QString error)
     emitFailed(error);
 }
 
-
 bool MinecraftUpdate::abort()
 {
-    if(!m_abort)
+    if (!m_abort)
     {
         m_abort = true;
         auto task = m_tasks[m_currentTask];
-        if(task->canAbort())
+        if (task->canAbort())
         {
             return task->abort();
         }

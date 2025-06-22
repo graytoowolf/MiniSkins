@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Authors: Orochimarufan <orochimarufan.x3@gmail.com>
  *
@@ -40,7 +40,7 @@ shared_qobject_ptr<LaunchTask> LaunchTask::create(InstancePtr inst)
     return proc;
 }
 
-LaunchTask::LaunchTask(InstancePtr instance): m_instance(instance)
+LaunchTask::LaunchTask(InstancePtr instance) : m_instance(instance)
 {
 }
 
@@ -57,7 +57,7 @@ void LaunchTask::prependStep(shared_qobject_ptr<LaunchStep> step)
 void LaunchTask::executeTask()
 {
     m_instance->setCrashed(false);
-    if(!m_steps.size())
+    if (!m_steps.size())
     {
         state = LaunchTask::Finished;
         emitSucceeded();
@@ -75,24 +75,24 @@ void LaunchTask::onReadyForLaunch()
 void LaunchTask::onStepFinished()
 {
     // initial -> just start the first step
-    if(currentStep == -1)
+    if (currentStep == -1)
     {
-        currentStep ++;
+        currentStep++;
         m_steps[currentStep]->start();
         return;
     }
 
     auto step = m_steps[currentStep];
-    if(step->wasSuccessful())
+    if (step->wasSuccessful())
     {
         // end?
-        if(currentStep == m_steps.size() - 1)
+        if (currentStep == m_steps.size() - 1)
         {
             finalizeSteps(true, QString());
         }
         else
         {
-            currentStep ++;
+            currentStep++;
             step = m_steps[currentStep];
             step->start();
         }
@@ -103,13 +103,13 @@ void LaunchTask::onStepFinished()
     }
 }
 
-void LaunchTask::finalizeSteps(bool successful, const QString& error)
+void LaunchTask::finalizeSteps(bool successful, const QString &error)
 {
-    for(auto step = currentStep; step >= 0; step--)
+    for (auto step = currentStep; step >= 0; step--)
     {
         m_steps[step]->finalize();
     }
-    if(successful)
+    if (successful)
     {
         emitSucceeded();
     }
@@ -143,7 +143,7 @@ QString LaunchTask::censorPrivateInfo(QString in)
 
 void LaunchTask::proceed()
 {
-    if(state != LaunchTask::Waiting)
+    if (state != LaunchTask::Waiting)
     {
         return;
     }
@@ -152,76 +152,77 @@ void LaunchTask::proceed()
 
 bool LaunchTask::canAbort() const
 {
-    switch(state)
+    switch (state)
     {
-        case LaunchTask::Aborted:
-        case LaunchTask::Failed:
-        case LaunchTask::Finished:
-            return false;
-        case LaunchTask::NotStarted:
-            return true;
-        case LaunchTask::Running:
-        case LaunchTask::Waiting:
-        {
-            auto step = m_steps[currentStep];
-            return step->canAbort();
-        }
+    case LaunchTask::Aborted:
+    case LaunchTask::Failed:
+    case LaunchTask::Finished:
+        return false;
+    case LaunchTask::NotStarted:
+        return true;
+    case LaunchTask::Running:
+    case LaunchTask::Waiting:
+    {
+        auto step = m_steps[currentStep];
+        return step->canAbort();
+    }
     }
     return false;
 }
 
 bool LaunchTask::abort()
 {
-    switch(state)
+    switch (state)
     {
-        case LaunchTask::Aborted:
-        case LaunchTask::Failed:
-        case LaunchTask::Finished:
-            return true;
-        case LaunchTask::NotStarted:
+    case LaunchTask::Aborted:
+    case LaunchTask::Failed:
+    case LaunchTask::Finished:
+        return true;
+    case LaunchTask::NotStarted:
+    {
+        state = LaunchTask::Aborted;
+        emitFailed("Aborted");
+        return true;
+    }
+    case LaunchTask::Running:
+    case LaunchTask::Waiting:
+    {
+        auto step = m_steps[currentStep];
+        if (!step->canAbort())
+        {
+            return false;
+        }
+        if (step->abort())
         {
             state = LaunchTask::Aborted;
-            emitFailed("Aborted");
             return true;
         }
-        case LaunchTask::Running:
-        case LaunchTask::Waiting:
-        {
-            auto step = m_steps[currentStep];
-            if(!step->canAbort())
-            {
-                return false;
-            }
-            if(step->abort())
-            {
-                state = LaunchTask::Aborted;
-                return true;
-            }
-        }
-        default:
-            break;
+    }
+    default:
+        break;
     }
     return false;
 }
 
 shared_qobject_ptr<LogModel> LaunchTask::getLogModel()
 {
-    if(!m_logModel)
+    if (!m_logModel)
     {
         m_logModel.reset(new LogModel());
         m_logModel->setMaxLines(m_instance->getConsoleMaxLines());
         m_logModel->setStopOnOverflow(m_instance->shouldStopOnConsoleOverflow());
         // FIXME: should this really be here?
         m_logModel->setOverflowMessage(tr("MultiMC stopped watching the game log because the log length surpassed %1 lines.\n"
-            "You may have to fix your mods because the game is still logging to files and"
-            " likely wasting harddrive space at an alarming rate!").arg(m_logModel->getMaxLines()));
+                                          "You may have to fix your mods because the game is still logging to files and"
+                                          " likely wasting harddrive space at an alarming rate!")
+                                           .arg(m_logModel->getMaxLines()));
     }
     return m_logModel;
 }
 
 void LaunchTask::onLogLines(const QStringList &lines, MessageLevel::Enum defaultLevel)
 {
-    for (auto & line: lines)
+    for (auto &line : lines)
     {
         onLogLine(line, defaultLevel);
     }
@@ -231,7 +232,7 @@ void LaunchTask::onLogLine(QString line, MessageLevel::Enum level)
 {
     // if the launcher part set a log level, use it
     auto innerLevel = MessageLevel::fromLine(line);
-    if(innerLevel != MessageLevel::Unknown)
+    if (innerLevel != MessageLevel::Unknown)
     {
         level = innerLevel;
     }
@@ -277,4 +278,3 @@ QString LaunchTask::substituteVariables(const QString &cmd) const
     }
     return out;
 }
-

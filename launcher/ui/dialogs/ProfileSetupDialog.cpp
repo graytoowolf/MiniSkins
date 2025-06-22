@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,61 +72,70 @@ void ProfileSetupDialog::setNameStatus(ProfileSetupDialog::NameStatus status, QS
 {
     nameStatus = status;
     auto okButton = ui->buttonBox->button(QDialogButtonBox::Ok);
-    switch(nameStatus)
+    switch (nameStatus)
     {
-        case NameStatus::Available: {
-            validityAction->setIcon(goodIcon);
-            okButton->setEnabled(true);
-        }
-        break;
-        case NameStatus::NotSet:
-        case NameStatus::Pending:
-            validityAction->setIcon(yellowIcon);
-            okButton->setEnabled(false);
-            break;
-        case NameStatus::Exists:
-        case NameStatus::Error:
-            validityAction->setIcon(badIcon);
-            okButton->setEnabled(false);
-            break;
+    case NameStatus::Available:
+    {
+        validityAction->setIcon(goodIcon);
+        okButton->setEnabled(true);
     }
-    if(!errorString.isEmpty()) {
+    break;
+    case NameStatus::NotSet:
+    case NameStatus::Pending:
+        validityAction->setIcon(yellowIcon);
+        okButton->setEnabled(false);
+        break;
+    case NameStatus::Exists:
+    case NameStatus::Error:
+        validityAction->setIcon(badIcon);
+        okButton->setEnabled(false);
+        break;
+    }
+    if (!errorString.isEmpty())
+    {
         ui->errorLabel->setText(errorString);
         ui->errorLabel->setVisible(true);
     }
-    else {
+    else
+    {
         ui->errorLabel->setVisible(false);
     }
 }
 
-void ProfileSetupDialog::nameEdited(const QString& name)
+void ProfileSetupDialog::nameEdited(const QString &name)
 {
-    if(!ui->nameEdit->hasAcceptableInput()) {
+    if (!ui->nameEdit->hasAcceptableInput())
+    {
         setNameStatus(NameStatus::NotSet, tr("Name is too short - must be between 3 and 16 characters long."));
         return;
     }
     scheduleCheck(name);
 }
 
-void ProfileSetupDialog::scheduleCheck(const QString& name) {
+void ProfileSetupDialog::scheduleCheck(const QString &name)
+{
     queuedCheck = name;
     setNameStatus(NameStatus::Pending);
     checkStartTimer.start(1000);
 }
 
-void ProfileSetupDialog::startCheck() {
-    if(isChecking) {
+void ProfileSetupDialog::startCheck()
+{
+    if (isChecking)
+    {
         return;
     }
-    if(queuedCheck.isNull()) {
+    if (queuedCheck.isNull())
+    {
         return;
     }
     checkName(queuedCheck);
 }
 
-
-void ProfileSetupDialog::checkName(const QString &name) {
-    if(isChecking) {
+void ProfileSetupDialog::checkName(const QString &name)
+{
+    if (isChecking)
+    {
         return;
     }
 
@@ -149,36 +158,44 @@ void ProfileSetupDialog::checkName(const QString &name) {
 void ProfileSetupDialog::checkFinished(
     QNetworkReply::NetworkError error,
     QByteArray data,
-    QList<QNetworkReply::RawHeaderPair> headers
-) {
+    QList<QNetworkReply::RawHeaderPair> headers)
+{
     auto requestor = qobject_cast<AuthRequest *>(QObject::sender());
     requestor->deleteLater();
 
-    if(error == QNetworkReply::NoError) {
+    if (error == QNetworkReply::NoError)
+    {
         auto doc = QJsonDocument::fromJson(data);
         auto root = doc.object();
         auto statusValue = root.value("status").toString("INVALID");
-        if(statusValue == "AVAILABLE") {
+        if (statusValue == "AVAILABLE")
+        {
             setNameStatus(NameStatus::Available);
         }
-        else if (statusValue == "DUPLICATE") {
+        else if (statusValue == "DUPLICATE")
+        {
             setNameStatus(NameStatus::Exists, tr("Minecraft profile with name %1 already exists.").arg(currentCheck));
         }
-        else if (statusValue == "NOT_ALLOWED") {
+        else if (statusValue == "NOT_ALLOWED")
+        {
             setNameStatus(NameStatus::Exists, tr("The name %1 is not allowed.").arg(currentCheck));
         }
-        else {
+        else
+        {
             setNameStatus(NameStatus::Error, tr("Unhandled profile name status: %1").arg(statusValue));
         }
     }
-    else {
+    else
+    {
         setNameStatus(NameStatus::Error, tr("Failed to check name availability."));
     }
     isChecking = false;
 }
 
-void ProfileSetupDialog::setupProfile(const QString &profileName) {
-    if(isWorking) {
+void ProfileSetupDialog::setupProfile(const QString &profileName)
+{
+    if (isWorking)
+    {
         return;
     }
 
@@ -202,93 +219,97 @@ void ProfileSetupDialog::setupProfile(const QString &profileName) {
     button->setEnabled(false);
 }
 
-namespace {
+namespace
+{
 
-struct MojangError{
-    static MojangError fromJSON(QByteArray data, QNetworkReply::NetworkError networkError) {
-        MojangError out;
-        out.rawError = QString::fromUtf8(data);
-        out.networkError = networkError;
-
-        auto doc = QJsonDocument::fromJson(data, &out.parseError);
-        if(out.parseError.error != QJsonParseError::NoError)
-        {
-            out.jsonParsed = false;
-        }
-        else
-        {
-            auto object = doc.object();
-            Parsers::getString(object.value("path"), out.path);
-            QJsonValue details = object.value("details");
-            if(details.isObject())
-            {
-                QJsonObject detailsObj = details.toObject();
-                Parsers::getString(detailsObj.value("status"), out.detailsStatus);
-            }
-            Parsers::getString(object.value("error"), out.error);
-            Parsers::getString(object.value("errorMessage"), out.errorMessage);
-            out.jsonParsed = true;
-        }
-
-
-        return out;
-    }
-    QString toString() const
+    struct MojangError
     {
-        QString outString;
-        QTextStream out(&outString);
-        out << "Network error:" << networkError << "\n";
-        if(jsonParsed)
+        static MojangError fromJSON(QByteArray data, QNetworkReply::NetworkError networkError)
         {
-            if(!path.isNull())
+            MojangError out;
+            out.rawError = QString::fromUtf8(data);
+            out.networkError = networkError;
+
+            auto doc = QJsonDocument::fromJson(data, &out.parseError);
+            if (out.parseError.error != QJsonParseError::NoError)
             {
-                out << "path: " << path << "\n";
+                out.jsonParsed = false;
             }
-            if(!error.isNull())
+            else
             {
-                out << "error: " << error << "\n";
+                auto object = doc.object();
+                Parsers::getString(object.value("path"), out.path);
+                QJsonValue details = object.value("details");
+                if (details.isObject())
+                {
+                    QJsonObject detailsObj = details.toObject();
+                    Parsers::getString(detailsObj.value("status"), out.detailsStatus);
+                }
+                Parsers::getString(object.value("error"), out.error);
+                Parsers::getString(object.value("errorMessage"), out.errorMessage);
+                out.jsonParsed = true;
             }
-            if(!errorMessage.isNull())
-            {
-                out << "errorMessage: " << errorMessage << "\n";
-            }
-            if(!detailsStatus.isNull())
-            {
-                out << "details.status: " << detailsStatus << "\n";
-            }
+
+            return out;
         }
-        else
+        QString toString() const
         {
-            out << "Mojang error failed to parse with error: " << parseError.errorString() << "\n";
-            out << "Raw contents:\n" << rawError << "\n";
+            QString outString;
+            QTextStream out(&outString);
+            out << "Network error:" << networkError << "\n";
+            if (jsonParsed)
+            {
+                if (!path.isNull())
+                {
+                    out << "path: " << path << "\n";
+                }
+                if (!error.isNull())
+                {
+                    out << "error: " << error << "\n";
+                }
+                if (!errorMessage.isNull())
+                {
+                    out << "errorMessage: " << errorMessage << "\n";
+                }
+                if (!detailsStatus.isNull())
+                {
+                    out << "details.status: " << detailsStatus << "\n";
+                }
+            }
+            else
+            {
+                out << "Mojang error failed to parse with error: " << parseError.errorString() << "\n";
+                out << "Raw contents:\n"
+                    << rawError << "\n";
+            }
+            return outString;
         }
-        return outString;
-    }
 
-    QNetworkReply::NetworkError networkError;
-    QString rawError;
+        QNetworkReply::NetworkError networkError;
+        QString rawError;
 
-    QJsonParseError parseError;
-    bool jsonParsed = false;
+        QJsonParseError parseError;
+        bool jsonParsed = false;
 
-    QString path;
-    QString error;
-    QString errorMessage;
-    QString detailsStatus;
-};
+        QString path;
+        QString error;
+        QString errorMessage;
+        QString detailsStatus;
+    };
 
 }
 
 void ProfileSetupDialog::setupProfileFinished(
     QNetworkReply::NetworkError error,
     QByteArray data,
-    QList<QNetworkReply::RawHeaderPair> headers
-) {
+    QList<QNetworkReply::RawHeaderPair> headers)
+{
     auto requestor = qobject_cast<AuthRequest *>(QObject::sender());
     requestor->deleteLater();
 
     isWorking = false;
-    if(error == QNetworkReply::NoError) {
+    if (error == QNetworkReply::NoError)
+    {
         /*
          * data contains the profile in the response
          * ... we could parse it and update the account, but let's just return back to the normal login flow instead...
@@ -296,10 +317,11 @@ void ProfileSetupDialog::setupProfileFinished(
         accept();
         return;
     }
-    else {
+    else
+    {
         auto parsedError = MojangError::fromJSON(data, error);
         // Apparently, this is something that can happen...
-        if(parsedError.detailsStatus == "ALREADY_REGISTERED")
+        if (parsedError.detailsStatus == "ALREADY_REGISTERED")
         {
             accept();
             return;

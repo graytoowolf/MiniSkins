@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 
 namespace Ui
 {
-class MCModInfoFrame;
+    class MCModInfoFrame;
 }
 
 class MCModInfoFrame : public QFrame
@@ -38,7 +38,7 @@ public:
     void clear();
 
 public slots:
-    void modDescEllipsisHandler(const QString& link );
+    void modDescEllipsisHandler(const QString &link);
     void boxClosed(int result);
 
 private:
@@ -47,6 +47,5 @@ private:
 private:
     Ui::MCModInfoFrame *ui;
     QString desc;
-    class QMessageBox * currentBox = nullptr;
+    class QMessageBox *currentBox = nullptr;
 };
-

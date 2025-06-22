@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ public:
             if (icon.isNull())
                 icon = m_emptyIcon;
             // HACK: fixes icon stretching on windows. TODO: report Qt bug for this
-            return QIcon(icon.pixmap(QSize(48,48)));
+            return QIcon(icon.pixmap(QSize(48, 48)));
         }
         }
         return QVariant();
@@ -81,9 +81,9 @@ public:
         return m_pages;
     }
 
-    BasePage * findPageEntryById(QString id)
+    BasePage *findPageEntryById(QString id)
     {
-        for(auto page: m_pages)
+        for (auto page : m_pages)
         {
             if (page->id() == id)
                 return page;

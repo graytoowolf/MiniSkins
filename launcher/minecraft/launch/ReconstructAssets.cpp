@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ void ReconstructAssets::executeTask()
     auto profile = components->getProfile();
     auto assets = profile->getMinecraftAssets();
 
-    if(!AssetsUtils::reconstructAssets(assets->id, minecraftInstance->resourcesDir()))
+    if (!AssetsUtils::reconstructAssets(assets->id, minecraftInstance->resourcesDir()))
     {
         emit logLine("Failed to reconstruct Minecraft assets.", MessageLevel::Error);
     }

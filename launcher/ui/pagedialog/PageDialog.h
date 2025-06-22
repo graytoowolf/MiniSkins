@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,9 @@ public:
     explicit PageDialog(BasePageProvider *pageProvider, QString defaultId = QString(), QWidget *parent = 0);
     virtual ~PageDialog() {}
 
-private
-slots:
+private slots:
     virtual void closeEvent(QCloseEvent *event);
 
 private:
-    PageContainer * m_container;
+    PageContainer *m_container;
 };

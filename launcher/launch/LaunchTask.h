@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Authors: Orochimarufan <orochimarufan.x3@gmail.com>
  *
@@ -24,7 +24,7 @@
 #include "LoggedProcess.h"
 #include "LaunchStep.h"
 
-class LaunchTask: public Task
+class LaunchTask : public Task
 {
     Q_OBJECT
 protected:
@@ -103,19 +103,19 @@ signals:
     void requestLogging();
 
 public slots:
-    void onLogLines(const QStringList& lines, MessageLevel::Enum defaultLevel = MessageLevel::Launcher);
+    void onLogLines(const QStringList &lines, MessageLevel::Enum defaultLevel = MessageLevel::Launcher);
     void onLogLine(QString line, MessageLevel::Enum defaultLevel = MessageLevel::Launcher);
     void onReadyForLaunch();
     void onStepFinished();
     void onProgressReportingRequested();
 
 private: /*methods */
-    void finalizeSteps(bool successful, const QString & error);
+    void finalizeSteps(bool successful, const QString &error);
 
 protected: /* data */
     InstancePtr m_instance;
     shared_qobject_ptr<LogModel> m_logModel;
-    QList <shared_qobject_ptr<LaunchStep>> m_steps;
+    QList<shared_qobject_ptr<LaunchStep>> m_steps;
     QMap<QString, QString> m_censorFilter;
     int currentStep = -1;
     State state = NotStarted;

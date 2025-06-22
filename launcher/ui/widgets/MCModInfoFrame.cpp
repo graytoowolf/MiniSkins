@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,9 +61,8 @@ void MCModInfoFrame::clear()
     setModDescription(QString());
 }
 
-MCModInfoFrame::MCModInfoFrame(QWidget *parent) :
-    QFrame(parent),
-    ui(new Ui::MCModInfoFrame)
+MCModInfoFrame::MCModInfoFrame(QWidget *parent) : QFrame(parent),
+                                                  ui(new Ui::MCModInfoFrame)
 {
     ui->setupUi(this);
     ui->label_ModDescription->setHidden(true);
@@ -78,7 +77,7 @@ MCModInfoFrame::~MCModInfoFrame()
 
 void MCModInfoFrame::updateHiddenState()
 {
-    if(ui->label_ModDescription->isHidden() && ui->label_ModText->isHidden())
+    if (ui->label_ModDescription->isHidden() && ui->label_ModText->isHidden())
     {
         setHidden(true);
     }
@@ -90,7 +89,7 @@ void MCModInfoFrame::updateHiddenState()
 
 void MCModInfoFrame::setModText(QString text)
 {
-    if(text.isEmpty())
+    if (text.isEmpty())
     {
         ui->label_ModText->setHidden(true);
     }
@@ -104,7 +103,7 @@ void MCModInfoFrame::setModText(QString text)
 
 void MCModInfoFrame::setModDescription(QString text)
 {
-    if(text.isEmpty())
+    if (text.isEmpty())
     {
         ui->label_ModDescription->setHidden(true);
         updateHiddenState();
@@ -121,9 +120,10 @@ void MCModInfoFrame::setModDescription(QString text)
     QChar rem('\n');
     QString finaltext;
     finaltext.reserve(intermediatetext.size());
-    foreach(const QChar& c, intermediatetext)
+    foreach (const QChar &c, intermediatetext)
     {
-        if(c == rem && prev){
+        if (c == rem && prev)
+        {
             continue;
         }
         prev = c == rem;
@@ -131,7 +131,7 @@ void MCModInfoFrame::setModDescription(QString text)
     }
     QString labeltext;
     labeltext.reserve(300);
-    if(finaltext.length() > 290)
+    if (finaltext.length() > 290)
     {
         ui->label_ModDescription->setOpenExternalLinks(false);
         ui->label_ModDescription->setTextFormat(Qt::TextFormat::RichText);
@@ -150,7 +150,7 @@ void MCModInfoFrame::setModDescription(QString text)
 
 void MCModInfoFrame::modDescEllipsisHandler(const QString &link)
 {
-    if(!currentBox)
+    if (!currentBox)
     {
         currentBox = CustomMessageBox::selectable(this, QString(), desc);
         connect(currentBox, &QMessageBox::finished, this, &MCModInfoFrame::boxClosed);

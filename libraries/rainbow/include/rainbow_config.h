@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 #include <QtCore/QtGlobal>
 
 #ifdef RAINBOW_STATIC
-    #define RAINBOW_EXPORT
+#define RAINBOW_EXPORT
 #else
-    #ifdef RAINBOW_LIBRARY
-        #define RAINBOW_EXPORT Q_DECL_EXPORT
-    #else
-        #define RAINBOW_EXPORT Q_DECL_IMPORT
-    #endif
+#ifdef RAINBOW_LIBRARY
+#define RAINBOW_EXPORT Q_DECL_EXPORT
+#else
+#define RAINBOW_EXPORT Q_DECL_IMPORT
+#endif
 #endif

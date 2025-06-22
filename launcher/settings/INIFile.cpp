@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,15 +30,15 @@ QString INIFile::unescape(QString orig)
 {
     QString out;
     QChar prev = 0;
-    for(auto c: orig)
+    for (auto c : orig)
     {
-        if(prev == '\\')
+        if (prev == '\\')
         {
-            if(c == 'n')
+            if (c == 'n')
                 out += '\n';
-            else if(c == 't')
+            else if (c == 't')
                 out += '\t';
-            else if(c == '#')
+            else if (c == '#')
                 out += '#';
             else
                 out += c;
@@ -46,7 +46,7 @@ QString INIFile::unescape(QString orig)
         }
         else
         {
-            if(c == '\\')
+            if (c == '\\')
             {
                 prev = c;
                 continue;
@@ -61,15 +61,15 @@ QString INIFile::unescape(QString orig)
 QString INIFile::escape(QString orig)
 {
     QString out;
-    for(auto c: orig)
+    for (auto c : orig)
     {
-        if(c == '\n')
+        if (c == '\n')
             out += "\\n";
         else if (c == '\t')
             out += "\\t";
-        else if(c == '\\')
+        else if (c == '\\')
             out += "\\\\";
-        else if(c == '#')
+        else if (c == '#')
             out += "\\#";
         else
             out += c;
@@ -103,7 +103,6 @@ bool INIFile::saveFile(QString fileName)
     return true;
 }
 
-
 bool INIFile::loadFile(QString fileName)
 {
     QFile file(fileName);
@@ -127,8 +126,10 @@ bool INIFile::loadFile(QByteArray file)
         int commentIndex = 0;
         QString line = lineRaw;
         // Search for comments until no more escaped # are available
-        while((commentIndex = line.indexOf('#', commentIndex + 1)) != -1) {
-            if(commentIndex > 0 && line.at(commentIndex - 1) == '\\') {
+        while ((commentIndex = line.indexOf('#', commentIndex + 1)) != -1)
+        {
+            if (commentIndex > 0 && line.at(commentIndex - 1) == '\\')
+            {
                 continue;
             }
             line = line.left(lineRaw.indexOf('#')).trimmed();

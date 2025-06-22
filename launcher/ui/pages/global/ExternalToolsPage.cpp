@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,16 +27,15 @@
 #include "Application.h"
 #include <tools/MCEditTool.h>
 
-ExternalToolsPage::ExternalToolsPage(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::ExternalToolsPage)
+ExternalToolsPage::ExternalToolsPage(QWidget *parent) : QWidget(parent),
+                                                        ui(new Ui::ExternalToolsPage)
 {
     ui->setupUi(this);
     ui->tabWidget->tabBar()->hide();
 
-    #if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
     ui->jsonEditorTextBox->setClearButtonEnabled(true);
-    #endif
+#endif
 
     ui->mceditLink->setOpenExternalLinks(true);
     ui->jvisualvmLink->setOpenExternalLinks(true);
@@ -202,7 +201,7 @@ void ExternalToolsPage::on_jsonEditorBrowseBtn_clicked()
         this, tr("JSON Editor"),
         ui->jsonEditorTextBox->text().isEmpty()
 #if defined(Q_OS_LINUX)
-                ? QString("/usr/bin")
+            ? QString("/usr/bin")
 #else
             ? QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation).first()
 #endif

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ ModFolderModel::ModFolderModel(const QString &dir) : QAbstractListModel(), m_dir
 
 void ModFolderModel::startWatching()
 {
-    if(is_watching)
+    if (is_watching)
         return;
 
     update();
@@ -58,7 +58,7 @@ void ModFolderModel::startWatching()
 
 void ModFolderModel::stopWatching()
 {
-    if(!is_watching)
+    if (!is_watching)
         return;
 
     is_watching = !m_watcher->removePath(m_dir.absolutePath());
@@ -74,10 +74,12 @@ void ModFolderModel::stopWatching()
 
 bool ModFolderModel::update()
 {
-    if (!isValid()) {
+    if (!isValid())
+    {
         return false;
     }
-    if(m_update) {
+    if (m_update)
+    {
         scheduled_update = true;
         return true;
     }
@@ -93,23 +95,26 @@ bool ModFolderModel::update()
 void ModFolderModel::finishUpdate()
 {
     QSet<QString> currentSet = modsIndex.keys().toSet();
-    auto & newMods = m_update->mods;
+    auto &newMods = m_update->mods;
     QSet<QString> newSet = newMods.keys().toSet();
 
     // see if the kept mods changed in some way
     {
         QSet<QString> kept = currentSet;
         kept.intersect(newSet);
-        for(auto & keptMod: kept) {
-            auto & newMod = newMods[keptMod];
+        for (auto &keptMod : kept)
+        {
+            auto &newMod = newMods[keptMod];
             auto row = modsIndex[keptMod];
-            auto & currentMod = mods[row];
-            if(newMod.dateTimeChanged() == currentMod.dateTimeChanged()) {
+            auto &currentMod = mods[row];
+            if (newMod.dateTimeChanged() == currentMod.dateTimeChanged())
+            {
                 // no significant change, ignore...
                 continue;
             }
-            auto & oldMod = mods[row];
-            if(oldMod.isResolving()) {
+            auto &oldMod = mods[row];
+            if (oldMod.isResolving())
+            {
                 activeTickets.remove(oldMod.resolutionTicket());
             }
             oldMod = newMod;
@@ -124,32 +129,36 @@ void ModFolderModel::finishUpdate()
         QList<int> removedRows;
         QStringList removedModNames;
         removed.subtract(newSet);
-        for(auto & removedMod: removed) {
+        for (auto &removedMod : removed)
+        {
             removedRows.append(modsIndex[removedMod]);
         }
         std::sort(removedRows.begin(), removedRows.end(), std::greater<int>());
 
         // 在删除前获取JSON路径，避免所有mod被删除后无法获取
         QString jsonPath;
-        if (!mods.isEmpty()) {
+        if (!mods.isEmpty())
+        {
             jsonPath = mods.first().getModJsonPath();
         }
 
-        for(auto iter = removedRows.begin(); iter != removedRows.end(); iter++) {
+        for (auto iter = removedRows.begin(); iter != removedRows.end(); iter++)
+        {
             int removedIndex = *iter;
             beginRemoveRows(QModelIndex(), removedIndex, removedIndex);
             auto removedIter = mods.begin() + removedIndex;
             removedModNames.append(removedIter->filename().fileName());
-            if(removedIter->isResolving()) {
+            if (removedIter->isResolving())
+            {
                 activeTickets.remove(removedIter->resolutionTicket());
-
             }
             mods.erase(removedIter);
             endRemoveRows();
         }
 
         // 从JSON中删除被移除的mod
-        if (!removedModNames.isEmpty() && !jsonPath.isEmpty()) {
+        if (!removedModNames.isEmpty() && !jsonPath.isEmpty())
+        {
             Mod::removeModsFromJson(jsonPath, removedModNames);
         }
     }
@@ -158,17 +167,21 @@ void ModFolderModel::finishUpdate()
     {
         QSet<QString> added = newSet;
         added.subtract(currentSet);
-        if (!added.isEmpty()) {
+        if (!added.isEmpty())
+        {
             beginInsertRows(QModelIndex(), mods.size(), mods.size() + added.size() - 1);
             QList<ModInfo> modInfoList;
-            for(auto & addedMod: added) {
+            for (auto &addedMod : added)
+            {
                 mods.append(newMods[addedMod]);
                 resolveMod(mods.last());
-                if (!Mod::isModExistsByName(mods.last().getModJsonPath(), addedMod)) {
+                if (!Mod::isModExistsByName(mods.last().getModJsonPath(), addedMod))
+                {
                     modInfoList.append(ModInfo(mods.last().filename().absoluteFilePath()));
                 }
             }
-            if (!modInfoList.isEmpty()) {
+            if (!modInfoList.isEmpty())
+            {
                 QList<ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
 
                 Mod::addModsToJson(mods.last().getModJsonPath(), processedModInfos, true);
@@ -181,7 +194,8 @@ void ModFolderModel::finishUpdate()
     {
         modsIndex.clear();
         int idx = 0;
-        for(auto & mod: mods) {
+        for (auto &mod : mods)
+        {
             modsIndex[mod.mmc_id()] = idx;
             idx++;
         }
@@ -191,15 +205,17 @@ void ModFolderModel::finishUpdate()
 
     emit updateFinished();
 
-    if(scheduled_update) {
+    if (scheduled_update)
+    {
         scheduled_update = false;
         update();
     }
 }
 
-void ModFolderModel::resolveMod(Mod& m)
+void ModFolderModel::resolveMod(Mod &m)
 {
-    if(!m.shouldResolve()) {
+    if (!m.shouldResolve())
+    {
         return;
     }
 
@@ -217,24 +233,27 @@ void ModFolderModel::resolveMod(Mod& m)
 void ModFolderModel::finishModParse(int token)
 {
     auto iter = activeTickets.find(token);
-    if(iter == activeTickets.end()) {
+    if (iter == activeTickets.end())
+    {
         return;
     }
     auto result = *iter;
     activeTickets.remove(token);
     int row = modsIndex[result->id];
-    auto & mod = mods[row];
+    auto &mod = mods[row];
     mod.finishResolvingWithDetails(result->details);
     emit dataChanged(index(row), index(row, columnCount(QModelIndex()) - 1));
 }
 
 void ModFolderModel::disableInteraction(bool disabled)
 {
-    if (interaction_disabled == disabled) {
+    if (interaction_disabled == disabled)
+    {
         return;
     }
     interaction_disabled = disabled;
-    if(size()) {
+    if (size())
+    {
         emit dataChanged(index(0), index(size() - 1));
     }
 }
@@ -252,7 +271,8 @@ bool ModFolderModel::isValid()
 // FIXME: this does not take disabled mod (with extra .disable extension) into account...
 bool ModFolderModel::installMod(const QString &filename)
 {
-    if(interaction_disabled) {
+    if (interaction_disabled)
+    {
         return false;
     }
 
@@ -282,7 +302,7 @@ bool ModFolderModel::installMod(const QString &filename)
     }
 
     auto newpath = FS::NormalizePath(FS::PathCombine(m_dir.path(), fileinfo.fileName()));
-    if(originalPath == newpath)
+    if (originalPath == newpath)
     {
         qDebug() << "Overwriting the mod (" << originalPath << ") with itself makes no sense...";
         return false;
@@ -290,9 +310,9 @@ bool ModFolderModel::installMod(const QString &filename)
 
     if (type == Mod::MOD_SINGLEFILE || type == Mod::MOD_ZIPFILE || type == Mod::MOD_LITEMOD)
     {
-        if(QFile::exists(newpath) || QFile::exists(newpath + QString(".disabled")))
+        if (QFile::exists(newpath) || QFile::exists(newpath + QString(".disabled")))
         {
-            if(!QFile::remove(newpath))
+            if (!QFile::remove(newpath))
             {
                 // FIXME: report error in a user-visible way
                 qWarning() << "Copy from" << originalPath << "to" << newpath << "has failed.";
@@ -314,7 +334,7 @@ bool ModFolderModel::installMod(const QString &filename)
     else if (type == Mod::MOD_FOLDER)
     {
         QString from = fileinfo.filePath();
-        if(QFile::exists(newpath))
+        if (QFile::exists(newpath))
         {
             qDebug() << "Ignoring folder " << from << ", it would merge with " << newpath;
             return false;
@@ -332,18 +352,20 @@ bool ModFolderModel::installMod(const QString &filename)
     return false;
 }
 
-bool ModFolderModel::setModStatus(const QModelIndexList& indexes, ModStatusAction enable)
+bool ModFolderModel::setModStatus(const QModelIndexList &indexes, ModStatusAction enable)
 {
-    if(interaction_disabled) {
+    if (interaction_disabled)
+    {
         return false;
     }
 
-    if(indexes.isEmpty())
+    if (indexes.isEmpty())
         return true;
 
-    for (auto index: indexes)
+    for (auto index : indexes)
     {
-        if(index.column() != 0) {
+        if (index.column() != 0)
+        {
             continue;
         }
         setModStatus(index.row(), enable);
@@ -351,16 +373,17 @@ bool ModFolderModel::setModStatus(const QModelIndexList& indexes, ModStatusActio
     return true;
 }
 
-bool ModFolderModel::deleteMods(const QModelIndexList& indexes)
+bool ModFolderModel::deleteMods(const QModelIndexList &indexes)
 {
-    if(interaction_disabled) {
+    if (interaction_disabled)
+    {
         return false;
     }
 
-    if(indexes.isEmpty())
+    if (indexes.isEmpty())
         return true;
 
-    for (auto i: indexes)
+    for (auto i : indexes)
     {
         Mod &m = mods[i.row()];
         m.destroy();
@@ -391,14 +414,16 @@ QVariant ModFolderModel::data(const QModelIndex &index, int role) const
         {
         case NameColumn:
             return mods[row].name();
-        case VersionColumn: {
-            switch(mods[row].type()) {
-                case Mod::MOD_FOLDER:
-                    return tr("Folder");
-                case Mod::MOD_SINGLEFILE:
-                    return tr("File");
-                default:
-                    break;
+        case VersionColumn:
+        {
+            switch (mods[row].type())
+            {
+            case Mod::MOD_FOLDER:
+                return tr("Folder");
+            case Mod::MOD_SINGLEFILE:
+                return tr("File");
+            default:
+                break;
             }
             return mods[row].version();
         }
@@ -441,36 +466,41 @@ bool ModFolderModel::setData(const QModelIndex &index, const QVariant &value, in
 
 bool ModFolderModel::setModStatus(int row, ModFolderModel::ModStatusAction action)
 {
-    if(row < 0 || row >= mods.size()) {
+    if (row < 0 || row >= mods.size())
+    {
         return false;
     }
 
     auto &mod = mods[row];
     bool desiredStatus;
-    switch(action) {
-        case Enable:
-            desiredStatus = true;
-            break;
-        case Disable:
-            desiredStatus = false;
-            break;
-        case Toggle:
-        default:
-            desiredStatus = !mod.enabled();
-            break;
+    switch (action)
+    {
+    case Enable:
+        desiredStatus = true;
+        break;
+    case Disable:
+        desiredStatus = false;
+        break;
+    case Toggle:
+    default:
+        desiredStatus = !mod.enabled();
+        break;
     }
 
-    if(desiredStatus == mod.enabled()) {
+    if (desiredStatus == mod.enabled())
+    {
         return true;
     }
 
     // preserve the row, but change its ID
     auto oldId = mod.mmc_id();
-    if(!mod.enable(!mod.enabled())) {
+    if (!mod.enable(!mod.enabled()))
+    {
         return false;
     }
     auto newId = mod.mmc_id();
-    if(modsIndex.contains(newId)) {
+    if (modsIndex.contains(newId))
+    {
         // NOTE: this could handle a corner case, where we are overwriting a file, because the same 'mod' exists both enabled and disabled
         // But is it necessary?
     }
@@ -523,13 +553,15 @@ Qt::ItemFlags ModFolderModel::flags(const QModelIndex &index) const
 {
     Qt::ItemFlags defaultFlags = QAbstractListModel::flags(index);
     auto flags = defaultFlags;
-    if(interaction_disabled) {
+    if (interaction_disabled)
+    {
         flags &= ~Qt::ItemIsDropEnabled;
     }
     else
     {
         flags |= Qt::ItemIsDropEnabled;
-        if(index.isValid()) {
+        if (index.isValid())
+        {
             flags |= Qt::ItemIsUserCheckable;
         }
     }
@@ -549,7 +581,7 @@ QStringList ModFolderModel::mimeTypes() const
     return types;
 }
 
-bool ModFolderModel::dropMimeData(const QMimeData* data, Qt::DropAction action, int, int, const QModelIndex&)
+bool ModFolderModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int, int, const QModelIndex &)
 {
     if (action == Qt::IgnoreAction)
     {

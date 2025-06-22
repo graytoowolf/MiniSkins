@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 MultiMC Contributors
+ * Copyright 2013-2022 MiniSkins Contributors
  * Copyright 2022 kb1000
  *
  * This source is subject to the Microsoft Permissive License (MS-PL).
@@ -21,19 +21,19 @@ Modrinth::ListModel::~ListModel() = default;
 QVariant Modrinth::ListModel::data(const QModelIndex &index, int role) const
 {
     int pos = index.row();
-    if(pos >= modpacks.size() || pos < 0 || !index.isValid())
+    if (pos >= modpacks.size() || pos < 0 || !index.isValid())
     {
         return QString("INVALID INDEX %1").arg(pos);
     }
 
     auto pack = modpacks.at(pos);
-    if(role == Qt::DisplayRole)
+    if (role == Qt::DisplayRole)
     {
         return pack.name;
     }
-    else if(role == Qt::DecorationRole)
+    else if (role == Qt::DecorationRole)
     {
-        if(m_logoMap.contains(pack.id))
+        if (m_logoMap.contains(pack.id))
         {
             return (m_logoMap.value(pack.id));
         }
@@ -45,7 +45,7 @@ QVariant Modrinth::ListModel::data(const QModelIndex &index, int role) const
     {
         return pack.description;
     }
-    else if(role == Qt::UserRole)
+    else if (role == Qt::UserRole)
     {
         QVariant v;
         v.setValue(pack);
@@ -54,17 +54,17 @@ QVariant Modrinth::ListModel::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
-bool Modrinth::ListModel::canFetchMore(const QModelIndex& parent) const
+bool Modrinth::ListModel::canFetchMore(const QModelIndex &parent) const
 {
     return searchState == CanPossiblyFetchMore;
 }
 
-
-void Modrinth::ListModel::fetchMore(const QModelIndex& parent)
+void Modrinth::ListModel::fetchMore(const QModelIndex &parent)
 {
     if (parent.isValid())
         return;
-    if(nextSearchOffset == 0) {
+    if (nextSearchOffset == 0)
+    {
         qWarning() << "fetchMore with 0 offset is wrong...";
         return;
     }
@@ -81,19 +81,22 @@ int Modrinth::ListModel::rowCount(const QModelIndex &parent) const
     return modpacks.size();
 }
 
-void Modrinth::ListModel::searchWithTerm(const QString& term, const QString &sort)
+void Modrinth::ListModel::searchWithTerm(const QString &term, const QString &sort)
 {
-    if(currentSearchTerm == term && currentSearchTerm.isNull() == term.isNull() && currentSort == sort) {
+    if (currentSearchTerm == term && currentSearchTerm.isNull() == term.isNull() && currentSort == sort)
+    {
         return;
     }
     currentSearchTerm = term;
     currentSort = sort;
-    if(jobPtr) {
+    if (jobPtr)
+    {
         jobPtr->abort();
         searchState = ResetRequested;
         return;
     }
-    else {
+    else
+    {
         beginResetModel();
         modpacks.clear();
         endResetModel();
@@ -107,14 +110,17 @@ void Modrinth::ListModel::performPaginatedSearch()
 {
     auto *netJob = new NetJob("Modrinth::Search", APPLICATION->network());
     QString searchUrl = "";
-    if (currentSearchTerm.isEmpty()) {
+    if (currentSearchTerm.isEmpty())
+    {
         searchUrl = QString("https://api.modrinth.com/v2/search?facets=[[%22project_type:modpack%22]]&index=%1&limit=25&offset=%2").arg(currentSort).arg(nextSearchOffset);
     }
     else
     {
         searchUrl = QString(
-                "https://api.modrinth.com/v2/search?facets=[[%22project_type:modpack%22]]&index=%1&limit=25&offset=%2&query=%3"
-        ).arg(currentSort).arg(nextSearchOffset).arg(currentSearchTerm);
+                        "https://api.modrinth.com/v2/search?facets=[[%22project_type:modpack%22]]&index=%1&limit=25&offset=%2&query=%3")
+                        .arg(currentSort)
+                        .arg(nextSearchOffset)
+                        .arg(currentSearchTerm);
     }
     netJob->addNetAction(Net::Download::makeByteArray(QUrl(searchUrl), &response));
     jobPtr = netJob;
@@ -129,7 +135,7 @@ void Modrinth::ListModel::searchRequestFinished()
 
     QJsonParseError parse_error;
     QJsonDocument doc = QJsonDocument::fromJson(response, &parse_error);
-    if(parse_error.error != QJsonParseError::NoError)
+    if (parse_error.error != QJsonParseError::NoError)
     {
         qWarning() << "Error while parsing JSON response from Modrinth at " << parse_error.offset << " reason: " << parse_error.errorString();
         qWarning() << response;
@@ -146,7 +152,7 @@ void Modrinth::ListModel::searchRequestFinished()
         hits = Json::requireArray(obj, "hits");
         total_hits = Json::requireInteger(obj, "total_hits");
     }
-    catch(const JSONValidationError &e)
+    catch (const JSONValidationError &e)
     {
         qWarning() << "Error while parsing response from Modrinth: " << e.cause();
         return;
@@ -167,7 +173,7 @@ void Modrinth::ListModel::searchRequestFinished()
             pack.description = Json::requireString(packObj, "description");
             newList.append(pack);
         }
-        catch(const JSONValidationError &e)
+        catch (const JSONValidationError &e)
         {
             qWarning() << "Error while loading pack from Modrinth: " << e.cause();
             continue;
@@ -183,7 +189,8 @@ void Modrinth::ListModel::searchRequestFinished()
     }
     beginInsertRows(QModelIndex(), modpacks.size(), modpacks.size() + newList.size() - 1);
     // TODO: when we update from Qt 5.4, just use append(QVector)
-    for(auto item: newList) {
+    for (auto item : newList)
+    {
         modpacks.append(item);
     }
     endInsertRows();
@@ -193,7 +200,7 @@ void Modrinth::ListModel::searchRequestFailed()
 {
     jobPtr.reset();
 
-    if(searchState == ResetRequested)
+    if (searchState == ResetRequested)
     {
         beginResetModel();
         modpacks.clear();
@@ -212,8 +219,10 @@ void Modrinth::ListModel::logoLoaded(const QString &logo, const QIcon &out)
 {
     m_loadingLogos.removeAll(logo);
     m_logoMap.insert(logo, out);
-    for(int i = 0; i < modpacks.size(); i++) {
-        if(modpacks[i].id == logo) {
+    for (int i = 0; i < modpacks.size(); i++)
+    {
+        if (modpacks[i].id == logo)
+        {
             emit dataChanged(createIndex(i, 0), createIndex(i, 0), {Qt::DecorationRole});
         }
     }
@@ -227,7 +236,7 @@ void Modrinth::ListModel::logoFailed(const QString &logo)
 
 void Modrinth::ListModel::requestLogo(const QString &logo, const QUrl &url)
 {
-    if(m_loadingLogos.contains(logo) || m_failedLogos.contains(logo))
+    if (m_loadingLogos.contains(logo) || m_failedLogos.contains(logo))
     {
         return;
     }
@@ -238,7 +247,7 @@ void Modrinth::ListModel::requestLogo(const QString &logo, const QUrl &url)
 
     auto fullPath = entry->getFullPath();
     QObject::connect(job, &NetJob::succeeded, this, [this, logo, fullPath]
-    {
+                     {
         QIcon icon(fullPath);
         QSize size = icon.actualSize(QSize(48, 48));
         if (size.width() < 48 && size.height() < 48)
@@ -249,27 +258,26 @@ void Modrinth::ListModel::requestLogo(const QString &logo, const QUrl &url)
         if(waitingCallbacks.contains(logo))
         {
             waitingCallbacks.value(logo)(fullPath);
-        }
-    });
+        } });
 
     QObject::connect(job, &NetJob::failed, this, [this, logo]
-    {
-        logoFailed(logo);
-    });
+                     { logoFailed(logo); });
 
     job->start();
 
     m_loadingLogos.append(logo);
 }
 
-void Modrinth::ListModel::getPackDetails(const QString& id)
+void Modrinth::ListModel::getPackDetails(const QString &id)
 {
     auto index = getIndexFromId(id);
-    if(!index) {
+    if (!index)
+    {
         return;
     }
 
-    if(isPackDetailInProgress()) {
+    if (isPackDetailInProgress())
+    {
         queuedPackDetailRequest = id;
         cancelPackDetail();
         return;
@@ -279,8 +287,8 @@ void Modrinth::ListModel::getPackDetails(const QString& id)
 
     QString detailsUrl = "https://api.modrinth.com/v2/project/" + id;
 
-    auto & modpack = modpacks[*index];
-    if(modpack.detailsLoaded != LoadState::Loaded)
+    auto &modpack = modpacks[*index];
+    if (modpack.detailsLoaded != LoadState::Loaded)
     {
         auto *netJob = new NetJob("Modrinth::PackDetails", APPLICATION->network());
         netJob->addNetAction(Net::Download::makeByteArray(QUrl(detailsUrl), &detailsResponse));
@@ -291,7 +299,7 @@ void Modrinth::ListModel::getPackDetails(const QString& id)
     }
 
     QString versionsUrl = detailsUrl + "/version";
-    if(modpack.versionsLoaded != LoadState::Loaded)
+    if (modpack.versionsLoaded != LoadState::Loaded)
     {
         auto *netJob = new NetJob("Modrinth::PackVersions", APPLICATION->network());
         netJob->addNetAction(Net::Download::makeByteArray(QUrl(versionsUrl), &versionsResponse));
@@ -309,69 +317,79 @@ bool Modrinth::ListModel::isPackDetailInProgress()
 
 void Modrinth::ListModel::cancelPackDetail()
 {
-    if(detailsPtr) {
+    if (detailsPtr)
+    {
         detailsPtr->abort();
     }
-    if(versionsPtr) {
+    if (versionsPtr)
+    {
         versionsPtr->abort();
     }
 }
 
-nonstd::optional<int> Modrinth::ListModel::getIndexFromId(const QString& id)
+nonstd::optional<int> Modrinth::ListModel::getIndexFromId(const QString &id)
 {
-    for(int i = 0; i < modpacks.size(); i++) {
-        if(modpacks[i].id == id) {
+    for (int i = 0; i < modpacks.size(); i++)
+    {
+        if (modpacks[i].id == id)
+        {
             return i;
         }
     }
     return nonstd::nullopt;
 }
 
-nonstd::optional<Modrinth::Modpack> Modrinth::ListModel::getModpackById(const QString& id)
+nonstd::optional<Modrinth::Modpack> Modrinth::ListModel::getModpackById(const QString &id)
 {
     auto index = getIndexFromId(id);
-    if(!index) {
+    if (!index)
+    {
         return nonstd::nullopt;
     }
     return modpacks[*index];
 }
 
-namespace {
-bool parseDetailsInto(QByteArray & input, Modrinth::Modpack& output) {
-    QJsonParseError parse_error;
-    QJsonDocument doc = QJsonDocument::fromJson(input, &parse_error);
-    if(parse_error.error != QJsonParseError::NoError)
+namespace
+{
+    bool parseDetailsInto(QByteArray &input, Modrinth::Modpack &output)
     {
-        qWarning() << "Error while parsing pack details response from Modrinth at " << parse_error.offset << " reason: " << parse_error.errorString();
-        qWarning() << input;
-        return false;
-    }
+        QJsonParseError parse_error;
+        QJsonDocument doc = QJsonDocument::fromJson(input, &parse_error);
+        if (parse_error.error != QJsonParseError::NoError)
+        {
+            qWarning() << "Error while parsing pack details response from Modrinth at " << parse_error.offset << " reason: " << parse_error.errorString();
+            qWarning() << input;
+            return false;
+        }
 
-    try
-    {
-        auto obj = Json::requireObject(doc);
-        QString body = Json::requireString(obj, "body");
-        output.body = body;
-        return true;
+        try
+        {
+            auto obj = Json::requireObject(doc);
+            QString body = Json::requireString(obj, "body");
+            output.body = body;
+            return true;
+        }
+        catch (const JSONValidationError &e)
+        {
+            qWarning() << "Error while parsing response from Modrinth: " << e.cause();
+            return false;
+        }
     }
-    catch(const JSONValidationError &e)
-    {
-        qWarning() << "Error while parsing response from Modrinth: " << e.cause();
-        return false;
-    }
-}
 }
 
 void Modrinth::ListModel::detailsRequestFinished()
 {
     auto index = getIndexFromId(currentPackDetailRequest);
-    if(index) {
-        auto & modpack = modpacks[*index];
+    if (index)
+    {
+        auto &modpack = modpacks[*index];
 
-        if(parseDetailsInto(detailsResponse, modpack)) {
+        if (parseDetailsInto(detailsResponse, modpack))
+        {
             modpack.detailsLoaded = LoadState::Loaded;
         }
-        else {
+        else
+        {
             modpack.detailsLoaded = LoadState::Errored;
         }
         emit packDataChanged(currentPackDetailRequest);
@@ -383,9 +401,11 @@ void Modrinth::ListModel::detailsRequestFinished()
 void Modrinth::ListModel::detailsRequestFailed()
 {
     auto index = getIndexFromId(currentPackDetailRequest);
-    if(index) {
-        auto & modpack = modpacks[*index];
-        if(modpack.detailsLoaded == LoadState::NotLoaded) {
+    if (index)
+    {
+        auto &modpack = modpacks[*index];
+        if (modpack.detailsLoaded == LoadState::NotLoaded)
+        {
             modpack.detailsLoaded = LoadState::Errored;
             emit packDataChanged(currentPackDetailRequest);
         }
@@ -429,7 +449,8 @@ void Modrinth::ListModel::detailsRequestFailed()
   }
  */
 
-bool parseFile(QJsonObject & fileObj, Modrinth::Download & out) {
+bool parseFile(QJsonObject &fileObj, Modrinth::Download &out)
+{
     out.primary = Json::requireBoolean(fileObj, "primary");
     out.size = Json::requireInteger(fileObj, "size");
     out.url = Json::requireString(fileObj, "url");
@@ -438,104 +459,118 @@ bool parseFile(QJsonObject & fileObj, Modrinth::Download & out) {
     auto hashesObj = fileObj["hashes"].toObject();
     out.sha1 = Json::requireString(hashesObj, "sha1");
 
-    if(!out.filename.endsWith(".mrpack")) {
+    if (!out.filename.endsWith(".mrpack"))
+    {
         out.valid = false;
         return false;
     }
-    else {
+    else
+    {
         out.valid = true;
         return true;
     }
 }
 
-namespace {
+namespace
+{
 
-bool parseVersionsInto(QByteArray & input, Modrinth::Modpack& output) {
-    QJsonParseError parse_error;
-    QJsonDocument doc = QJsonDocument::fromJson(input, &parse_error);
-    if(parse_error.error != QJsonParseError::NoError)
+    bool parseVersionsInto(QByteArray &input, Modrinth::Modpack &output)
     {
-        qWarning() << "Error while parsing pack versions response from Modrinth at " << parse_error.offset << " reason: " << parse_error.errorString();
-        qWarning() << input;
-        return false;
-    }
-
-    qDebug() << input;
-
-    try
-    {
-        QVector<Modrinth::Version> newList;
-        QJsonArray versions = Json::requireArray(doc);
-        for (auto obj : versions)
+        QJsonParseError parse_error;
+        QJsonDocument doc = QJsonDocument::fromJson(input, &parse_error);
+        if (parse_error.error != QJsonParseError::NoError)
         {
-            auto packObj = obj.toObject();
-            Modrinth::Version version;
-            try
-            {
-                if (Json::ensureString(packObj, "client_side", "required") == QStringLiteral("unsupported"))
-                    continue;
-                version.name = Json::requireString(packObj, "version_number");
-                version.released = Json::requireDateTime(packObj, "date_published");
-                version.featured = Json::requireBoolean(packObj, "featured");
-                auto versionTypeString = Json::requireString(packObj, "version_type");
-                if(versionTypeString == "alpha") {
-                    version.type = Modrinth::VersionType::Alpha;
-                }
-                else if(versionTypeString == "beta") {
-                    version.type = Modrinth::VersionType::Beta;
-                }
-                else if (versionTypeString == "release") {
-                    version.type = Modrinth::VersionType::Release;
-                }
-                else {
-                    qWarning() << "Unknown version type of Modrinth modpack: " << versionTypeString;
-                    version.type = Modrinth::VersionType::Unknown;
-                }
-                Modrinth::Download fallbackOut = {};
-                auto filesArray = Json::requireArray(packObj, "files");
-                for(int i = 0; i < filesArray.size(); i++) {
-                    Modrinth::Download maybeFileOut = {};
-                    QJsonObject fileObj = filesArray[i].toObject();
-                    parseFile(fileObj, maybeFileOut);
-                    if(i == 0) {
-                        fallbackOut = maybeFileOut;
-                    }
-                    if(maybeFileOut.valid && maybeFileOut.primary) {
-                        version.download = maybeFileOut;
-                        break;
-                    }
-                }
-
-                if(!version.download.valid) {
-                    version.download = fallbackOut;
-                }
-
-                if(version.download.valid) {
-                    newList.append(version);
-                }
-            }
-            catch(const JSONValidationError &e)
-            {
-                qWarning() << "Error while loading pack from Modrinth: " << e.cause();
-                continue;
-            }
+            qWarning() << "Error while parsing pack versions response from Modrinth at " << parse_error.offset << " reason: " << parse_error.errorString();
+            qWarning() << input;
+            return false;
         }
-        output.versions = newList;
-        return true;
+
+        qDebug() << input;
+
+        try
+        {
+            QVector<Modrinth::Version> newList;
+            QJsonArray versions = Json::requireArray(doc);
+            for (auto obj : versions)
+            {
+                auto packObj = obj.toObject();
+                Modrinth::Version version;
+                try
+                {
+                    if (Json::ensureString(packObj, "client_side", "required") == QStringLiteral("unsupported"))
+                        continue;
+                    version.name = Json::requireString(packObj, "version_number");
+                    version.released = Json::requireDateTime(packObj, "date_published");
+                    version.featured = Json::requireBoolean(packObj, "featured");
+                    auto versionTypeString = Json::requireString(packObj, "version_type");
+                    if (versionTypeString == "alpha")
+                    {
+                        version.type = Modrinth::VersionType::Alpha;
+                    }
+                    else if (versionTypeString == "beta")
+                    {
+                        version.type = Modrinth::VersionType::Beta;
+                    }
+                    else if (versionTypeString == "release")
+                    {
+                        version.type = Modrinth::VersionType::Release;
+                    }
+                    else
+                    {
+                        qWarning() << "Unknown version type of Modrinth modpack: " << versionTypeString;
+                        version.type = Modrinth::VersionType::Unknown;
+                    }
+                    Modrinth::Download fallbackOut = {};
+                    auto filesArray = Json::requireArray(packObj, "files");
+                    for (int i = 0; i < filesArray.size(); i++)
+                    {
+                        Modrinth::Download maybeFileOut = {};
+                        QJsonObject fileObj = filesArray[i].toObject();
+                        parseFile(fileObj, maybeFileOut);
+                        if (i == 0)
+                        {
+                            fallbackOut = maybeFileOut;
+                        }
+                        if (maybeFileOut.valid && maybeFileOut.primary)
+                        {
+                            version.download = maybeFileOut;
+                            break;
+                        }
+                    }
+
+                    if (!version.download.valid)
+                    {
+                        version.download = fallbackOut;
+                    }
+
+                    if (version.download.valid)
+                    {
+                        newList.append(version);
+                    }
+                }
+                catch (const JSONValidationError &e)
+                {
+                    qWarning() << "Error while loading pack from Modrinth: " << e.cause();
+                    continue;
+                }
+            }
+            output.versions = newList;
+            return true;
+        }
+        catch (const JSONValidationError &e)
+        {
+            qWarning() << "Error while parsing response from Modrinth: " << e.cause();
+            return false;
+        }
     }
-    catch(const JSONValidationError &e)
-    {
-        qWarning() << "Error while parsing response from Modrinth: " << e.cause();
-        return false;
-    }
-}
 }
 
 void Modrinth::ListModel::versionsRequestFinished()
 {
     auto index = getIndexFromId(currentPackDetailRequest);
-    if(index) {
-        auto & modpack = modpacks[*index];
+    if (index)
+    {
+        auto &modpack = modpacks[*index];
         parseVersionsInto(versionsResponse, modpack);
         modpack.versionsLoaded = LoadState::Loaded;
         emit packDataChanged(currentPackDetailRequest);
@@ -547,9 +582,11 @@ void Modrinth::ListModel::versionsRequestFinished()
 void Modrinth::ListModel::versionsRequestFailed()
 {
     auto index = getIndexFromId(currentPackDetailRequest);
-    if(index) {
-        auto & modpack = modpacks[*index];
-        if(modpack.versionsLoaded == LoadState::NotLoaded) {
+    if (index)
+    {
+        auto &modpack = modpacks[*index];
+        if (modpack.versionsLoaded == LoadState::NotLoaded)
+        {
             modpack.versionsLoaded = LoadState::Errored;
             emit packDataChanged(currentPackDetailRequest);
         }
@@ -560,7 +597,8 @@ void Modrinth::ListModel::versionsRequestFailed()
 
 void Modrinth::ListModel::checkDetailsDone()
 {
-    if(isPackDetailInProgress()) {
+    if (isPackDetailInProgress())
+    {
         return;
     }
 
@@ -568,7 +606,8 @@ void Modrinth::ListModel::checkDetailsDone()
     currentPackDetailRequest.clear();
 
     // is there a new one queued?
-    if(!queuedPackDetailRequest.isNull()) {
+    if (!queuedPackDetailRequest.isNull())
+    {
         getPackDetails(queuedPackDetailRequest);
         queuedPackDetailRequest.clear();
     }

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@ class QTreeView;
 class QLabel;
 class Setting;
 
-class LanguageSelectionWidget: public QWidget
+class LanguageSelectionWidget : public QWidget
 {
     Q_OBJECT
 public:
     explicit LanguageSelectionWidget(QWidget *parent = 0);
-    virtual ~LanguageSelectionWidget() { };
+    virtual ~LanguageSelectionWidget() {};
 
     QString getSelectedLanguageKey() const;
     void retranslate();

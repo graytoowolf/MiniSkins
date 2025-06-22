@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,22 +34,20 @@ BsLoginDialog::BsLoginDialog(QWidget *parent) : QDialog(parent), ui(new Ui::BsLo
     connect(ui->yggurlcomboBox, &QComboBox::currentTextChanged, this, &BsLoginDialog::onComboBoxCurrentTextChanged);
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
-
 }
-
 
 void BsLoginDialog::onComboBoxCurrentTextChanged(const QString &text)
 {
-    if (ui->yggurlcomboBox->currentIndex() == ui->yggurlcomboBox->count() - 1 && !isDialogOpen) {
+    if (ui->yggurlcomboBox->currentIndex() == ui->yggurlcomboBox->count() - 1 && !isDialogOpen)
+    {
         isDialogOpen = true;
         customyggdrasil *customDialog = new customyggdrasil(this);
         customDialog->exec(); // 显示对话框（模态）
         updateYggSources();
         // 使用 QTimer 延迟设置索引
         int index = ui->yggurlcomboBox->count() - 2;
-        ui->yggurlcomboBox->setCurrentIndex(index);  // 设置索引
+        ui->yggurlcomboBox->setCurrentIndex(index); // 设置索引
         isDialogOpen = false;
-
     }
 }
 
@@ -63,9 +61,11 @@ void BsLoginDialog::updateYggSources()
 
     // 遍历 yggSources，动态添加到 comboBox 中
     QSet<QString> addedUrls;
-    for (const YggSource &source : yggSources) {
+    for (const YggSource &source : yggSources)
+    {
         const QString &url = source.getUrl();
-        if (!addedUrls.contains(url)) {
+        if (!addedUrls.contains(url))
+        {
             ui->yggurlcomboBox->addItem(source.getName(), url);
             addedUrls.insert(url);
         }
@@ -73,7 +73,6 @@ void BsLoginDialog::updateYggSources()
 
     ui->yggurlcomboBox->addItem(tr("Custom Yggdrasil API"));
 }
-
 
 BsLoginDialog::~BsLoginDialog()
 {
@@ -88,7 +87,7 @@ void BsLoginDialog::accept()
 
     // Setup the login task and start it
     m_account = MinecraftAccount::createBlessings(
-                ui->userTextBox->text(), ui->yggurlcomboBox->currentData().toString(),ui->yggurlcomboBox->currentText());
+        ui->userTextBox->text(), ui->yggurlcomboBox->currentData().toString(), ui->yggurlcomboBox->currentText());
     m_loginTask = m_account->bslogin(ui->passTextBox->text());
     connect(m_loginTask.get(), &Task::failed, this, &BsLoginDialog::onTaskFailed);
     connect(m_loginTask.get(), &Task::succeeded, this, &BsLoginDialog::onTaskSucceeded);
@@ -108,12 +107,12 @@ void BsLoginDialog::setUserInputsEnabled(bool enable)
 void BsLoginDialog::on_userTextBox_textEdited(const QString &newText)
 {
     ui->buttonBox->button(QDialogButtonBox::Ok)
-            ->setEnabled(!newText.isEmpty() && !ui->passTextBox->text().isEmpty());
+        ->setEnabled(!newText.isEmpty() && !ui->passTextBox->text().isEmpty());
 }
 void BsLoginDialog::on_passTextBox_textEdited(const QString &newText)
 {
     ui->buttonBox->button(QDialogButtonBox::Ok)
-            ->setEnabled(!newText.isEmpty() && !ui->userTextBox->text().isEmpty());
+        ->setEnabled(!newText.isEmpty() && !ui->userTextBox->text().isEmpty());
 }
 
 void BsLoginDialog::onTaskFailed(const QString &reason)
@@ -158,7 +157,8 @@ void BsLoginDialog::onTaskProgress(qint64 current, qint64 total)
 QString BsLoginDialog::normalizeUrl(const QString &url)
 {
     QString normalized = url.trimmed();
-    if (normalized.endsWith('/')) {
+    if (normalized.endsWith('/'))
+    {
         normalized.chop(1);
     }
     return normalized;
@@ -169,23 +169,29 @@ MinecraftAccountPtr BsLoginDialog::newAccount(QWidget *parent, QString msg, QStr
     dlg.ui->label->setText(msg);
     dlg.ui->userTextBox->setText(initialAccount);
 
-    if (!yggUrl.isEmpty()) {
+    if (!yggUrl.isEmpty())
+    {
         QString normalizedYggUrl = normalizeUrl(yggUrl);
 
         int foundIndex = -1;
-        for (int i = 0; i < dlg.ui->yggurlcomboBox->count(); ++i) {
+        for (int i = 0; i < dlg.ui->yggurlcomboBox->count(); ++i)
+        {
             QString itemData = dlg.ui->yggurlcomboBox->itemData(i).toString();
             QString normalizedItemData = normalizeUrl(itemData);
 
-            if (normalizedItemData == normalizedYggUrl) {
+            if (normalizedItemData == normalizedYggUrl)
+            {
                 foundIndex = i;
                 break;
             }
         }
 
-        if (foundIndex != -1) {
+        if (foundIndex != -1)
+        {
             dlg.ui->yggurlcomboBox->setCurrentIndex(foundIndex);
-        } else {
+        }
+        else
+        {
             int customIndex = dlg.ui->yggurlcomboBox->count() - 1;
             QString displayName = yggName.isEmpty() ? yggUrl : yggName;
             dlg.ui->yggurlcomboBox->insertItem(customIndex, displayName, yggUrl);

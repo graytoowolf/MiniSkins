@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,9 +43,7 @@
 #include "ui/pages/modplatform/modrinth/ModrinthPage.h"
 #include "ui/pages/modplatform/technic/TechnicPage.h"
 
-
-
-NewInstanceDialog::NewInstanceDialog(const QString & initialGroup, const QString & url, QWidget *parent)
+NewInstanceDialog::NewInstanceDialog(const QString &initialGroup, const QString &url, QWidget *parent)
     : QDialog(parent), ui(new Ui::NewInstanceDialog)
 {
     ui->setupUi(this);
@@ -63,13 +61,12 @@ NewInstanceDialog::NewInstanceDialog(const QString & initialGroup, const QString
     groupList.push_front("");
     ui->groupBox->addItems(groupList);
     int index = groupList.indexOf(initialGroup);
-    if(index == -1)
+    if (index == -1)
     {
         index = 0;
     }
     ui->groupBox->setCurrentIndex(index);
     ui->groupBox->lineEdit()->setPlaceholderText(tr("No group"));
-
 
     // NOTE: m_buttons must be initialized before PageContainer, because it indirectly accesses m_buttons through setSuggestedPack! Do not move this below.
     m_buttons = new QDialogButtonBox(QDialogButtonBox::Help | QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -98,7 +95,7 @@ NewInstanceDialog::NewInstanceDialog(const QString & initialGroup, const QString
     HelpButton->setAutoDefault(false);
     connect(HelpButton, &QPushButton::clicked, m_container, &PageContainer::help);
 
-    if(!url.isEmpty())
+    if (!url.isEmpty())
     {
         QUrl actualUrl(url);
         m_container->selectPage("import");
@@ -129,8 +126,7 @@ QList<BasePage *> NewInstanceDialog::getPages()
 {
     importPage = new ImportPage(this);
     auto technicPage = new TechnicPage(this);
-    return
-    {
+    return {
         new VanillaPage(this),
         importPage,
         new ModrinthPage(this),
@@ -139,8 +135,7 @@ QList<BasePage *> NewInstanceDialog::getPages()
         new FtbPage(this),
         new ImportFTB::FTBAPage(this),
         new LegacyFTB::Page(this),
-        technicPage
-    };
+        technicPage};
 }
 
 QString NewInstanceDialog::dialogTitle()
@@ -153,7 +148,7 @@ NewInstanceDialog::~NewInstanceDialog()
     delete ui;
 }
 
-void NewInstanceDialog::setSuggestedPack(const QString& name, InstanceTask* task)
+void NewInstanceDialog::setSuggestedPack(const QString &name, InstanceTask *task)
 {
     creationTask.reset(task);
 
@@ -165,7 +160,7 @@ void NewInstanceDialog::setSuggestedPack(const QString& name, InstanceTask* task
         ui->instNameTextBox->setText(name);
     }
 
-    if(!task)
+    if (!task)
     {
         ui->iconButton->setIcon(APPLICATION->icons()->getIcon("default"));
         importIcon = false;
@@ -181,7 +176,7 @@ void NewInstanceDialog::setSuggestedIconFromFile(const QString &path, const QStr
     importIconPath = path;
     importIconName = name;
 
-    //Hmm, for some reason they can be to small
+    // Hmm, for some reason they can be to small
     ui->iconButton->setIcon(QIcon(path));
 }
 
@@ -193,9 +188,9 @@ void NewInstanceDialog::setSuggestedIcon(const QString &key)
     ui->iconButton->setIcon(icon);
 }
 
-InstanceTask * NewInstanceDialog::extractTask()
+InstanceTask *NewInstanceDialog::extractTask()
 {
-    InstanceTask * extracted = creationTask.get();
+    InstanceTask *extracted = creationTask.get();
     creationTask.release();
     extracted->setName(instName());
     extracted->setGroup(instGroup());
@@ -207,7 +202,7 @@ void NewInstanceDialog::updateDialogState()
 {
     auto allowOK = creationTask && !instName().isEmpty();
     auto OkButton = m_buttons->button(QDialogButtonBox::Ok);
-    if(OkButton->isEnabled() != allowOK)
+    if (OkButton->isEnabled() != allowOK)
     {
         OkButton->setEnabled(allowOK);
     }
@@ -216,12 +211,12 @@ void NewInstanceDialog::updateDialogState()
 QString NewInstanceDialog::instName() const
 {
     auto result = ui->instNameTextBox->text().trimmed();
-    if(result.size())
+    if (result.size())
     {
         return result;
     }
     result = ui->instNameTextBox->placeholderText().trimmed();
-    if(result.size())
+    if (result.size())
     {
         return result;
     }
@@ -239,7 +234,7 @@ QString NewInstanceDialog::iconKey() const
 
 void NewInstanceDialog::on_iconButton_clicked()
 {
-    importIconNow(); //so the user can switch back
+    importIconNow(); // so the user can switch back
     IconPickerDialog dlg(this);
     dlg.execWithSelection(InstIconKey);
 
@@ -269,14 +264,16 @@ void NewInstanceDialog::on_instNameTextBox_textEdited(const QString &text)
 
 void NewInstanceDialog::onFocusChanged(QWidget *, QWidget *newWidget)
 {
-    if (newWidget == ui->instNameTextBox && !instNameChanged) {
+    if (newWidget == ui->instNameTextBox && !instNameChanged)
+    {
         QTimer::singleShot(0, ui->instNameTextBox, &QLineEdit::selectAll);
     }
 }
 
 void NewInstanceDialog::importIconNow()
 {
-    if(importIcon) {
+    if (importIcon)
+    {
         APPLICATION->icons()->installIcon(importIconPath, importIconName);
         InstIconKey = importIconName;
         importIcon = false;

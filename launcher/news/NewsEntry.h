@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,20 +30,19 @@ public:
     /*!
      * Constructs an empty news entry.
      */
-    explicit NewsEntry(QObject* parent=0);
+    explicit NewsEntry(QObject *parent = 0);
 
     /*!
      * Constructs a new news entry.
      * Note that content may contain HTML.
      */
-    NewsEntry(const QString& title, const QString& content, const QString& link, const QString& author, const QDateTime& pubDate, QObject* parent=0);
+    NewsEntry(const QString &title, const QString &content, const QString &link, const QString &author, const QDateTime &pubDate, QObject *parent = 0);
 
     /*!
      * Attempts to load information from the given XML element into the given news entry pointer.
      * If this fails, the function will return false and store an error message in the errorMsg pointer.
      */
-    static bool fromXmlElement(const QDomElement& element, NewsEntry* entry, QString* errorMsg=0);
-
+    static bool fromXmlElement(const QDomElement &element, NewsEntry *entry, QString *errorMsg = 0);
 
     //! The post title.
     QString title;
@@ -56,10 +55,9 @@ public:
 
     //! The post's author.
     QString author;
-    
+
     //! The date and time that this post was published.
     QDateTime pubDate;
 };
 
 typedef std::shared_ptr<NewsEntry> NewsEntryPtr;
-

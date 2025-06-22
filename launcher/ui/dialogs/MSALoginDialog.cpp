@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,8 @@ MSALoginDialog::MSALoginDialog(QWidget *parent) : QDialog(parent), ui(new Ui::MS
     ui->progressBar->setVisible(false);
 }
 
-int MSALoginDialog::exec() {
+int MSALoginDialog::exec()
+{
     ui->linkButton->setVisible(false);
 
     // Setup the login task and start it
@@ -50,7 +51,6 @@ int MSALoginDialog::exec() {
     return QDialog::exec();
 }
 
-
 MSALoginDialog::~MSALoginDialog()
 {
     delete ui;
@@ -61,20 +61,21 @@ void MSALoginDialog::onButtonClicked(bool)
     QDesktopServices::openUrl(m_codeUrl);
 }
 
-
-void MSALoginDialog::externalLoginTick() {
+void MSALoginDialog::externalLoginTick()
+{
     m_externalLoginElapsed++;
     ui->progressBar->setValue(m_externalLoginTimeout - m_externalLoginElapsed);
     ui->progressBar->repaint();
 
-    if(m_externalLoginElapsed >= m_externalLoginTimeout) {
+    if (m_externalLoginElapsed >= m_externalLoginTimeout)
+    {
         m_externalLoginTimer.stop();
         close();
     }
 }
 
-
-void MSALoginDialog::showVerificationUriAndCode(const QUrl& uri, const QString& code, int expiresIn) {
+void MSALoginDialog::showVerificationUriAndCode(const QUrl &uri, const QString &code, int expiresIn)
+{
     m_externalLoginElapsed = 0;
     m_externalLoginTimeout = expiresIn;
 
@@ -87,9 +88,9 @@ void MSALoginDialog::showVerificationUriAndCode(const QUrl& uri, const QString& 
     ui->progressBar->setVisible(true);
 
     m_codeUrl = uri;
-//    QUrlQuery query;
-//    query.addQueryItem("otc", code);
-//    m_codeUrl.setQuery(query);
+    //    QUrlQuery query;
+    //    query.addQueryItem("otc", code);
+    //    m_codeUrl.setQuery(query);
     QString codeUrlString = m_codeUrl.toString();
 
     QImage qrcode = qrcode::generateQr(codeUrlString, 300);
@@ -105,7 +106,8 @@ void MSALoginDialog::showVerificationUriAndCode(const QUrl& uri, const QString& 
     m_code = code;
 }
 
-void MSALoginDialog::hideVerificationUriAndCode() {
+void MSALoginDialog::hideVerificationUriAndCode()
+{
     ui->linkButton->setVisible(false);
     ui->progressBar->setVisible(false);
     m_externalLoginTimer.stop();
@@ -116,11 +118,14 @@ void MSALoginDialog::onTaskFailed(const QString &reason)
     // Set message
     auto lines = reason.split('\n');
     QString processed;
-    for(auto line: lines) {
-        if(line.size()) {
+    for (auto line : lines)
+    {
+        if (line.size())
+        {
             processed += "<font color='red'>" + line + "</font><br />";
         }
-        else {
+        else
+        {
             processed += "<br />";
         }
     }

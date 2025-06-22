@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ public:
 
     bool eventFilter(QObject *obj, QEvent *ev) override;
     void closeEvent(QCloseEvent *event) override;
-    void changeEvent(QEvent * event) override;
+    void changeEvent(QEvent *event) override;
 
     void checkInstancePathForProblems();
 
@@ -63,7 +63,7 @@ signals:
     void isClosing();
 
 protected:
-    QMenu * createPopupMenu() override;
+    QMenu *createPopupMenu() override;
     QNetworkReply *m_netReply = nullptr;
 
 private slots:
@@ -73,9 +73,9 @@ private slots:
 
     void on_actionAddInstance_triggered();
 
-    //void on_actionREDDIT_triggered();
+    // void on_actionREDDIT_triggered();
 
-    //void on_actionDISCORD_triggered();
+    // void on_actionDISCORD_triggered();
 
     void on_actionCopyInstance_triggered();
 
@@ -97,7 +97,7 @@ private slots:
 
     void on_actionViewSelectedMCFolder_triggered();
 
-//    void on_actionViewSelectedModsFolder_triggered();
+    //    void on_actionViewSelectedModsFolder_triggered();
 
     void refreshInstances();
 
@@ -107,17 +107,17 @@ private slots:
 
     void on_actionSettings_triggered();
 
-//    void on_actionInstanceSettings_triggered();
+    //    void on_actionInstanceSettings_triggered();
 
     void on_actionManageAccounts_triggered();
 
     void on_actionReportBug_triggered();
 
-    //void on_actionPatreon_triggered();
+    // void on_actionPatreon_triggered();
 
-    //void on_actionMoreNews_triggered();
+    // void on_actionMoreNews_triggered();
 
-    //void newsButtonClicked();
+    // void newsButtonClicked();
 
     void on_actionLaunchInstance_triggered();
 
@@ -174,7 +174,7 @@ private slots:
 
     void updateNotAvailable();
 
-//    void notificationsChanged();
+    //    void notificationsChanged();
 
     void defaultAccountChanged();
 
@@ -219,9 +219,8 @@ private:
     QLabel *m_statusCenter = nullptr;
     QMenu *accountMenu = nullptr;
     QToolButton *accountMenuButton = nullptr;
-    KonamiCode * secretEventFilter = nullptr;
-    NewInstanceDialog* dialog = nullptr;
-
+    KonamiCode *secretEventFilter = nullptr;
+    NewInstanceDialog *dialog = nullptr;
 
     unique_qobject_ptr<NewsChecker> m_newsChecker;
     unique_qobject_ptr<NotificationChecker> m_notificationChecker;
@@ -234,7 +233,6 @@ private:
     QString m_platform;
     QString m_iconKey;
     QString m_name;
-
 
     // managed by the application object
     Task *m_versionLoadTask = nullptr;

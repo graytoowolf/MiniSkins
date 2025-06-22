@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ public:
 
     // 使用 fingerprint::ModInfo 替代 ModJsonInfo
     static bool addModsToJson(const QString &jsonPath, const QList<fingerprint::ModInfo> &modInfos, bool required = true);
-    
+
     // 通过mod名字检查mod.json中是否存在该mod
     static bool isModExistsByName(const QString &jsonPath, const QString &modName);
 

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ Task::Task(QObject *parent) : QObject(parent)
 
 void Task::setStatus(const QString &new_status)
 {
-    if(m_status != new_status)
+    if (m_status != new_status)
     {
         m_status = new_status;
         emit status(m_status);
@@ -39,33 +39,33 @@ void Task::setProgress(qint64 current, qint64 total)
 
 void Task::start()
 {
-    switch(m_state)
+    switch (m_state)
     {
-        case State::Inactive:
-        {
-            qDebug() << "Task" << describe() << "starting for the first time";
-            break;
-        }
-        case State::AbortedByUser:
-        {
-            qDebug() << "Task" << describe() << "restarting for after being aborted by user";
-            break;
-        }
-        case State::Failed:
-        {
-            qDebug() << "Task" << describe() << "restarting for after failing at first";
-            break;
-        }
-        case State::Succeeded:
-        {
-            qDebug() << "Task" << describe() << "restarting for after succeeding at first";
-            break;
-        }
-        case State::Running:
-        {
-            qWarning() << "The launcher tried to start task" << describe() << "while it was already running!";
-            return;
-        }
+    case State::Inactive:
+    {
+        qDebug() << "Task" << describe() << "starting for the first time";
+        break;
+    }
+    case State::AbortedByUser:
+    {
+        qDebug() << "Task" << describe() << "restarting for after being aborted by user";
+        break;
+    }
+    case State::Failed:
+    {
+        qDebug() << "Task" << describe() << "restarting for after failing at first";
+        break;
+    }
+    case State::Succeeded:
+    {
+        qDebug() << "Task" << describe() << "restarting for after succeeding at first";
+        break;
+    }
+    case State::Running:
+    {
+        qWarning() << "The launcher tried to start task" << describe() << "while it was already running!";
+        return;
+    }
     }
     // NOTE: only fall thorugh to here in end states
     m_state = State::Running;
@@ -123,7 +123,7 @@ QString Task::describe()
     QTextStream out(&outStr);
     out << metaObject()->className() << QChar('(');
     auto name = objectName();
-    if(name.isEmpty())
+    if (name.isEmpty())
     {
         out << QString("0x%1").arg((quintptr)this, 0, 16);
     }
@@ -156,7 +156,7 @@ QString Task::failReason() const
     return m_failReason;
 }
 
-void Task::logWarning(const QString& line)
+void Task::logWarning(const QString &line)
 {
     qWarning() << line;
     m_Warnings.append(line);

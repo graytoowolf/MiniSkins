@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,11 +69,11 @@ void NetJob::partProgress(int index, qint64 bytesReceived, qint64 bytesTotal)
 
     qint64 bytesAll = 0;
     qint64 bytesTotalAll = 0;
-    for(auto & partIdx: m_doing)
+    for (auto &partIdx : m_doing)
     {
         auto part = parts_progress[partIdx];
         // do not count parts with unknown/nonsensical total size
-        if(part.total_progress <= 0)
+        if (part.total_progress <= 0)
         {
             continue;
         }
@@ -86,10 +86,11 @@ void NetJob::partProgress(int index, qint64 bytesReceived, qint64 bytesTotal)
     auto current_total = all * 1000;
     // HACK: make sure it never jumps backwards.
     // FAIL: This breaks if the size is not known (or is it something else?) and jumps to 1000, so if it is 1000 reset it to inprogress
-    if(m_current_progress == 1000) {
+    if (m_current_progress == 1000)
+    {
         m_current_progress = inprogress;
     }
-    if(m_current_progress > current)
+    if (m_current_progress > current)
     {
         current = m_current_progress;
     }
@@ -105,22 +106,22 @@ void NetJob::executeTask()
 
 void NetJob::startMoreParts()
 {
-    if(!isRunning())
+    if (!isRunning())
     {
         // this actually makes sense. You can put running downloads into a NetJob and then not start it until much later.
         return;
     }
     // OK. We are actively processing tasks, proceed.
     // Check for final conditions if there's nothing in the queue.
-    if(!m_todo.size())
+    if (!m_todo.size())
     {
-        if(!m_doing.size())
+        if (!m_doing.size())
         {
-            if(!m_failed.size())
+            if (!m_failed.size())
             {
                 emitSucceeded();
             }
-            else if(m_aborted)
+            else if (m_aborted)
             {
                 emitAborted();
             }
@@ -133,12 +134,13 @@ void NetJob::startMoreParts()
     }
     // There's work to do, try to start more parts.
     int source = 6;
-    if(APPLICATION->getconfigfile()){
+    if (APPLICATION->getconfigfile())
+    {
         source = APPLICATION->settings()->get("Threads").toInt();
     }
     while (m_doing.size() < source)
     {
-        if(!m_todo.size())
+        if (!m_todo.size())
             return;
         int doThis = m_todo.dequeue();
         m_doing.insert(doThis);
@@ -153,11 +155,10 @@ void NetJob::startMoreParts()
     }
 }
 
-
 QStringList NetJob::getFailedFiles()
 {
     QStringList failed;
-    for (auto index: m_failed)
+    for (auto index : m_failed)
     {
         failed.push_back(downloads[index]->url().toString());
     }
@@ -169,13 +170,13 @@ bool NetJob::canAbort() const
 {
     bool canFullyAbort = true;
     // can abort the waiting?
-    for(auto index: m_todo)
+    for (auto index : m_todo)
     {
         auto part = downloads[index];
         canFullyAbort &= part->canAbort();
     }
     // can abort the active?
-    for(auto index: m_doing)
+    for (auto index : m_doing)
     {
         auto part = downloads[index];
         canFullyAbort &= part->canAbort();
@@ -191,7 +192,7 @@ bool NetJob::abort()
     m_todo.clear();
     // abort active
     auto toKill = m_doing.toList();
-    for(auto index: toKill)
+    for (auto index : toKill)
     {
         auto part = downloads[index];
         fullyAborted &= part->abort();
@@ -207,7 +208,7 @@ bool NetJob::addNetAction(NetAction::Ptr action)
     parts_progress.append(pi);
     partProgress(parts_progress.count() - 1, action->currentProgress(), action->totalProgress());
 
-    if(action->isRunning())
+    if (action->isRunning())
     {
         connect(action.get(), SIGNAL(succeeded(int)), SLOT(partSucceeded(int)));
         connect(action.get(), SIGNAL(failed(int)), SLOT(partFailed(int)));

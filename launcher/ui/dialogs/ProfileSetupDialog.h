@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,14 +25,13 @@
 
 namespace Ui
 {
-class ProfileSetupDialog;
+    class ProfileSetupDialog;
 }
 
 class ProfileSetupDialog : public QDialog
 {
     Q_OBJECT
 public:
-
     explicit ProfileSetupDialog(MinecraftAccountPtr accountToSetup, QWidget *parent = 0);
     ~ProfileSetupDialog();
 
@@ -53,21 +52,20 @@ private slots:
     void checkFinished(
         QNetworkReply::NetworkError error,
         QByteArray data,
-        QList<QNetworkReply::RawHeaderPair> headers
-    );
+        QList<QNetworkReply::RawHeaderPair> headers);
     void startCheck();
 
     void setupProfileFinished(
         QNetworkReply::NetworkError error,
         QByteArray data,
-        QList<QNetworkReply::RawHeaderPair> headers
-    );
+        QList<QNetworkReply::RawHeaderPair> headers);
+
 protected:
     void scheduleCheck(const QString &name);
     void checkName(const QString &name);
     void setNameStatus(NameStatus status, QString errorString);
 
-    void setupProfile(const QString & profileName);
+    void setupProfile(const QString &profileName);
 
 private:
     MinecraftAccountPtr m_accountToSetup;
@@ -75,7 +73,7 @@ private:
     QIcon goodIcon;
     QIcon yellowIcon;
     QIcon badIcon;
-    QAction * validityAction = nullptr;
+    QAction *validityAction = nullptr;
 
     QString queuedCheck;
 
@@ -85,4 +83,3 @@ private:
 
     QTimer checkStartTimer;
 };
-

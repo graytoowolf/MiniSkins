@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 class ModFolderModel;
 namespace Ui
 {
-class ModFolderPage;
+    class ModFolderPage;
 }
 
 class ModFolderPage : public QMainWindow, public BasePage
@@ -40,11 +40,10 @@ public:
         QString iconName,
         QString displayName,
         QString helpPage = "",
-        QWidget *parent = 0
-    );
+        QWidget *parent = 0);
     virtual ~ModFolderPage();
 
-    void setFilter(const QString & filter)
+    void setFilter(const QString &filter)
     {
         m_fileSelectionFilter = filter;
     }
@@ -69,10 +68,11 @@ public:
 
     virtual void openedImpl() override;
     virtual void closedImpl() override;
+
 protected:
     bool eventFilter(QObject *obj, QEvent *ev) override;
     bool modListFilter(QKeyEvent *ev);
-    QMenu * createPopupMenu() override;
+    QMenu *createPopupMenu() override;
 
 protected:
     BaseInstance *m_inst = nullptr;
@@ -89,14 +89,12 @@ protected:
     QString m_viewFilter;
     bool m_controlsEnabled = true;
 
-public
-slots:
+public slots:
     void modCurrent(const QModelIndex &current, const QModelIndex &previous);
 
-private
-slots:
+private slots:
     void modItemActivated(const QModelIndex &index);
-    void on_filterTextChanged(const QString & newContents);
+    void on_filterTextChanged(const QString &newContents);
     void on_RunningState_changed(bool running);
     void on_actionAdd_triggered();
     void on_actionRemove_triggered();

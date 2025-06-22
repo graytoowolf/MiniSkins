@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,19 +31,19 @@ namespace MMCZip
      * Merge two zip files, using a filter function
      */
     bool mergeZipFiles(QuaZip *into, QFileInfo from, QSet<QString> &contained,
-                                            const JlCompress::FilterFunction filter = nullptr);
+                       const JlCompress::FilterFunction filter = nullptr);
 
     /**
      * take a source jar, add mods to it, resulting in target jar
      */
-    bool createModdedJar(QString sourceJarPath, QString targetJarPath, const QList<Mod>& mods);
+    bool createModdedJar(QString sourceJarPath, QString targetJarPath, const QList<Mod> &mods);
 
     /**
      * Find a single file in archive by file name (not path)
      *
      * \return the path prefix where the file is
      */
-    QString findFolderOfFileInZip(QuaZip * zip, const QString & what, const QString &root = QString(""));
+    QString findFolderOfFileInZip(QuaZip *zip, const QString &what, const QString &root = QString(""));
     QString findFolderOfFileInZipList(QuaZip *zip, const QStringList &what, QString &foundFileName, const QString &root = QString(""));
 
     /**
@@ -52,14 +52,14 @@ namespace MMCZip
      *
      * \return true if anything was found
      */
-    bool findFilesInZip(QuaZip * zip, const QString & what, QStringList & result, const QString &root = QString());
+    bool findFilesInZip(QuaZip *zip, const QString &what, QStringList &result, const QString &root = QString());
 
     /**
      * Extract a subdirectory from an archive
      */
-    nonstd::optional<QStringList> extractSubDir(QuaZip *zip, const QString & subdir, const QString &target);
+    nonstd::optional<QStringList> extractSubDir(QuaZip *zip, const QString &subdir, const QString &target);
 
-    bool extractRelFile(QuaZip *zip, const QString & file, const QString &target);
+    bool extractRelFile(QuaZip *zip, const QString &file, const QString &target);
 
     /**
      * Extract a whole archive.

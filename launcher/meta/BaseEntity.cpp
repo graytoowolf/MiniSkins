@@ -1,4 +1,4 @@
-/* Copyright 2015-2021 MultiMC Contributors
+/* Copyright 2015-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,9 @@
 class ParsingValidator : public Net::Validator
 {
 public: /* con/des */
-    ParsingValidator(Meta::BaseEntity *entity) : m_entity(entity)
-    {
-    };
-    virtual ~ParsingValidator()
-    {
+    ParsingValidator(Meta::BaseEntity *entity) : m_entity(entity) {
+                                                 };
+    virtual ~ParsingValidator() {
     };
 
 public: /* methods */
@@ -38,7 +36,7 @@ public: /* methods */
     {
         return true;
     }
-    bool write(QByteArray & data) override
+    bool write(QByteArray &data) override
     {
         this->data.append(data);
         return true;
@@ -105,15 +103,15 @@ bool Meta::BaseEntity::loadLocalFile()
 void Meta::BaseEntity::load(Net::Mode loadType)
 {
     // load local file if nothing is loaded yet
-    if(!isLoaded())
+    if (!isLoaded())
     {
-        if(loadLocalFile())
+        if (loadLocalFile())
         {
             m_loadStatus = LoadStatus::Local;
         }
     }
     // if we need remote update, run the update task
-    if(loadType == Net::Mode::Offline || !shouldStartRemoteUpdate())
+    if (loadType == Net::Mode::Offline || !shouldStartRemoteUpdate())
     {
         return;
     }
@@ -130,16 +128,14 @@ void Meta::BaseEntity::load(Net::Mode loadType)
     m_updateTask->addNetAction(dl);
     m_updateStatus = UpdateStatus::InProgress;
     QObject::connect(m_updateTask.get(), &NetJob::succeeded, [&]()
-    {
+                     {
         m_loadStatus = LoadStatus::Remote;
         m_updateStatus = UpdateStatus::Succeeded;
-        m_updateTask.reset();
-    });
+        m_updateTask.reset(); });
     QObject::connect(m_updateTask.get(), &NetJob::failed, [&]()
-    {
+                     {
         m_updateStatus = UpdateStatus::Failed;
-        m_updateTask.reset();
-    });
+        m_updateTask.reset(); });
     m_updateTask->start();
 }
 
@@ -156,7 +152,7 @@ bool Meta::BaseEntity::shouldStartRemoteUpdate() const
 
 Task::Ptr Meta::BaseEntity::getCurrentTask()
 {
-    if(m_updateStatus == UpdateStatus::InProgress)
+    if (m_updateStatus == UpdateStatus::InProgress)
     {
         return m_updateTask;
     }

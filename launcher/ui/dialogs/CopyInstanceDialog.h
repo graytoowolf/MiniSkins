@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ class BaseInstance;
 
 namespace Ui
 {
-class CopyInstanceDialog;
+    class CopyInstanceDialog;
 }
 
 class CopyInstanceDialog : public QDialog
@@ -42,8 +42,7 @@ public:
     bool shouldCopySaves() const;
     bool shouldKeepPlaytime() const;
 
-private
-slots:
+private slots:
     void on_iconButton_clicked();
     void on_instNameTextBox_textChanged(const QString &arg1);
     void on_copySavesCheckbox_stateChanged(int state);

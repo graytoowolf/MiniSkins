@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,13 @@
  * FIXME: maybe do not export
  */
 
-class TextPrint: public LaunchStep
+class TextPrint : public LaunchStep
 {
     Q_OBJECT
 public:
     explicit TextPrint(LaunchTask *parent, const QStringList &lines, MessageLevel::Enum level);
     explicit TextPrint(LaunchTask *parent, const QString &line, MessageLevel::Enum level);
-    virtual ~TextPrint(){};
+    virtual ~TextPrint() {};
 
     virtual void executeTask();
     virtual bool canAbort() const;

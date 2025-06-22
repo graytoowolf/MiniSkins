@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ class PackProfile : public QAbstractListModel
 {
     Q_OBJECT
     friend ComponentUpdateTask;
+
 public:
     enum Columns
     {
@@ -45,7 +46,7 @@ public:
         NUM_COLUMNS
     };
 
-    explicit PackProfile(MinecraftInstance * instance);
+    explicit PackProfile(MinecraftInstance *instance);
     virtual ~PackProfile();
 
     virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -64,7 +65,11 @@ public:
     /// install a jar/zip as a replacement for the main jar
     void installCustomJar(QString selectedFile);
 
-    enum MoveDirection { MoveUp, MoveDown };
+    enum MoveDirection
+    {
+        MoveUp,
+        MoveDown
+    };
     /// move component file # up or down the list
     void move(const int index, const MoveDirection direction);
 
@@ -108,10 +113,10 @@ signals:
 
 public:
     /// get the profile component by id
-    Component * getComponent(const QString &id);
+    Component *getComponent(const QString &id);
 
     /// get the profile component by index
-    Component * getComponent(int index);
+    Component *getComponent(int index);
 
     /// Add the component to the internal list of patches
     // todo(merged): is this the best approach
@@ -133,7 +138,7 @@ private:
 private slots:
     void save_internal();
     void updateSucceeded();
-    void updateFailed(const QString & error);
+    void updateFailed(const QString &error);
     void componentDataChanged();
     void disableInteraction(bool disable);
 
@@ -146,6 +151,5 @@ private:
     bool migratePreComponentConfig();
 
 private: /* data */
-
     std::unique_ptr<PackProfileData> d;
 };

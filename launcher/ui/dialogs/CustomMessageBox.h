@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 
 namespace CustomMessageBox
 {
-QMessageBox *selectable(QWidget *parent, const QString &title, const QString &text,
-                        QMessageBox::Icon icon = QMessageBox::NoIcon,
-                        QMessageBox::StandardButtons buttons = QMessageBox::Ok,
-                        QMessageBox::StandardButton defaultButton = QMessageBox::NoButton);
+    QMessageBox *selectable(QWidget *parent, const QString &title, const QString &text,
+                            QMessageBox::Icon icon = QMessageBox::NoIcon,
+                            QMessageBox::StandardButtons buttons = QMessageBox::Ok,
+                            QMessageBox::StandardButton defaultButton = QMessageBox::NoButton);
 }

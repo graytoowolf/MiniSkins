@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ public:
     {
     public:
         Lock(SettingsObjectPtr locked)
-            :m_locked(locked)
+            : m_locked(locked)
         {
             m_locked->suspendSave();
         }
@@ -54,9 +54,11 @@ public:
         {
             m_locked->resumeSave();
         }
+
     private:
         SettingsObjectPtr m_locked;
     };
+
 public:
     explicit SettingsObject(QObject *parent = 0);
     virtual ~SettingsObject();
@@ -167,8 +169,7 @@ signals:
      */
     void settingReset(const Setting &setting);
 
-protected
-slots:
+protected slots:
     /*!
      * \brief Changes a setting.
      * This slot is usually connected to each Setting object's
@@ -206,6 +207,7 @@ protected:
 
 private:
     QMap<QString, std::shared_ptr<Setting>> m_settings;
+
 protected:
     bool m_suspendSave = false;
     bool m_doSave = false;

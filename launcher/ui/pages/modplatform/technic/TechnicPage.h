@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  * Copyright 2021-2022 Jamie Mansfield <jmansfield@cadixdev.org>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,13 @@
 
 namespace Ui
 {
-class TechnicPage;
+    class TechnicPage;
 }
 
 class NewInstanceDialog;
 
-namespace Technic {
+namespace Technic
+{
     class ListModel;
 }
 
@@ -40,7 +41,7 @@ class TechnicPage : public QWidget, public BasePage
     Q_OBJECT
 
 public:
-    explicit TechnicPage(NewInstanceDialog* dialog, QWidget *parent = 0);
+    explicit TechnicPage(NewInstanceDialog *dialog, QWidget *parent = 0);
     virtual ~TechnicPage();
     virtual QString displayName() const override
     {
@@ -62,7 +63,7 @@ public:
 
     void openedImpl() override;
 
-    bool eventFilter(QObject* watched, QEvent* event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void suggestCurrent();
@@ -77,8 +78,8 @@ private slots:
 
 private:
     Ui::TechnicPage *ui = nullptr;
-    NewInstanceDialog* dialog = nullptr;
-    Technic::ListModel* model = nullptr;
+    NewInstanceDialog *dialog = nullptr;
+    Technic::ListModel *model = nullptr;
 
     Technic::Modpack current;
     QString selectedVersion;

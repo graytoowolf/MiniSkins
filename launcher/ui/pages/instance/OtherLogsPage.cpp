@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,7 +113,7 @@ void OtherLogsPage::on_selectLogBox_currentIndexChanged(const int index)
 
 void OtherLogsPage::on_btnReload_clicked()
 {
-    if(m_currentFile.isEmpty())
+    if (m_currentFile.isEmpty())
     {
         setControlsEnabled(false);
         return;
@@ -124,17 +124,16 @@ void OtherLogsPage::on_btnReload_clicked()
         setControlsEnabled(false);
         ui->btnReload->setEnabled(true); // allow reload
         m_currentFile = QString();
-        QMessageBox::critical(this, tr("Error"), tr("Unable to open %1 for reading: %2")
-                                                     .arg(m_currentFile, file.errorString()));
+        QMessageBox::critical(this, tr("Error"), tr("Unable to open %1 for reading: %2").arg(m_currentFile, file.errorString()));
     }
     else
     {
-        auto setPlainText = [&](const QString & text)
+        auto setPlainText = [&](const QString &text)
         {
             QString fontFamily = APPLICATION->settings()->get("ConsoleFont").toString();
             bool conversionOk = false;
             int fontSize = APPLICATION->settings()->get("ConsoleFontSize").toInt(&conversionOk);
-            if(!conversionOk)
+            if (!conversionOk)
             {
                 fontSize = 11;
             }
@@ -146,18 +145,19 @@ void OtherLogsPage::on_btnReload_clicked()
         {
             setPlainText(
                 tr("The file (%1) is too big. You may want to open it in a viewer optimized "
-                   "for large files.").arg(file.fileName()));
+                   "for large files.")
+                    .arg(file.fileName()));
         };
-        if(file.size() > (1024ll * 1024ll * 12ll))
+        if (file.size() > (1024ll * 1024ll * 12ll))
         {
             showTooBig();
             return;
         }
         QString content;
-        if(file.fileName().endsWith(".gz"))
+        if (file.fileName().endsWith(".gz"))
         {
             QByteArray temp;
-            if(!GZip::unzip(file.readAll(), temp))
+            if (!GZip::unzip(file.readAll(), temp))
             {
                 setPlainText(
                     tr("The file (%1) is not readable.").arg(file.fileName()));
@@ -181,13 +181,13 @@ void OtherLogsPage::on_btnReload_clicked()
 void OtherLogsPage::on_btnPaste_clicked()
 {
     auto response = CustomMessageBox::selectable(
-            this,
-            tr("Log upload"),
-            tr("Are you sure you want to upload this log file?"),
-            QMessageBox::Warning,
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No
-    )->exec();
+                        this,
+                        tr("Log upload"),
+                        tr("Are you sure you want to upload this log file?"),
+                        QMessageBox::Warning,
+                        QMessageBox::Yes | QMessageBox::No,
+                        QMessageBox::No)
+                        ->exec();
 
     if (response != QMessageBox::Yes)
         return;
@@ -202,7 +202,7 @@ void OtherLogsPage::on_btnCopy_clicked()
 
 void OtherLogsPage::on_btnDelete_clicked()
 {
-    if(m_currentFile.isEmpty())
+    if (m_currentFile.isEmpty())
     {
         setControlsEnabled(false);
         return;
@@ -216,23 +216,20 @@ void OtherLogsPage::on_btnDelete_clicked()
     QFile file(FS::PathCombine(m_path, m_currentFile));
     if (!file.remove())
     {
-        QMessageBox::critical(this, tr("Error"), tr("Unable to delete %1: %2")
-                                                     .arg(m_currentFile, file.errorString()));
+        QMessageBox::critical(this, tr("Error"), tr("Unable to delete %1: %2").arg(m_currentFile, file.errorString()));
     }
 }
-
-
 
 void OtherLogsPage::on_btnClean_clicked()
 {
     auto toDelete = m_watcher->files();
-    if(toDelete.isEmpty())
+    if (toDelete.isEmpty())
     {
         return;
     }
     QMessageBox *messageBox = new QMessageBox(this);
     messageBox->setWindowTitle(tr("Clean up"));
-    if(toDelete.size() > 5)
+    if (toDelete.size() > 5)
     {
         messageBox->setText(tr("Do you really want to delete all log files?"));
         messageBox->setDetailedText(toDelete.join('\n'));
@@ -252,7 +249,7 @@ void OtherLogsPage::on_btnClean_clicked()
         return;
     }
     QStringList failed;
-    for(auto item: toDelete)
+    for (auto item : toDelete)
     {
         QFile file(FS::PathCombine(m_path, item));
         if (!file.remove())
@@ -260,11 +257,11 @@ void OtherLogsPage::on_btnClean_clicked()
             failed.push_back(item);
         }
     }
-    if(!failed.empty())
+    if (!failed.empty())
     {
         QMessageBox *messageBox = new QMessageBox(this);
         messageBox->setWindowTitle(tr("Error"));
-        if(failed.size() > 5)
+        if (failed.size() > 5)
         {
             messageBox->setText(tr("Couldn't delete some files!"));
             messageBox->setDetailedText(failed.join('\n'));
@@ -282,7 +279,6 @@ void OtherLogsPage::on_btnClean_clicked()
     }
 }
 
-
 void OtherLogsPage::setControlsEnabled(const bool enabled)
 {
     ui->btnReload->setEnabled(enabled);
@@ -294,7 +290,7 @@ void OtherLogsPage::setControlsEnabled(const bool enabled)
 }
 
 // FIXME: HACK, use LogView instead?
-static void findNext(QPlainTextEdit * _this, const QString& what, bool reverse)
+static void findNext(QPlainTextEdit *_this, const QString &what, bool reverse)
 {
     _this->find(what, reverse ? QTextDocument::FindFlag::FindBackward : QTextDocument::FindFlag(0));
 }

@@ -85,7 +85,7 @@
   <tabstop>btnUpdateLater</tabstop>
  </tabstops>
  <resources>
-  <include location="../../resources/multimc/multimc.qrc"/>
+  <include location="../../resources/miniskins/miniskins.qrc"/>
  </resources>
  <connections/>
 </ui>

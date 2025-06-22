@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ class SettingsObject;
 
 namespace Ui
 {
-class JavaPage;
+    class JavaPage;
 }
 
 class JavaPage : public QWidget, public BasePage
@@ -59,8 +59,7 @@ private:
     void applySettings();
     void loadSettings();
 
-private
-slots:
+private slots:
     void on_javaDetectBtn_clicked();
     void on_javaTestBtn_clicked();
     void on_javaBrowseBtn_clicked();

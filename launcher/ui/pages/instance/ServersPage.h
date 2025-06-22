@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 
 namespace Ui
 {
-class ServersPage;
+    class ServersPage;
 }
 
 struct Server;
@@ -59,7 +59,7 @@ public:
     }
 
 protected:
-    QMenu * createPopupMenu() override;
+    QMenu *createPopupMenu() override;
 
 private:
     void updateState();
@@ -78,9 +78,9 @@ private slots:
 
     void on_RunningState_changed(bool running);
 
-    void nameEdited(const QString & name);
-    void addressEdited(const QString & address);
-    void resourceIndexChanged(int index);\
+    void nameEdited(const QString &name);
+    void addressEdited(const QString &address);
+    void resourceIndexChanged(int index);
 
     void ShowContextMenu(const QPoint &pos);
 
@@ -88,7 +88,6 @@ private: // data
     int currentServer = -1;
     bool m_locked = true;
     Ui::ServersPage *ui = nullptr;
-    ServersModel * m_model = nullptr;
+    ServersModel *m_model = nullptr;
     InstancePtr m_inst = nullptr;
 };
-

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,26 +25,26 @@
 
 namespace SkinUtils
 {
-/*
- * Given a username, return a pixmap of the cached skin (if it exists), QPixmap() otherwise
- */
-QPixmap getFaceFromCache(QString username, int height, int width)
-{
-    QFile fskin(APPLICATION->metacache()->resolveEntry("skins", username + ".png")->getFullPath());
-
-    if (fskin.exists())
+    /*
+     * Given a username, return a pixmap of the cached skin (if it exists), QPixmap() otherwise
+     */
+    QPixmap getFaceFromCache(QString username, int height, int width)
     {
-        QPixmap skinTexture(fskin.fileName());
-        if(!skinTexture.isNull())
-        {
-            QPixmap skin = QPixmap(8, 8);
-            QPainter painter(&skin);
-            painter.drawPixmap(0, 0, skinTexture.copy(8, 8, 8, 8));
-            painter.drawPixmap(0, 0, skinTexture.copy(40, 8, 8, 8));
-            return skin.scaled(height, width, Qt::KeepAspectRatio);
-        }
-    }
+        QFile fskin(APPLICATION->metacache()->resolveEntry("skins", username + ".png")->getFullPath());
 
-    return QPixmap();
-}
+        if (fskin.exists())
+        {
+            QPixmap skinTexture(fskin.fileName());
+            if (!skinTexture.isNull())
+            {
+                QPixmap skin = QPixmap(8, 8);
+                QPainter painter(&skin);
+                painter.drawPixmap(0, 0, skinTexture.copy(8, 8, 8, 8));
+                painter.drawPixmap(0, 0, skinTexture.copy(40, 8, 8, 8));
+                return skin.scaled(height, width, Qt::KeepAspectRatio);
+            }
+        }
+
+        return QPixmap();
+    }
 }

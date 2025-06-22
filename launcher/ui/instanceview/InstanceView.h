@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,8 @@ public:
     void setModel(QAbstractItemModel *model) override;
 
     using visibilityFunction = std::function<bool(const QString &)>;
-    void setSourceOfGroupCollapseStatus(visibilityFunction f) {
+    void setSourceOfGroupCollapseStatus(visibilityFunction f)
+    {
         fVisibility = f;
     }
 
@@ -117,7 +118,7 @@ private:
     int m_spacing = 5;
     int m_itemWidth = 100;
     int m_currentItemsPerRow = -1;
-    int m_currentCursorColumn= -1;
+    int m_currentCursorColumn = -1;
     mutable QCache<int, QRect> geometryCache;
 
     // point where the currently active mouse action started in geometry coordinates
@@ -130,7 +131,7 @@ private:
 
     VisualGroup *category(const QModelIndex &index) const;
     VisualGroup *category(const QString &cat) const;
-    VisualGroup *categoryAt(const QPoint &pos, VisualGroup::HitResults & result) const;
+    VisualGroup *categoryAt(const QPoint &pos, VisualGroup::HitResults &result) const;
 
     int itemsPerRow() const
     {

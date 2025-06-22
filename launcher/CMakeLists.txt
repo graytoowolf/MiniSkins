@@ -618,7 +618,7 @@ SET(LAUNCHER_SOURCES
 
     # Bundled resources
     resources/backgrounds/backgrounds.qrc
-    resources/multimc/multimc.qrc
+    resources/miniskins/miniskins.qrc
     resources/pe_dark/pe_dark.qrc
     resources/pe_light/pe_light.qrc
     resources/pe_colored/pe_colored.qrc
@@ -969,7 +969,7 @@ qt5_wrap_ui(LAUNCHER_UI
 
 qt5_add_resources(LAUNCHER_RESOURCES
     resources/backgrounds/backgrounds.qrc
-    resources/multimc/multimc.qrc
+    resources/miniskins/miniskins.qrc
     resources/pe_dark/pe_dark.qrc
     resources/pe_light/pe_light.qrc
     resources/pe_colored/pe_colored.qrc

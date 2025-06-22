@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 #include <QDialog>
 #include <QSortFilterProxyModel>
 
-
 #include "BaseVersionList.h"
 
 class QVBoxLayout;
@@ -29,7 +28,7 @@ class QPushButton;
 
 namespace Ui
 {
-class VersionSelectDialog;
+    class VersionSelectDialog;
 }
 
 class VersionProxyModel;
@@ -46,7 +45,7 @@ public:
 
     BaseVersionPtr selectedVersion() const;
 
-    void setCurrentVersion(const QString & version);
+    void setCurrentVersion(const QString &version);
     void setFuzzyFilter(BaseVersionList::ModelRoles role, QString filter);
     void setExactFilter(BaseVersionList::ModelRoles role, QString filter);
     void setEmptyString(QString emptyString);
@@ -74,5 +73,5 @@ private:
 
     int resizeOnColumn = -1;
 
-    Task * loadTask = nullptr;
+    Task *loadTask = nullptr;
 };

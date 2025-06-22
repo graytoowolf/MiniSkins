@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 
 namespace Ui
 {
-class ImportPage;
+    class ImportPage;
 }
 
 class NewInstanceDialog;
@@ -33,7 +33,7 @@ class ImportPage : public QWidget, public BasePage
     Q_OBJECT
 
 public:
-    explicit ImportPage(NewInstanceDialog* dialog, QWidget *parent = 0);
+    explicit ImportPage(NewInstanceDialog *dialog, QWidget *parent = 0);
     virtual ~ImportPage();
     virtual QString displayName() const override
     {
@@ -53,7 +53,7 @@ public:
     }
     virtual bool shouldDisplay() const override;
 
-    void setUrl(const QString & url);
+    void setUrl(const QString &url);
     void openedImpl() override;
 
 private slots:
@@ -65,6 +65,5 @@ private:
 
 private:
     Ui::ImportPage *ui = nullptr;
-    NewInstanceDialog* dialog = nullptr;
+    NewInstanceDialog *dialog = nullptr;
 };
-

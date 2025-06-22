@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include <launch/LaunchStep.h>
 #include <minecraft/auth/MinecraftAccount.h>
 
-class ClaimAccount: public LaunchStep
+class ClaimAccount : public LaunchStep
 {
     Q_OBJECT
 public:
@@ -31,6 +31,7 @@ public:
     {
         return false;
     }
+
 private:
     std::unique_ptr<UseLock> lock;
     MinecraftAccountPtr m_account;

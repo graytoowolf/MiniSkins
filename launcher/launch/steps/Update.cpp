@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@
 
 void Update::executeTask()
 {
-    if(m_aborted)
+    if (m_aborted)
     {
         emitFailed(tr("Task aborted."));
         return;
     }
     m_updateTask.reset(m_parent->instance()->createUpdateTask(m_mode));
-    if(m_updateTask)
+    if (m_updateTask)
     {
         connect(m_updateTask.get(), SIGNAL(finished()), this, SLOT(updateFinished()));
         connect(m_updateTask.get(), &Task::progress, this, &Task::setProgress);
@@ -42,7 +42,7 @@ void Update::proceed()
 
 void Update::updateFinished()
 {
-    if(m_updateTask->wasSuccessful())
+    if (m_updateTask->wasSuccessful())
     {
         m_updateTask.reset();
         emitSucceeded();
@@ -58,20 +58,19 @@ void Update::updateFinished()
 
 bool Update::canAbort() const
 {
-    if(m_updateTask)
+    if (m_updateTask)
     {
         return m_updateTask->canAbort();
     }
     return true;
 }
 
-
 bool Update::abort()
 {
     m_aborted = true;
-    if(m_updateTask)
+    if (m_updateTask)
     {
-        if(m_updateTask->canAbort())
+        if (m_updateTask->canAbort())
         {
             return m_updateTask->abort();
         }

@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  *
  * Authors: Andrew Okin
  *          Peterix
@@ -94,18 +94,19 @@
 
 #include "MMCTime.h"
 
-namespace {
-QString profileInUseFilter(const QString & profile, bool used)
+namespace
 {
-    if(used)
+    QString profileInUseFilter(const QString &profile, bool used)
     {
-        return QObject::tr("%1 (in use)").arg(profile);
+        if (used)
+        {
+            return QObject::tr("%1 (in use)").arg(profile);
+        }
+        else
+        {
+            return profile;
+        }
     }
-    else
-    {
-        return profile;
-    }
-}
 }
 
 // WHY: to hold the pre-translation strings together with the T pointer, so it can be retranslated without a lot of ugly code
@@ -113,52 +114,55 @@ template <typename T>
 class Translated
 {
 public:
-    Translated(){}
+    Translated() {}
     Translated(QWidget *parent)
     {
         m_contained = new T(parent);
     }
-    void setTooltipId(const char * tooltip)
+    void setTooltipId(const char *tooltip)
     {
         m_tooltip = tooltip;
     }
-    void setTextId(const char * text)
+    void setTextId(const char *text)
     {
         m_text = text;
     }
-    operator T*()
+    operator T *()
     {
         return m_contained;
     }
-    T * operator->()
+    T *operator->()
     {
         return m_contained;
     }
     void retranslate()
     {
-        if(m_text)
+        if (m_text)
         {
             QString result;
             result = QApplication::translate("MainWindow", m_text);
-            if(result.contains("%1")) {
+            if (result.contains("%1"))
+            {
                 result = result.arg(BuildConfig.LAUNCHER_NAME);
             }
             m_contained->setText(result);
         }
-        if(m_tooltip)
+        if (m_tooltip)
         {
             QString result;
             result = QApplication::translate("MainWindow", m_tooltip);
-            if(result.contains("%1")) {
+            if (result.contains("%1"))
+            {
                 result = result.arg(BuildConfig.LAUNCHER_NAME);
             }
             m_contained->setToolTip(result);
         }
     }
+
 private:
-    T * m_contained = nullptr;
-    const char * m_text = nullptr;
-    const char * m_tooltip = nullptr;
+    T *m_contained = nullptr;
+    const char *m_text = nullptr;
+    const char *m_tooltip = nullptr;
 };
 using TranslatedAction = Translated<QAction>;
 using TranslatedToolButton = Translated<QToolButton>;
@@ -166,44 +170,45 @@ using TranslatedToolButton = Translated<QToolButton>;
 class TranslatedToolbar
 {
 public:
-    TranslatedToolbar(){}
+    TranslatedToolbar() {}
     TranslatedToolbar(QWidget *parent)
     {
         m_contained = new QToolBar(parent);
     }
-    void setWindowTitleId(const char * title)
+    void setWindowTitleId(const char *title)
     {
         m_title = title;
     }
-    operator QToolBar*()
+    operator QToolBar *()
     {
         return m_contained;
     }
-    QToolBar * operator->()
+    QToolBar *operator->()
     {
         return m_contained;
     }
     void retranslate()
     {
-        if(m_title)
+        if (m_title)
         {
             m_contained->setWindowTitle(QApplication::translate("MainWindow", m_title));
         }
     }
+
 private:
-    QToolBar * m_contained = nullptr;
-    const char * m_title = nullptr;
+    QToolBar *m_contained = nullptr;
+    const char *m_title = nullptr;
 };
 
 class MainWindow::Ui
 {
 public:
     TranslatedAction actionAddInstance;
-    //TranslatedAction actionRefresh;
+    // TranslatedAction actionRefresh;
     TranslatedAction actionCheckUpdate;
     TranslatedAction actionSettings;
-    //TranslatedAction actionPatreon;
-    //TranslatedAction actionMoreNews;
+    // TranslatedAction actionPatreon;
+    // TranslatedAction actionMoreNews;
     TranslatedAction actionManageAccounts;
     TranslatedAction actionLaunchInstance;
     TranslatedAction actionRenameInstance;
@@ -215,7 +220,7 @@ public:
     TranslatedAction actionMods;
     TranslatedAction actionViewSelectedInstFolder;
     TranslatedAction actionViewSelectedMCFolder;
-    //TranslatedAction actionViewSelectedModsFolder;
+    // TranslatedAction actionViewSelectedModsFolder;
     TranslatedAction actionDeleteInstance;
     TranslatedAction CheckInstanceupdates;
     TranslatedAction actionConfig_Folder;
@@ -230,12 +235,12 @@ public:
     LabeledToolButton *renameButton = nullptr;
     LabeledToolButton *changeIconButton = nullptr;
 
-    QMenu * foldersMenu = nullptr;
+    QMenu *foldersMenu = nullptr;
     TranslatedToolButton foldersMenuButton;
     TranslatedAction actionViewInstanceFolder;
     TranslatedAction actionViewCentralModsFolder;
 
-    QMenu * helpMenu = nullptr;
+    QMenu *helpMenu = nullptr;
     TranslatedToolButton helpMenuButton;
     TranslatedAction actionReportBug;
     TranslatedAction actionDISCORD;
@@ -256,7 +261,7 @@ public:
 
     void updateLaunchAction()
     {
-        if(m_kill)
+        if (m_kill)
         {
             actionLaunchInstance.setTextId(QT_TRANSLATE_NOOP("MainWindow", "Kill"));
             actionLaunchInstance.setTooltipId(QT_TRANSLATE_NOOP("MainWindow", "Kill the running instance"));
@@ -322,7 +327,7 @@ public:
         foldersMenuButton->setIcon(APPLICATION->getThemedIcon("viewfolder"));
         foldersMenuButton->setFocusPolicy(Qt::NoFocus);
         all_toolbuttons.append(&foldersMenuButton);
-        QWidgetAction* foldersButtonAction = new QWidgetAction(MainWindow);
+        QWidgetAction *foldersButtonAction = new QWidgetAction(MainWindow);
         foldersButtonAction->setDefaultWidget(foldersMenuButton);
         mainToolBar->addAction(foldersButtonAction);
 
@@ -338,7 +343,8 @@ public:
         helpMenu = new QMenu(MainWindow);
         helpMenu->setToolTipsVisible(true);
 
-        if (!BuildConfig.BUG_TRACKER_URL.isEmpty()) {
+        if (!BuildConfig.BUG_TRACKER_URL.isEmpty())
+        {
             actionReportBug = TranslatedAction(MainWindow);
             actionReportBug->setObjectName(QStringLiteral("actionReportBug"));
             actionReportBug->setIcon(APPLICATION->getThemedIcon("bug"));
@@ -386,11 +392,11 @@ public:
         helpMenuButton->setIcon(APPLICATION->getThemedIcon("help"));
         helpMenuButton->setFocusPolicy(Qt::NoFocus);
         all_toolbuttons.append(&helpMenuButton);
-        QWidgetAction* helpButtonAction = new QWidgetAction(MainWindow);
+        QWidgetAction *helpButtonAction = new QWidgetAction(MainWindow);
         helpButtonAction->setDefaultWidget(helpMenuButton);
         mainToolBar->addAction(helpButtonAction);
 
-        if(BuildConfig.UPDATER_ENABLED)
+        if (BuildConfig.UPDATER_ENABLED)
         {
             actionCheckUpdate = TranslatedAction(MainWindow);
             actionCheckUpdate->setObjectName(QStringLiteral("actionCheckUpdate"));
@@ -638,7 +644,6 @@ public:
         all_actions.append(&CheckInstanceupdates);
         instanceToolBar->addAction(CheckInstanceupdates);
 
-
         all_toolbars.append(&instanceToolBar);
         MainWindow->addToolBar(Qt::RightToolBarArea, instanceToolBar);
     }
@@ -668,7 +673,7 @@ public:
         MainWindow->setCentralWidget(centralWidget);
 
         createStatusBar(MainWindow);
-        //createNewsToolbar(MainWindow);
+        // createNewsToolbar(MainWindow);
         createInstanceToolbar(MainWindow);
 
         retranslateUi(MainWindow);
@@ -685,15 +690,15 @@ public:
         }
         MainWindow->setWindowTitle(winTitle);
         // all the actions
-        for(auto * item: all_actions)
+        for (auto *item : all_actions)
         {
             item->retranslate();
         }
-        for(auto * item: all_toolbars)
+        for (auto *item : all_toolbars)
         {
             item->retranslate();
         }
-        for(auto * item: all_toolbuttons)
+        for (auto *item : all_toolbuttons)
         {
             item->retranslate();
         }
@@ -761,9 +766,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new MainWindow
         connect(proxymodel, &InstanceProxyModel::dataChanged, this, &MainWindow::instanceDataChanged);
 
         view->setModel(proxymodel);
-        view->setSourceOfGroupCollapseStatus([](const QString & groupName)->bool {
-            return APPLICATION->instances()->isGroupCollapsed(groupName);
-        });
+        view->setSourceOfGroupCollapseStatus([](const QString &groupName) -> bool
+                                             { return APPLICATION->instances()->isGroupCollapsed(groupName); });
         connect(view, &InstanceView::groupStateChanged, APPLICATION->instances().get(), &InstanceList::on_GroupStateChanged);
         ui->horizontalLayout->addWidget(view);
     }
@@ -824,18 +828,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new MainWindow
     connect(
         APPLICATION->accounts().get(),
         &AccountList::defaultAccountChanged,
-        [this] {
+        [this]
+        {
             defaultAccountChanged();
-        }
-    );
+        });
     connect(
         APPLICATION->accounts().get(),
         &AccountList::listChanged,
         [this]
         {
             repopulateAccountsMenu();
-        }
-    );
+        });
 
     // Show initial account
     defaultAccountChanged();
@@ -851,8 +854,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new MainWindow
     }
     */
 
-
-    if(BuildConfig.UPDATER_ENABLED)
+    if (BuildConfig.UPDATER_ENABLED)
     {
         bool updatesAllowed = APPLICATION->updatesAreAllowed();
         updatesAllowedChanged(updatesAllowed);
@@ -871,15 +873,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new MainWindow
         }
     }
 
-//    {
-//        auto checker = new NotificationChecker();
-//        checker->setNotificationsUrl(QUrl(BuildConfig.NOTIFICATION_URL));
-//        checker->setApplicationPlatform(BuildConfig.BUILD_PLATFORM);
-//        checker->setApplicationFullVersion(BuildConfig.FULL_VERSION_STR);
-//        m_notificationChecker.reset(checker);
-//        connect(m_notificationChecker.get(), &NotificationChecker::notificationCheckFinished, this, &MainWindow::notificationsChanged);
-//        checker->checkForNotifications();
-//    }
+    //    {
+    //        auto checker = new NotificationChecker();
+    //        checker->setNotificationsUrl(QUrl(BuildConfig.NOTIFICATION_URL));
+    //        checker->setApplicationPlatform(BuildConfig.BUILD_PLATFORM);
+    //        checker->setApplicationFullVersion(BuildConfig.FULL_VERSION_STR);
+    //        m_notificationChecker.reset(checker);
+    //        connect(m_notificationChecker.get(), &NotificationChecker::notificationCheckFinished, this, &MainWindow::notificationsChanged);
+    //        checker->checkForNotifications();
+    //    }
 
     setSelectedInstanceById(APPLICATION->settings()->get("SelectedInstance").toString());
 
@@ -893,17 +895,22 @@ void MainWindow::retranslateUi()
 {
     auto accounts = APPLICATION->accounts();
     MinecraftAccountPtr defaultAccount = accounts->defaultAccount();
-    if(defaultAccount) {
+    if (defaultAccount)
+    {
         auto profileLabel = profileInUseFilter(defaultAccount->profileName(), defaultAccount->isInUse());
         accountMenuButton->setText(profileLabel);
     }
-    else {
+    else
+    {
         accountMenuButton->setText(tr("Profiles"));
     }
 
-    if (m_selectedInstance) {
+    if (m_selectedInstance)
+    {
         m_statusLeft->setText(m_selectedInstance->getStatusbarDescription());
-    } else {
+    }
+    else
+    {
         m_statusLeft->setText(tr("No instance selected"));
     }
 
@@ -914,10 +921,10 @@ MainWindow::~MainWindow()
 {
 }
 
-QMenu * MainWindow::createPopupMenu()
+QMenu *MainWindow::createPopupMenu()
 {
-    QMenu* filteredMenu = QMainWindow::createPopupMenu();
-    filteredMenu->removeAction( ui->mainToolBar->toggleViewAction() );
+    QMenu *filteredMenu = QMainWindow::createPopupMenu();
+    filteredMenu->removeAction(ui->mainToolBar->toggleViewAction());
     return filteredMenu;
 }
 
@@ -959,7 +966,7 @@ void MainWindow::showInstanceContextMenu(const QPoint &pos)
 
         QAction *actionCreateInstance = new QAction(tr("Create instance"), this);
         actionCreateInstance->setToolTip(ui->actionAddInstance->toolTip());
-        if(!group.isNull())
+        if (!group.isNull())
         {
             QVariantMap data;
             data["group"] = group;
@@ -971,7 +978,7 @@ void MainWindow::showInstanceContextMenu(const QPoint &pos)
         actions.prepend(actionSep);
         actions.prepend(actionVoid);
         actions.append(actionCreateInstance);
-        if(!group.isNull())
+        if (!group.isNull())
         {
             QAction *actionDeleteGroup = new QAction(tr("Delete group '%1'").arg(group), this);
             QVariantMap data;
@@ -992,14 +999,17 @@ void MainWindow::showInstanceContextMenu(const QPoint &pos)
 
 void MainWindow::updateToolsMenu()
 {
-    QToolButton *exportButton = dynamic_cast<QToolButton*>(ui->instanceToolBar->widgetForAction(ui->actionExportInstance));
+    QToolButton *exportButton = dynamic_cast<QToolButton *>(ui->instanceToolBar->widgetForAction(ui->actionExportInstance));
     exportButton->setPopupMode(QToolButton::MenuButtonPopup);
 
     QMenu *exportMenu = ui->actionExportInstance->menu();
 
-    if (exportMenu) {
+    if (exportMenu)
+    {
         exportMenu->clear();
-    } else {
+    }
+    else
+    {
         exportMenu = new QMenu();
     }
 
@@ -1010,19 +1020,18 @@ void MainWindow::updateToolsMenu()
 
     connect(mmcExport, &QAction::triggered, this, &MainWindow::on_actionExportInstance_triggered);
     connect(modrinthExport, &QAction::triggered, [this]()
-    {
+            {
         if (m_selectedInstance) {
             ModrinthExportDialog dlg(m_selectedInstance, this);
             dlg.exec();
-        }
-    });
+        } });
 
     ui->actionExportInstance->setMenu(exportMenu);
 
-    QToolButton *launchButton = dynamic_cast<QToolButton*>(ui->instanceToolBar->widgetForAction(ui->actionLaunchInstance));
-    QToolButton *launchOfflineButton = dynamic_cast<QToolButton*>(ui->instanceToolBar->widgetForAction(ui->actionLaunchInstanceOffline));
+    QToolButton *launchButton = dynamic_cast<QToolButton *>(ui->instanceToolBar->widgetForAction(ui->actionLaunchInstance));
+    QToolButton *launchOfflineButton = dynamic_cast<QToolButton *>(ui->instanceToolBar->widgetForAction(ui->actionLaunchInstanceOffline));
 
-    if(!m_selectedInstance || m_selectedInstance->isRunning())
+    if (!m_selectedInstance || m_selectedInstance->isRunning())
     {
         ui->actionLaunchInstance->setMenu(nullptr);
         ui->actionLaunchInstanceOffline->setMenu(nullptr);
@@ -1043,7 +1052,8 @@ void MainWindow::updateToolsMenu()
     {
         launchMenu = new QMenu(this);
     }
-    if (launchOfflineMenu) {
+    if (launchOfflineMenu)
+    {
         launchOfflineMenu->clear();
     }
     else
@@ -1054,13 +1064,9 @@ void MainWindow::updateToolsMenu()
     QAction *normalLaunch = launchMenu->addAction(tr("Launch"));
     QAction *normalLaunchOffline = launchOfflineMenu->addAction(tr("Launch Offline"));
     connect(normalLaunch, &QAction::triggered, [this]()
-            {
-                APPLICATION->launch(m_selectedInstance, true);
-            });
+            { APPLICATION->launch(m_selectedInstance, true); });
     connect(normalLaunchOffline, &QAction::triggered, [this]()
-            {
-                APPLICATION->launch(m_selectedInstance, false);
-            });
+            { APPLICATION->launch(m_selectedInstance, false); });
     QString profilersTitle = tr("Profilers");
     launchMenu->addSeparator()->setText(profilersTitle);
     launchOfflineMenu->addSeparator()->setText(profilersTitle);
@@ -1080,13 +1086,9 @@ void MainWindow::updateToolsMenu()
         else
         {
             connect(profilerAction, &QAction::triggered, [this, profiler]()
-                    {
-                        APPLICATION->launch(m_selectedInstance, true, profiler.get());
-                    });
+                    { APPLICATION->launch(m_selectedInstance, true, profiler.get()); });
             connect(profilerOfflineAction, &QAction::triggered, [this, profiler]()
-                    {
-                        APPLICATION->launch(m_selectedInstance, false, profiler.get());
-                    });
+                    { APPLICATION->launch(m_selectedInstance, false, profiler.get()); });
         }
     }
     ui->actionLaunchInstance->setMenu(launchMenu);
@@ -1133,10 +1135,12 @@ void MainWindow::repopulateAccountsMenu()
             }
 
             auto face = account->getFace();
-            if(!face.isNull()) {
+            if (!face.isNull())
+            {
                 action->setIcon(face);
             }
-            else {
+            else
+            {
                 action->setIcon(APPLICATION->getThemedIcon("noaccount"));
             }
             accountMenu->addAction(action);
@@ -1150,7 +1154,8 @@ void MainWindow::repopulateAccountsMenu()
     action->setCheckable(true);
     action->setIcon(APPLICATION->getThemedIcon("noaccount"));
     action->setData(-1);
-    if (!defaultAccount) {
+    if (!defaultAccount)
+    {
         action->setChecked(true);
     }
 
@@ -1163,7 +1168,7 @@ void MainWindow::repopulateAccountsMenu()
 
 void MainWindow::updatesAllowedChanged(bool allowed)
 {
-    if(!BuildConfig.UPDATER_ENABLED)
+    if (!BuildConfig.UPDATER_ENABLED)
     {
         return;
     }
@@ -1184,7 +1189,8 @@ void MainWindow::changeActiveAccount()
     QVariant data = sAction->data();
     bool valid = false;
     int index = data.toInt(&valid);
-    if(!valid) {
+    if (!valid)
+    {
         index = -1;
     }
     auto accounts = APPLICATION->accounts();
@@ -1204,10 +1210,12 @@ void MainWindow::defaultAccountChanged()
         auto profileLabel = profileInUseFilter(account->profileName(), account->isInUse());
         accountMenuButton->setText(profileLabel);
         auto face = account->getFace();
-        if(face.isNull()) {
+        if (face.isNull())
+        {
             accountMenuButton->setIcon(APPLICATION->getThemedIcon("noaccount"));
         }
-        else {
+        else
+        {
             accountMenuButton->setIcon(face);
         }
         return;
@@ -1276,7 +1284,7 @@ void MainWindow::updateNewsLabel()
 
 void MainWindow::updateAvailable(GoUpdate::Status status)
 {
-    if(!APPLICATION->updatesAreAllowed())
+    if (!APPLICATION->updatesAreAllowed())
     {
         updateNotAvailable();
         return;
@@ -1319,28 +1327,28 @@ QString intListToString(const QList<int> &list)
     }
     return slist.join(',');
 }
-//void MainWindow::notificationsChanged()
+// void MainWindow::notificationsChanged()
 //{
-//    QList<NotificationChecker::NotificationEntry> entries = m_notificationChecker->notificationEntries();
-//    QList<int> shownNotifications = stringToIntList(APPLICATION->settings()->get("ShownNotifications").toString());
-//    for (auto it = entries.begin(); it != entries.end(); ++it)
-//    {
-//        NotificationChecker::NotificationEntry entry = *it;
-//        if (!shownNotifications.contains(entry.id))
-//        {
-//            NotificationDialog dialog(entry, this);
-//            if (dialog.exec() == NotificationDialog::DontShowAgain)
-//            {
-//                shownNotifications.append(entry.id);
-//            }
-//        }
-//    }
-//    APPLICATION->settings()->set("ShownNotifications", intListToString(shownNotifications));
-//}
+//     QList<NotificationChecker::NotificationEntry> entries = m_notificationChecker->notificationEntries();
+//     QList<int> shownNotifications = stringToIntList(APPLICATION->settings()->get("ShownNotifications").toString());
+//     for (auto it = entries.begin(); it != entries.end(); ++it)
+//     {
+//         NotificationChecker::NotificationEntry entry = *it;
+//         if (!shownNotifications.contains(entry.id))
+//         {
+//             NotificationDialog dialog(entry, this);
+//             if (dialog.exec() == NotificationDialog::DontShowAgain)
+//             {
+//                 shownNotifications.append(entry.id);
+//             }
+//         }
+//     }
+//     APPLICATION->settings()->set("ShownNotifications", intListToString(shownNotifications));
+// }
 
 void MainWindow::downloadUpdates(GoUpdate::Status status)
 {
-    if(!APPLICATION->updatesAreAllowed())
+    if (!APPLICATION->updatesAreAllowed())
     {
         return;
     }
@@ -1378,14 +1386,15 @@ void MainWindow::onCatToggled(bool state)
     APPLICATION->settings()->set("TheCat", state);
 }
 
-namespace {
-template <typename T>
-T non_stupid_abs(T in)
+namespace
 {
-    if (in < 0)
-        return -in;
-    return in;
-}
+    template <typename T>
+    T non_stupid_abs(T in)
+    {
+        if (in < 0)
+            return -in;
+        return in;
+    }
 }
 
 void MainWindow::setCatBackground(bool enabled)
@@ -1396,13 +1405,16 @@ void MainWindow::setCatBackground(bool enabled)
         QDateTime birthday(QDate(now.date().year(), 11, 30), QTime(0, 0));
         QDateTime xmas(QDate(now.date().year(), 12, 25), QTime(0, 0));
         QString cat;
-        if(non_stupid_abs(now.daysTo(xmas)) <= 4) {
+        if (non_stupid_abs(now.daysTo(xmas)) <= 4)
+        {
             cat = "catmas";
         }
-        else if (non_stupid_abs(now.daysTo(birthday)) <= 12) {
+        else if (non_stupid_abs(now.daysTo(birthday)) <= 12)
+        {
             cat = "cattiversary";
         }
-        else {
+        else
+        {
             cat = "kitteh";
         }
         view->setStyleSheet(QString(R"(
@@ -1414,7 +1426,8 @@ InstanceView
     background-position: top right;
     background-repeat: none;
     background-color:palette(base);
-})").arg(cat));
+})")
+                                .arg(cat));
     }
     else
     {
@@ -1425,17 +1438,14 @@ InstanceView
 void MainWindow::runModalTask(Task *task)
 {
     connect(task, &Task::failed, [this](QString reason)
-        {
-            CustomMessageBox::selectable(this, tr("Error"), reason, QMessageBox::Critical)->show();
-        });
+            { CustomMessageBox::selectable(this, tr("Error"), reason, QMessageBox::Critical)->show(); });
     connect(task, &Task::succeeded, [this, task]()
-        {
+            {
             QStringList warnings = task->warnings();
             if(warnings.count())
             {
                 CustomMessageBox::selectable(this, tr("Warnings"), warnings.join('\n'), QMessageBox::Warning)->show();
-            }
-        });
+            } });
     ProgressDialog loadDialog(this);
     loadDialog.setSkipButton(true, tr("Abort"));
     loadDialog.execWithTask(task);
@@ -1466,7 +1476,8 @@ void MainWindow::on_actionCopyInstance_triggered()
 
 void MainWindow::on_CheckInstanceupdates_triggered()
 {
-    if (!m_selectedInstance) return;
+    if (!m_selectedInstance)
+        return;
 
     m_addonId = m_selectedInstance->getmodpacksaddonId();
     m_fileId = m_selectedInstance->getmodpacksfileId();
@@ -1490,7 +1501,6 @@ void MainWindow::on_CheckInstanceupdates_triggered()
     request.setRawHeader("x-api-key", APPLICATION->curseAPIKey().toUtf8());
     m_netReply = APPLICATION->network()->get(request);
     connect(m_netReply, &QNetworkReply::finished, this, &MainWindow::processReply);
-
 }
 void MainWindow::processReply()
 {
@@ -1498,7 +1508,8 @@ void MainWindow::processReply()
     QByteArray replyData = m_netReply->readAll();
     QJsonDocument doc = QJsonDocument::fromJson(replyData, &jsonError);
 
-    if (jsonError.error != QJsonParseError::NoError) {
+    if (jsonError.error != QJsonParseError::NoError)
+    {
         qDebug() << "JSON Parse Error:" << jsonError.errorString();
         return;
     }
@@ -1507,7 +1518,8 @@ void MainWindow::processReply()
     QJsonArray dataArray = rootObject.value("data").toArray();
 
     // 检查dataArray是否至少有一个元素
-    if (dataArray.isEmpty()) {
+    if (dataArray.isEmpty())
+    {
         qDebug() << "Data array is empty.";
         return;
     }
@@ -1519,28 +1531,32 @@ void MainWindow::processReply()
     QString displayName = firstObject.value("displayName").toString();
 
     // 与当前的fileId比较
-    if (fileId != m_fileId) {
+    if (fileId != m_fileId)
+    {
         // ID不一样，提示更新
         QMessageBox::StandardButton reply = QMessageBox::question(this, tr("Update Available"),
-            tr("A new update is available. The latest version is: %1. Would you like to update now?").arg(displayName),
-            QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::Yes) {
+                                                                  tr("A new update is available. The latest version is: %1. Would you like to update now?").arg(displayName),
+                                                                  QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes)
+        {
             // 用户选择更新，执行更新操作
             qDebug() << "User chose to update.";
             // ... 执行更新逻辑 ...
             APPLICATION->setUpdating(true);
-            APPLICATION->setData(m_addonId, m_fileId, m_id, m_platform,downloadUrl);
+            APPLICATION->setData(m_addonId, m_fileId, m_id, m_platform, downloadUrl);
             // 创建任务实例
             auto importTask = new InstanceImportTask(downloadUrl, m_addonId, fileId);
             importTask->setName(m_name);
             importTask->setIcon(m_iconKey);
             instanceFromInstanceTask(importTask);
         }
-    } else {
+    }
+    else
+    {
         // ID一样，无更新
         QMessageBox::information(this, tr("No Update"),
-            tr("Your modpack is up to date. No updates necessary."),
-            QMessageBox::Ok);
+                                 tr("Your modpack is up to date. No updates necessary."),
+                                 QMessageBox::Ok);
     }
 }
 
@@ -1555,9 +1571,8 @@ void MainWindow::finalizeInstance(InstancePtr inst)
         connect(update.get(), &Task::failed, [this](QString reason)
                 {
                     QString error = QString("Instance load failed: %1").arg(reason);
-                    CustomMessageBox::selectable(this, tr("Error"), error, QMessageBox::Warning)->show();
-                });
-        if(update)
+                    CustomMessageBox::selectable(this, tr("Error"), error, QMessageBox::Warning)->show(); });
+        if (update)
         {
             loadDialog.setSkipButton(true, tr("Abort"));
             loadDialog.execWithTask(update.get());
@@ -1569,9 +1584,9 @@ void MainWindow::finalizeInstance(InstancePtr inst)
             this,
             tr("Error"),
             tr("The launcher cannot download Minecraft or update instances unless you have at least "
-                "one account added.\nPlease add your Mojang or Minecraft account."),
-            QMessageBox::Warning
-        )->show();
+               "one account added.\nPlease add your Mojang or Minecraft account."),
+            QMessageBox::Warning)
+            ->show();
     }
 }
 
@@ -1580,19 +1595,19 @@ void MainWindow::addInstance(QString url)
     QString groupName;
     do
     {
-        QObject* obj = sender();
-        if(!obj)
+        QObject *obj = sender();
+        if (!obj)
             break;
         QAction *action = qobject_cast<QAction *>(obj);
-        if(!action)
+        if (!action)
             break;
         auto map = action->data().toMap();
-        if(!map.contains("group"))
+        if (!map.contains("group"))
             break;
         groupName = map["group"].toString();
-    } while(0);
+    } while (0);
 
-    if(groupName.isEmpty())
+    if (groupName.isEmpty())
     {
         groupName = APPLICATION->settings()->get("LastUsedGroupForNewInstance").toString();
     }
@@ -1603,8 +1618,8 @@ void MainWindow::addInstance(QString url)
 
     APPLICATION->settings()->set("LastUsedGroupForNewInstance", newInstDlg.instGroup());
 
-    InstanceTask * creationTask = newInstDlg.extractTask();
-    if(creationTask)
+    InstanceTask *creationTask = newInstDlg.extractTask();
+    if (creationTask)
     {
         instanceFromInstanceTask(creationTask);
     }
@@ -1617,9 +1632,9 @@ void MainWindow::on_actionAddInstance_triggered()
 
 void MainWindow::droppedURLs(QList<QUrl> urls)
 {
-    for(auto & url:urls)
+    for (auto &url : urls)
     {
-        if(url.isLocalFile())
+        if (url.isLocalFile())
         {
             addInstance(url.toLocalFile());
         }
@@ -1712,21 +1727,20 @@ void MainWindow::on_actionChangeInstGroup_triggered()
 
 void MainWindow::deleteGroup()
 {
-    QObject* obj = sender();
-    if(!obj)
+    QObject *obj = sender();
+    if (!obj)
         return;
     QAction *action = qobject_cast<QAction *>(obj);
-    if(!action)
+    if (!action)
         return;
     auto map = action->data().toMap();
-    if(!map.contains("group"))
+    if (!map.contains("group"))
         return;
     QString groupName = map["group"].toString();
-    if(!groupName.isEmpty())
+    if (!groupName.isEmpty())
     {
-        auto reply = QMessageBox::question(this, tr("Delete group"), tr("Are you sure you want to delete the group %1")
-            .arg(groupName), QMessageBox::Yes | QMessageBox::No);
-        if(reply == QMessageBox::Yes)
+        auto reply = QMessageBox::question(this, tr("Delete group"), tr("Are you sure you want to delete the group %1").arg(groupName), QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes)
         {
             APPLICATION->instances()->deleteGroup(groupName);
         }
@@ -1760,7 +1774,7 @@ void MainWindow::on_actionConfig_Folder_triggered()
 
 void MainWindow::checkForUpdates()
 {
-    if(BuildConfig.UPDATER_ENABLED)
+    if (BuildConfig.UPDATER_ENABLED)
     {
         auto updater = APPLICATION->updateChecker();
         updater->checkForUpdate(true);
@@ -1787,10 +1801,10 @@ void MainWindow::globalSettingsClosed()
     update();
 }
 
-//void MainWindow::on_actionInstanceSettings_triggered()
+// void MainWindow::on_actionInstanceSettings_triggered()
 //{
-//    APPLICATION->showInstanceWindow(m_selectedInstance, "settings");
-//}
+//     APPLICATION->showInstanceWindow(m_selectedInstance, "settings");
+// }
 
 void MainWindow::on_actionEditInstNotes_triggered()
 {
@@ -1864,13 +1878,13 @@ void MainWindow::on_actionDeleteInstance_triggered()
     }
     auto id = m_selectedInstance->id();
     auto response = CustomMessageBox::selectable(
-        this,
-        tr("CAREFUL!"),
-        tr("About to delete: %1\nThis is permanent and will completely delete the instance.\n\nAre you sure?").arg(m_selectedInstance->name()),
-        QMessageBox::Warning,
-        QMessageBox::Yes | QMessageBox::No,
-        QMessageBox::No
-    )->exec();
+                        this,
+                        tr("CAREFUL!"),
+                        tr("About to delete: %1\nThis is permanent and will completely delete the instance.\n\nAre you sure?").arg(m_selectedInstance->name()),
+                        QMessageBox::Warning,
+                        QMessageBox::Yes | QMessageBox::No,
+                        QMessageBox::No)
+                        ->exec();
     if (response == QMessageBox::Yes)
     {
         APPLICATION->instances()->deleteInstance(id);
@@ -1917,19 +1931,19 @@ void MainWindow::on_actionViewSelectedMCFolder_triggered()
     }
 }
 
-//void MainWindow::on_actionViewSelectedModsFolder_triggered()
+// void MainWindow::on_actionViewSelectedModsFolder_triggered()
 //{
-//    if (m_selectedInstance)
-//    {
-//        QString str = m_selectedInstance->modsRoot();
-//        if (!FS::ensureFilePathExists(str))
-//        {
-//            // TODO: report error
-//            return;
-//        }
-//        DesktopServices::openDirectory(QDir(str).absolutePath());
-//    }
-//}
+//     if (m_selectedInstance)
+//     {
+//         QString str = m_selectedInstance->modsRoot();
+//         if (!FS::ensureFilePathExists(str))
+//         {
+//             // TODO: report error
+//             return;
+//         }
+//         DesktopServices::openDirectory(QDir(str).absolutePath());
+//     }
+// }
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
@@ -1940,7 +1954,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     emit isClosing();
 }
 
-void MainWindow::changeEvent(QEvent* event)
+void MainWindow::changeEvent(QEvent *event)
 {
     if (event->type() == QEvent::LanguageChange)
     {
@@ -1967,7 +1981,7 @@ void MainWindow::on_actionLaunchInstance_triggered()
     {
         return;
     }
-    if(m_selectedInstance->isRunning())
+    if (m_selectedInstance->isRunning())
     {
         APPLICATION->kill(m_selectedInstance);
     }
@@ -1977,7 +1991,8 @@ void MainWindow::on_actionLaunchInstance_triggered()
     }
 }
 
-void MainWindow::on_actionCreateShortcut_triggered() {
+void MainWindow::on_actionCreateShortcut_triggered()
+{
     if (m_selectedInstance)
     {
         CreateShortcutDialog(this, m_selectedInstance).exec();
@@ -2026,7 +2041,7 @@ void MainWindow::instanceChanged(const QModelIndex &current, const QModelIndex &
     if (m_selectedInstance)
     {
         ui->instanceToolBar->setEnabled(true);
-        if(m_selectedInstance->isRunning())
+        if (m_selectedInstance->isRunning())
         {
             ui->actionLaunchInstance->setEnabled(true);
             ui->setLaunchAction(true);
@@ -2096,9 +2111,8 @@ void MainWindow::checkInstancePathForProblems()
             tr(
                 "You have now two options: <br/>"
                 " - change the instance folder in the settings <br/>"
-                " - move this installation of %1 to a different folder"
-            ).arg(BuildConfig.LAUNCHER_NAME)
-        );
+                " - move this installation of %1 to a different folder")
+                .arg(BuildConfig.LAUNCHER_NAME));
         warning.setDefaultButton(QMessageBox::Ok);
         warning.exec();
     }
@@ -2129,10 +2143,14 @@ void MainWindow::updateStatusCenter()
     m_statusCenter->setVisible(APPLICATION->settings()->get("ShowGlobalGameTime").toBool());
 
     int timePlayed = APPLICATION->instances()->getTotalPlayTime();
-    if (timePlayed > 0) {
-        if (APPLICATION->settings()->get("ShowGameTimeHours").toBool()) {
+    if (timePlayed > 0)
+    {
+        if (APPLICATION->settings()->get("ShowGameTimeHours").toBool())
+        {
             m_statusCenter->setText(tr("Total playtime: %1 hours").arg(Time::prettifyDurationHours(timePlayed)));
-        } else {
+        }
+        else
+        {
             m_statusCenter->setText(tr("Total playtime: %1").arg(Time::prettifyDuration(timePlayed)));
         }
     }

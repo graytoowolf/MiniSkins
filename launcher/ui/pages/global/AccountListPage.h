@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 
 namespace Ui
 {
-class AccountListPage;
+    class AccountListPage;
 }
 
 class AuthenticateTask;
@@ -44,7 +44,7 @@ public:
     QIcon icon() const override
     {
         auto icon = APPLICATION->getThemedIcon("accounts");
-        if(icon.isNull())
+        if (icon.isNull())
         {
             icon = APPLICATION->getThemedIcon("noaccount");
         }
@@ -78,8 +78,8 @@ protected slots:
     void ShowContextMenu(const QPoint &pos);
 
 private:
-    void changeEvent(QEvent * event) override;
-    QMenu * createPopupMenu() override;
+    void changeEvent(QEvent *event) override;
+    QMenu *createPopupMenu() override;
     shared_qobject_ptr<AccountList> m_accounts;
     Ui::AccountListPage *ui;
 };

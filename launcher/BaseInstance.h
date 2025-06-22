@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  * Copyright 2022 Jamie Mansfield <jmansfield@cadixdev.org>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,8 +131,8 @@ public:
     QString getmodpacksaddonId();
     QString getmodpacksfileId();
     QString getmodpacksplatform();
-    void setManagedPack(const QString& type, const QString& id, const QString& name, const QString& versionId, const QString& version);
-    void setmodpacks(const QString& addonId,const QString& fileId,const QString& platform);
+    void setManagedPack(const QString &type, const QString &id, const QString &name, const QString &versionId, const QString &version);
+    void setmodpacks(const QString &addonId, const QString &fileId, const QString &platform);
 
     /// guess log level from a line of game log
     virtual MessageLevel::Enum guessLevel(const QString &line, MessageLevel::Enum level)
@@ -143,7 +143,7 @@ public:
     virtual QStringList extraArguments() const;
 
     /// Traits. Normally inside the version, depends on instance implementation.
-    virtual QSet <QString> traits() const = 0;
+    virtual QSet<QString> traits() const = 0;
 
     /**
      * Gets the time that the instance was last launched.
@@ -165,7 +165,7 @@ public:
 
     /// returns a valid launcher (task container)
     virtual shared_qobject_ptr<LaunchTask> createLaunchTask(
-            AuthSessionPtr account, QuickPlayTargetPtr quickPlayTarget) = 0;
+        AuthSessionPtr account, QuickPlayTargetPtr quickPlayTarget) = 0;
 
     /// returns the current launch task (if any)
     shared_qobject_ptr<LaunchTask> getLaunchTask();
@@ -201,7 +201,7 @@ public:
     }
     void setVersionBroken(bool value)
     {
-        if(m_hasBrokenVersion != value)
+        if (m_hasBrokenVersion != value)
         {
             m_hasBrokenVersion = value;
             emit propertiesChanged(this);
@@ -214,7 +214,7 @@ public:
     }
     void setUpdateAvailable(bool value)
     {
-        if(m_hasUpdate != value)
+        if (m_hasUpdate != value)
         {
             m_hasUpdate = value;
             emit propertiesChanged(this);
@@ -227,7 +227,7 @@ public:
     }
     void setCrashed(bool value)
     {
-        if(m_crashed != value)
+        if (m_crashed != value)
         {
             m_crashed = value;
             emit propertiesChanged(this);
@@ -284,5 +284,5 @@ private: /* data */
 };
 
 Q_DECLARE_METATYPE(shared_qobject_ptr<BaseInstance>)
-//Q_DECLARE_METATYPE(BaseInstance::InstanceFlag)
-//Q_DECLARE_OPERATORS_FOR_FLAGS(BaseInstance::InstanceFlags)
+// Q_DECLARE_METATYPE(BaseInstance::InstanceFlag)
+// Q_DECLARE_OPERATORS_FOR_FLAGS(BaseInstance::InstanceFlags)

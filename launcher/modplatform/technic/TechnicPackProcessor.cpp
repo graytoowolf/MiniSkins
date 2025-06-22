@@ -1,4 +1,4 @@
-/* Copyright 2020-2021 MultiMC Contributors
+/* Copyright 2020-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -164,7 +164,7 @@ void Technic::TechnicPackProcessor::run(SettingsObjectPtr globalSettings, const 
             minecraftVersion = fmlMinecraftVersion;
         }
         components->setComponentVersion("net.minecraft", minecraftVersion, true);
-        for (auto library: Json::ensureArray(root, "libraries", {}))
+        for (auto library : Json::ensureArray(root, "libraries", {}))
         {
             if (!library.isObject())
             {

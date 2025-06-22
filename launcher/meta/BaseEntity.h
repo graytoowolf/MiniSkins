@@ -1,4 +1,4 @@
-/* Copyright 2015-2021 MultiMC Contributors
+/* Copyright 2015-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,44 +24,44 @@
 
 namespace Meta
 {
-class BaseEntity
-{
-public: /* types */
-    using Ptr = std::shared_ptr<BaseEntity>;
-    enum class LoadStatus
+    class BaseEntity
     {
-        NotLoaded,
-        Local,
-        Remote
+    public: /* types */
+        using Ptr = std::shared_ptr<BaseEntity>;
+        enum class LoadStatus
+        {
+            NotLoaded,
+            Local,
+            Remote
+        };
+        enum class UpdateStatus
+        {
+            NotDone,
+            InProgress,
+            Failed,
+            Succeeded
+        };
+
+    public:
+        virtual ~BaseEntity();
+
+        virtual void parse(const QJsonObject &obj) = 0;
+
+        virtual QString localFilename() const = 0;
+        virtual QUrl url() const;
+
+        bool isLoaded() const;
+        bool shouldStartRemoteUpdate() const;
+
+        void load(Net::Mode loadType);
+        Task::Ptr getCurrentTask();
+
+    protected: /* methods */
+        bool loadLocalFile();
+
+    private:
+        LoadStatus m_loadStatus = LoadStatus::NotLoaded;
+        UpdateStatus m_updateStatus = UpdateStatus::NotDone;
+        NetJob::Ptr m_updateTask;
     };
-    enum class UpdateStatus
-    {
-        NotDone,
-        InProgress,
-        Failed,
-        Succeeded
-    };
-
-public:
-    virtual ~BaseEntity();
-
-    virtual void parse(const QJsonObject &obj) = 0;
-
-    virtual QString localFilename() const = 0;
-    virtual QUrl url() const;
-
-    bool isLoaded() const;
-    bool shouldStartRemoteUpdate() const;
-
-    void load(Net::Mode loadType);
-    Task::Ptr getCurrentTask();
-
-protected: /* methods */
-    bool loadLocalFile();
-
-private:
-    LoadStatus m_loadStatus = LoadStatus::NotLoaded;
-    UpdateStatus m_updateStatus = UpdateStatus::NotDone;
-    NetJob::Ptr m_updateTask;
-};
 }

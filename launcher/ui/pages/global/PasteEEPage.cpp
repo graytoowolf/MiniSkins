@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,15 +25,14 @@
 #include "tools/BaseProfiler.h"
 #include "Application.h"
 
-PasteEEPage::PasteEEPage(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::PasteEEPage)
+PasteEEPage::PasteEEPage(QWidget *parent) : QWidget(parent),
+                                            ui(new Ui::PasteEEPage)
 {
     ui->setupUi(this);
-    ui->tabWidget->tabBar()->hide();\
+    ui->tabWidget->tabBar()->hide();
     connect(ui->customAPIkeyEdit, &QLineEdit::textEdited, this, &PasteEEPage::textEdited);
-    connect(ui->logPlatformComboBox, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-                this, &PasteEEPage::platformChanged);
+    connect(ui->logPlatformComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            this, &PasteEEPage::platformChanged);
     loadSettings();
     platformChanged(ui->logPlatformComboBox->currentIndex());
 }
@@ -45,9 +44,12 @@ PasteEEPage::~PasteEEPage()
 void PasteEEPage::platformChanged(int index)
 {
     QString platform = ui->logPlatformComboBox->itemText(index);
-    if(platform == "mclo.gs") {
+    if (platform == "mclo.gs")
+    {
         ui->groupBox_2->hide();
-    } else if(platform == "paste.ee") {
+    }
+    else if (platform == "paste.ee")
+    {
         ui->groupBox_2->show();
     }
 }
@@ -56,7 +58,7 @@ void PasteEEPage::loadSettings()
 {
     auto s = APPLICATION->settings();
     QString keyToUse = s->get("PasteEEAPIKey").toString();
-    if(keyToUse == "multimc")
+    if (keyToUse == "miniskins")
     {
         ui->multimcButton->setChecked(true);
     }
@@ -68,7 +70,8 @@ void PasteEEPage::loadSettings()
 
     QString currentPlatform = s->get("LogPlatform").toString();
     int index = ui->logPlatformComboBox->findText(currentPlatform);
-    if(index != -1) {
+    if (index != -1)
+    {
         ui->logPlatformComboBox->setCurrentIndex(index);
     }
 }
@@ -82,12 +85,12 @@ void PasteEEPage::applySettings()
         pasteKeyToUse = ui->customAPIkeyEdit->text();
     else
     {
-        pasteKeyToUse =  "multimc";
+        pasteKeyToUse = "miniskins";
     }
     QString currentPlatform = ui->logPlatformComboBox->currentText();
 
     s->set("PasteEEAPIKey", pasteKeyToUse);
-    s->set("LogPlatform",currentPlatform);
+    s->set("LogPlatform", currentPlatform);
 }
 
 bool PasteEEPage::apply()
@@ -96,7 +99,7 @@ bool PasteEEPage::apply()
     return true;
 }
 
-void PasteEEPage::textEdited(const QString& text)
+void PasteEEPage::textEdited(const QString &text)
 {
     ui->customButton->setChecked(true);
 }

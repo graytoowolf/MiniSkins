@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ Task::Ptr JavaInstallList::getLoadTask()
 
 Task::Ptr JavaInstallList::getCurrentTask()
 {
-    if(m_status == Status::InProgress)
+    if (m_status == Status::InProgress)
     {
         return m_loadTask;
     }
@@ -46,7 +46,7 @@ Task::Ptr JavaInstallList::getCurrentTask()
 
 void JavaInstallList::load()
 {
-    if(m_status != Status::InProgress)
+    if (m_status != Status::InProgress)
     {
         m_status = Status::InProgress;
         m_loadTask = new JavaListLoadTask(this);
@@ -80,20 +80,20 @@ QVariant JavaInstallList::data(const QModelIndex &index, int role) const
     auto version = std::dynamic_pointer_cast<JavaInstall>(m_vlist[index.row()]);
     switch (role)
     {
-        case VersionPointerRole:
-            return qVariantFromValue(m_vlist[index.row()]);
-        case VersionIdRole:
-            return version->descriptor();
-        case VersionRole:
-            return version->id.toString();
-        case RecommendedRole:
-            return version->recommended;
-        case PathRole:
-            return version->path;
-        case ArchitectureRole:
-            return version->arch.serialize();
-        default:
-            return QVariant();
+    case VersionPointerRole:
+        return qVariantFromValue(m_vlist[index.row()]);
+    case VersionIdRole:
+        return version->descriptor();
+    case VersionRole:
+        return version->id.toString();
+    case RecommendedRole:
+        return version->recommended;
+    case PathRole:
+        return version->path;
+    case ArchitectureRole:
+        return version->arch.serialize();
+    default:
+        return QVariant();
     }
 }
 
@@ -102,13 +102,12 @@ BaseVersionList::RoleList JavaInstallList::providesRoles() const
     return {VersionPointerRole, VersionIdRole, VersionRole, RecommendedRole, PathRole, ArchitectureRole};
 }
 
-
 void JavaInstallList::updateListData(QList<BaseVersionPtr> versions)
 {
     beginResetModel();
     m_vlist = versions;
     sortVersions();
-    if(m_vlist.size())
+    if (m_vlist.size())
     {
         auto best = std::dynamic_pointer_cast<JavaInstall>(m_vlist[0]);
         best->recommended = true;
@@ -155,7 +154,7 @@ void JavaListLoadTask::executeTask()
 
     qDebug() << "Probing the following Java paths: ";
     int id = 0;
-    for(QString candidate : candidate_paths)
+    for (QString candidate : candidate_paths)
     {
         qDebug() << " " << candidate;
 
@@ -176,9 +175,9 @@ void JavaListLoadTask::javaCheckerFinished()
     auto results = m_job->getResults();
 
     qDebug() << "Found the following valid Java installations:";
-    for(JavaCheckResult result : results)
+    for (JavaCheckResult result : results)
     {
-        if(result.validity == JavaCheckResult::Validity::Valid)
+        if (result.validity == JavaCheckResult::Validity::Valid)
         {
             JavaInstallPtr javaVersion(new JavaInstall());
 
@@ -194,7 +193,7 @@ void JavaListLoadTask::javaCheckerFinished()
     QList<BaseVersionPtr> javas_bvp;
     for (auto java : candidates)
     {
-        //qDebug() << java->id << java->arch << " at " << java->path;
+        // qDebug() << java->id << java->arch << " at " << java->path;
         BaseVersionPtr bp_java = std::dynamic_pointer_cast<BaseVersion>(java);
 
         if (bp_java)

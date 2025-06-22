@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,21 +21,20 @@
 #include "minecraft/launch/QuickPlayTarget.h"
 
 // FIXME: temporary wrapper for existing task.
-class PrintInstanceInfo: public LaunchStep
+class PrintInstanceInfo : public LaunchStep
 {
     Q_OBJECT
 public:
-    explicit PrintInstanceInfo(LaunchTask *parent, AuthSessionPtr session, QuickPlayTargetPtr quickPlayTarget) :
-        LaunchStep(parent), m_session(session), m_quickPlayTarget(quickPlayTarget) {};
-    virtual ~PrintInstanceInfo(){};
+    explicit PrintInstanceInfo(LaunchTask *parent, AuthSessionPtr session, QuickPlayTargetPtr quickPlayTarget) : LaunchStep(parent), m_session(session), m_quickPlayTarget(quickPlayTarget) {};
+    virtual ~PrintInstanceInfo() {};
 
     virtual void executeTask();
     virtual bool canAbort() const
     {
         return false;
     }
+
 private:
     AuthSessionPtr m_session;
     QuickPlayTargetPtr m_quickPlayTarget;
 };
-

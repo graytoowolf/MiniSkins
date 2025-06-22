@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -126,7 +126,8 @@ void IconPickerDialog::selectionChanged(QItemSelection selected, QItemSelection 
         return;
 
     QString key = selected.first().indexes().first().data(Qt::UserRole).toString();
-    if (!key.isEmpty()) {
+    if (!key.isEmpty())
+    {
         selectedIconKey = key;
     }
 }

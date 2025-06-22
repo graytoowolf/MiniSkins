@@ -1,4 +1,4 @@
-/* Copyright 2015-2021 MultiMC Contributors
+/* Copyright 2015-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ QString Meta::Version::descriptor()
 }
 QString Meta::Version::name()
 {
-    if(m_data)
+    if (m_data)
         return m_data->name;
     return m_uid;
 }
@@ -49,16 +49,16 @@ QDateTime Meta::Version::time() const
     return QDateTime::fromMSecsSinceEpoch(m_time * 1000, Qt::UTC);
 }
 
-void Meta::Version::parse(const QJsonObject& obj)
+void Meta::Version::parse(const QJsonObject &obj)
 {
     parseVersion(obj, this);
 }
 
-void Meta::Version::mergeFromList(const Meta::VersionPtr& other)
+void Meta::Version::mergeFromList(const Meta::VersionPtr &other)
 {
-    if(other->m_providesRecommendations)
+    if (other->m_providesRecommendations)
     {
-        if(m_recommended != other->m_recommended)
+        if (m_recommended != other->m_recommended)
         {
             setRecommended(other->m_recommended);
         }
@@ -79,7 +79,7 @@ void Meta::Version::mergeFromList(const Meta::VersionPtr& other)
     {
         m_conflicts = other->m_conflicts;
     }
-    if(m_volatile != other->m_volatile)
+    if (m_volatile != other->m_volatile)
     {
         setVolatile(other->m_volatile);
     }
@@ -88,7 +88,7 @@ void Meta::Version::mergeFromList(const Meta::VersionPtr& other)
 void Meta::Version::merge(const VersionPtr &other)
 {
     mergeFromList(other);
-    if(other->m_data)
+    if (other->m_data)
     {
         setData(other->m_data);
     }
@@ -122,7 +122,6 @@ void Meta::Version::setVolatile(bool volatile_)
 {
     m_volatile = volatile_;
 }
-
 
 void Meta::Version::setData(const VersionFilePtr &data)
 {

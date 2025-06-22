@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ public:
     virtual Task::Ptr getLoadTask() = 0;
 
     //! Checks whether or not the list is loaded. If this returns false, the list should be
-    //loaded.
+    // loaded.
     virtual bool isLoaded() = 0;
 
     //! Gets the version at the given index.
@@ -103,8 +103,7 @@ public:
      */
     virtual void sortVersions() = 0;
 
-protected
-slots:
+protected slots:
     /*!
      * Updates this list with the given list of versions.
      * This is done by copying each version in the given list and inserting it

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  * Copyright 2022 Jamie Mansfield <jmansfield@cadixdev.org>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,7 @@ BaseInstance::BaseInstance(SettingsObjectPtr globalSettings, SettingsObjectPtr s
     m_settings->registerSetting("lastTimePlayed", 0);
 
     // Custom Commands
-    auto commandSetting = m_settings->registerSetting({"OverrideCommands","OverrideLaunchCmd"}, false);
+    auto commandSetting = m_settings->registerSetting({"OverrideCommands", "OverrideLaunchCmd"}, false);
     m_settings->registerOverride(globalSettings->getSetting("PreLaunchCommand"), commandSetting);
     m_settings->registerOverride(globalSettings->getSetting("WrapperCommand"), commandSetting);
     m_settings->registerOverride(globalSettings->getSetting("PostExitCommand"), commandSetting);
@@ -65,10 +65,10 @@ BaseInstance::BaseInstance(SettingsObjectPtr globalSettings, SettingsObjectPtr s
     m_settings->registerSetting("ManagedPackVersionID", "");
     m_settings->registerSetting("ManagedPackVersionName", "");
 
-    //curseforge
-    m_settings->registerSetting("modpacksaddonId","0");
-    m_settings->registerSetting("modpacksfileId","0");
-    m_settings->registerSetting("modpacksplatform","0");
+    // curseforge
+    m_settings->registerSetting("modpacksaddonId", "0");
+    m_settings->registerSetting("modpacksfileId", "0");
+    m_settings->registerSetting("modpacksplatform", "0");
 }
 
 QString BaseInstance::getPreLaunchCommand()
@@ -116,7 +116,7 @@ QString BaseInstance::getManagedPackVersionName()
     return settings()->get("ManagedPackVersionName").toString();
 }
 
-void BaseInstance::setManagedPack(const QString& type, const QString& id, const QString& name, const QString& versionId, const QString& version)
+void BaseInstance::setManagedPack(const QString &type, const QString &id, const QString &name, const QString &versionId, const QString &version)
 {
     settings()->set("ManagedPack", true);
     settings()->set("ManagedPackType", type);
@@ -126,10 +126,10 @@ void BaseInstance::setManagedPack(const QString& type, const QString& id, const 
     settings()->set("ManagedPackVersionName", version);
 }
 
-void BaseInstance::setmodpacks(const QString& addonId,const QString& fileId,const QString& platform)
+void BaseInstance::setmodpacks(const QString &addonId, const QString &fileId, const QString &platform)
 {
-    settings()->set("modpacksaddonId",addonId);
-    settings()->set("modpacksfileId",fileId);
+    settings()->set("modpacksaddonId", addonId);
+    settings()->set("modpacksfileId", fileId);
     settings()->set("modpacksplatform", platform);
 }
 
@@ -153,7 +153,7 @@ int BaseInstance::getConsoleMaxLines() const
     auto lineSetting = settings()->getSetting("ConsoleMaxLines");
     bool conversionOk = false;
     int maxLines = lineSetting->get().toInt(&conversionOk);
-    if(!conversionOk)
+    if (!conversionOk)
     {
         maxLines = lineSetting->defValue().toInt();
         qWarning() << "ConsoleMaxLines has nonsensical value, defaulting to" << maxLines;
@@ -168,7 +168,7 @@ bool BaseInstance::shouldStopOnConsoleOverflow() const
 
 void BaseInstance::iconUpdated(QString key)
 {
-    if(iconKey() == key)
+    if (iconKey() == key)
     {
         emit propertiesChanged(this);
     }
@@ -183,7 +183,7 @@ void BaseInstance::invalidate()
 void BaseInstance::changeStatus(BaseInstance::Status newStatus)
 {
     Status status = currentStatus();
-    if(status != newStatus)
+    if (status != newStatus)
     {
         m_status = newStatus;
         emit statusChanged(status, newStatus);
@@ -207,18 +207,18 @@ bool BaseInstance::isRunning() const
 
 void BaseInstance::setRunning(bool running)
 {
-    if(running == m_isRunning)
+    if (running == m_isRunning)
         return;
 
     m_isRunning = running;
 
-    if(!m_settings->get("RecordGameTime").toBool())
+    if (!m_settings->get("RecordGameTime").toBool())
     {
         emit runningStatusChanged(running);
         return;
     }
 
-    if(running)
+    if (running)
     {
         m_timeStarted = QDateTime::currentDateTime();
     }
@@ -239,7 +239,7 @@ void BaseInstance::setRunning(bool running)
 int64_t BaseInstance::totalTimePlayed() const
 {
     qint64 current = settings()->get("totalTimePlayed").toLongLong();
-    if(m_isRunning)
+    if (m_isRunning)
     {
         QDateTime timeNow = QDateTime::currentDateTime();
         return current + m_timeStarted.secsTo(timeNow);
@@ -249,7 +249,7 @@ int64_t BaseInstance::totalTimePlayed() const
 
 int64_t BaseInstance::lastTimePlayed() const
 {
-    if(m_isRunning)
+    if (m_isRunning)
     {
         QDateTime timeNow = QDateTime::currentDateTime();
         return m_timeStarted.secsTo(timeNow);
@@ -295,14 +295,14 @@ qint64 BaseInstance::lastLaunch() const
 
 void BaseInstance::setLastLaunch(qint64 val)
 {
-    //FIXME: if no change, do not set. setting involves saving a file.
+    // FIXME: if no change, do not set. setting involves saving a file.
     m_settings->set("lastLaunchTime", val);
     emit propertiesChanged(this);
 }
 
 void BaseInstance::setNotes(QString val)
 {
-    //FIXME: if no change, do not set. setting involves saving a file.
+    // FIXME: if no change, do not set. setting involves saving a file.
     m_settings->set("notes", val);
 }
 
@@ -313,7 +313,7 @@ QString BaseInstance::notes() const
 
 void BaseInstance::setIconKey(QString val)
 {
-    //FIXME: if no change, do not set. setting involves saving a file.
+    // FIXME: if no change, do not set. setting involves saving a file.
     m_settings->set("iconKey", val);
     emit propertiesChanged(this);
 }
@@ -325,7 +325,7 @@ QString BaseInstance::iconKey() const
 
 void BaseInstance::setName(QString val)
 {
-    //FIXME: if no change, do not set. setting involves saving a file.
+    // FIXME: if no change, do not set. setting involves saving a file.
     m_settings->set("name", val);
     emit propertiesChanged(this);
 }

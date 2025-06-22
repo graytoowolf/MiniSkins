@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 
 namespace Ui
 {
-class NewComponentDialog;
+    class NewComponentDialog;
 }
 
 class NewComponentDialog : public QDialog
@@ -30,7 +30,7 @@ class NewComponentDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit NewComponentDialog(const QString & initialName = QString(), const QString & initialUid = QString(), QWidget *parent = 0);
+    explicit NewComponentDialog(const QString &initialName = QString(), const QString &initialUid = QString(), QWidget *parent = 0);
     virtual ~NewComponentDialog();
     void setBlacklist(QStringList badUids);
 

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,11 +41,11 @@ struct VisualRow
 
 struct VisualGroup
 {
-/* constructors */
+    /* constructors */
     VisualGroup(const QString &text, InstanceView *view);
     VisualGroup(const VisualGroup *other);
 
-/* data */
+    /* data */
     InstanceView *view = nullptr;
     QString text;
     bool collapsed = false;
@@ -53,7 +53,7 @@ struct VisualGroup
     int firstItemIndex = 0;
     int m_verticalPosition = 0;
 
-/* logic */
+    /* logic */
     /// update the internal list of items and flow them into the rows.
     void update();
 
@@ -98,7 +98,7 @@ struct VisualGroup
     Q_DECLARE_FLAGS(HitResults, HitResult)
 
     /// shoot! BANG! what did we hit?
-    HitResults hitScan (const QPoint &pos) const;
+    HitResults hitScan(const QPoint &pos) const;
 
     QList<QModelIndex> items() const;
 };

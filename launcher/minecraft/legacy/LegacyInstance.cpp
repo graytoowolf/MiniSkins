@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,22 +46,21 @@ LegacyInstance::LegacyInstance(SettingsObjectPtr globalSettings, SettingsObjectP
 QString LegacyInstance::mainJarToPreserve() const
 {
     bool customJar = m_settings->get("UseCustomBaseJar").toBool();
-    if(customJar)
+    if (customJar)
     {
         auto base = baseJar();
-        if(QFile::exists(base))
+        if (QFile::exists(base))
         {
             return base;
         }
     }
     auto runnable = runnableJar();
-    if(QFile::exists(runnable))
+    if (QFile::exists(runnable))
     {
         return runnable;
     }
     return QString();
 }
-
 
 QString LegacyInstance::baseJar() const
 {
@@ -88,7 +87,6 @@ bool LegacyInstance::shouldUseCustomBaseJar() const
 {
     return m_settings->get("UseCustomBaseJar").toBool();
 }
-
 
 Task::Ptr LegacyInstance::createUpdateTask(Net::Mode)
 {
@@ -122,10 +120,10 @@ QString LegacyInstance::binRoot() const
     return FS::PathCombine(gameRoot(), "bin");
 }
 
-QString LegacyInstance::modsRoot() const {
+QString LegacyInstance::modsRoot() const
+{
     return FS::PathCombine(gameRoot(), "mods");
 }
-
 
 QString LegacyInstance::jarModsDir() const
 {
@@ -230,7 +228,7 @@ QStringList LegacyInstance::verboseDescription(AuthSessionPtr session, QuickPlay
     QStringList out;
 
     auto alltraits = traits();
-    if(alltraits.size())
+    if (alltraits.size())
     {
         out << "Traits:";
         for (auto trait : alltraits)

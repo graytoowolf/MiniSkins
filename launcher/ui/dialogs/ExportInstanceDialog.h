@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ typedef std::shared_ptr<BaseInstance> InstancePtr;
 
 namespace Ui
 {
-class ExportInstanceDialog;
+    class ExportInstanceDialog;
 }
 
 class ExportInstanceDialog : public QDialog
@@ -47,7 +47,7 @@ private:
 private:
     Ui::ExportInstanceDialog *ui;
     InstancePtr m_instance;
-    PackIgnoreProxy * proxyModel;
+    PackIgnoreProxy *proxyModel;
 
 private slots:
     void rowsInserted(QModelIndex parent, int top, int bottom);

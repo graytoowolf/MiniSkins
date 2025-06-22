@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@
 #include <meta/Index.h>
 #include <meta/VersionList.h>
 
-NewComponentDialog::NewComponentDialog(const QString & initialName, const QString & initialUid, QWidget *parent)
+NewComponentDialog::NewComponentDialog(const QString &initialName, const QString &initialUid, QWidget *parent)
     : QDialog(parent), ui(new Ui::NewComponentDialog)
 {
     ui->setupUi(this);
@@ -62,7 +62,7 @@ void NewComponentDialog::updateDialogState()
 {
     auto protoUid = ui->nameTextBox->text().toLower();
     protoUid.remove(QRegularExpression("[^a-z]"));
-    if(protoUid.isEmpty())
+    if (protoUid.isEmpty())
     {
         ui->uidTextBox->setPlaceholderText(originalPlaceholderText);
     }
@@ -78,7 +78,7 @@ void NewComponentDialog::updateDialogState()
 QString NewComponentDialog::name() const
 {
     auto result = ui->nameTextBox->text();
-    if(result.size())
+    if (result.size())
     {
         return result.trimmed();
     }
@@ -88,12 +88,12 @@ QString NewComponentDialog::name() const
 QString NewComponentDialog::uid() const
 {
     auto result = ui->uidTextBox->text();
-    if(result.size())
+    if (result.size())
     {
         return result.trimmed();
     }
     result = ui->uidTextBox->placeholderText();
-    if(result.size() && result != originalPlaceholderText)
+    if (result.size() && result != originalPlaceholderText)
     {
         return result.trimmed();
     }

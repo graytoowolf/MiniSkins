@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include <minecraft/auth/AuthSession.h>
 
 // Create the main .minecraft for the instance and any other necessary folders
-class CreateGameFolders: public LaunchStep
+class CreateGameFolders : public LaunchStep
 {
     Q_OBJECT
 public:
@@ -33,5 +33,3 @@ public:
         return false;
     }
 };
-
-

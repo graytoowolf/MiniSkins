@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,55 +60,65 @@ bool AccountTask::changeState(AccountTaskState newState, QString reason)
 {
     m_taskState = newState;
     setStatus(getStateMessage());
-    switch(newState) {
-        case AccountTaskState::STATE_CREATED: {
-            m_data->errorString.clear();
-            return true;
-        }
-        case AccountTaskState::STATE_WORKING: {
-            m_data->accountState = AccountState::Working;
-            return true;
-        }
-        case AccountTaskState::STATE_SUCCEEDED: {
-            m_data->accountState = AccountState::Online;
-            emitSucceeded();
-            return false;
-        }
-        case AccountTaskState::STATE_OFFLINE: {
-            m_data->errorString = reason;
-            m_data->accountState = AccountState::Offline;
-            emitFailed(reason);
-            return false;
-        }
-        case AccountTaskState::STATE_FAILED_SOFT: {
-            m_data->errorString = reason;
-            m_data->accountState = AccountState::Errored;
-            emitFailed(reason);
-            return false;
-        }
-        case AccountTaskState::STATE_FAILED_MUST_MIGRATE: {
-            m_data->errorString = reason;
-            m_data->accountState = AccountState::MustMigrate;
-            emitFailed(reason);
-            return false;
-        }
-        case AccountTaskState::STATE_FAILED_HARD: {
-            m_data->errorString = reason;
-            m_data->accountState = AccountState::Expired;
-            emitFailed(reason);
-            return false;
-        }
-        case AccountTaskState::STATE_FAILED_GONE: {
-            m_data->errorString = reason;
-            m_data->accountState = AccountState::Gone;
-            emitFailed(reason);
-            return false;
-        }
-        default: {
-            QString error = tr("Unknown account task state: %1").arg(int(newState));
-            m_data->accountState = AccountState::Errored;
-            emitFailed(error);
-            return false;
-        }
+    switch (newState)
+    {
+    case AccountTaskState::STATE_CREATED:
+    {
+        m_data->errorString.clear();
+        return true;
+    }
+    case AccountTaskState::STATE_WORKING:
+    {
+        m_data->accountState = AccountState::Working;
+        return true;
+    }
+    case AccountTaskState::STATE_SUCCEEDED:
+    {
+        m_data->accountState = AccountState::Online;
+        emitSucceeded();
+        return false;
+    }
+    case AccountTaskState::STATE_OFFLINE:
+    {
+        m_data->errorString = reason;
+        m_data->accountState = AccountState::Offline;
+        emitFailed(reason);
+        return false;
+    }
+    case AccountTaskState::STATE_FAILED_SOFT:
+    {
+        m_data->errorString = reason;
+        m_data->accountState = AccountState::Errored;
+        emitFailed(reason);
+        return false;
+    }
+    case AccountTaskState::STATE_FAILED_MUST_MIGRATE:
+    {
+        m_data->errorString = reason;
+        m_data->accountState = AccountState::MustMigrate;
+        emitFailed(reason);
+        return false;
+    }
+    case AccountTaskState::STATE_FAILED_HARD:
+    {
+        m_data->errorString = reason;
+        m_data->accountState = AccountState::Expired;
+        emitFailed(reason);
+        return false;
+    }
+    case AccountTaskState::STATE_FAILED_GONE:
+    {
+        m_data->errorString = reason;
+        m_data->accountState = AccountState::Gone;
+        emitFailed(reason);
+        return false;
+    }
+    default:
+    {
+        QString error = tr("Unknown account task state: %1").arg(int(newState));
+        m_data->accountState = AccountState::Errored;
+        emitFailed(error);
+        return false;
+    }
     }
 }

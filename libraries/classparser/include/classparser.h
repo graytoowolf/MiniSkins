@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Authors: Orochimarufan <orochimarufan.x3@gmail.com>
  *
@@ -20,8 +20,8 @@
 
 namespace classparser
 {
-/**
- * @brief Get the version from a minecraft.jar by parsing its class files. Expensive!
- */
-QString GetMinecraftJarVersion(QString jar);
+    /**
+     * @brief Get the version from a minecraft.jar by parsing its class files. Expensive!
+     */
+    QString GetMinecraftJarVersion(QString jar);
 }

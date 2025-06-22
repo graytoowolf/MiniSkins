@@ -1,4 +1,4 @@
-/* Copyright 2015-2023 MultiMC Contributors
+/* Copyright 2015-2023 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 class WorldList;
 namespace Ui
 {
-class WorldListPage;
+    class WorldListPage;
 }
 
 class WorldListPage : public QMainWindow, public BasePage
@@ -36,8 +36,7 @@ public:
     explicit WorldListPage(
         InstancePtr inst,
         std::shared_ptr<WorldList> worlds,
-        QWidget *parent = 0
-    );
+        QWidget *parent = 0);
     virtual ~WorldListPage();
 
     virtual QString displayName() const override
@@ -64,7 +63,7 @@ public:
 protected:
     bool eventFilter(QObject *obj, QEvent *ev) override;
     bool worldListFilter(QKeyEvent *ev);
-    QMenu * createPopupMenu() override;
+    QMenu *createPopupMenu() override;
 
 protected:
     InstancePtr m_inst;

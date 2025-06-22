@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,12 +31,12 @@ ProfileSelectDialog::ProfileSelectDialog(const QString &message, int flags, QWid
 
     m_accounts = APPLICATION->accounts();
     auto view = ui->listView;
-    //view->setModel(m_accounts.get());
-    //view->hideColumn(AccountList::ActiveColumn);
+    // view->setModel(m_accounts.get());
+    // view->hideColumn(AccountList::ActiveColumn);
     view->setColumnCount(1);
     view->setRootIsDecorated(false);
     // FIXME: use a real model, not this
-    if(QTreeWidgetItem* header = view->headerItem())
+    if (QTreeWidgetItem *header = view->headerItem())
     {
         header->setText(0, tr("Name"));
     }
@@ -44,15 +44,17 @@ ProfileSelectDialog::ProfileSelectDialog(const QString &message, int flags, QWid
     {
         view->setHeaderLabel(tr("Name"));
     }
-    QList <QTreeWidgetItem *> items;
+    QList<QTreeWidgetItem *> items;
     for (int i = 0; i < m_accounts->count(); i++)
     {
         MinecraftAccountPtr account = m_accounts->at(i);
         QString profileLabel;
-        if(account->isInUse()) {
+        if (account->isInUse())
+        {
             profileLabel = tr("%1 (in use)").arg(account->profileName());
         }
-        else {
+        else
+        {
             profileLabel = account->profileName();
         }
         auto item = new QTreeWidgetItem(view);

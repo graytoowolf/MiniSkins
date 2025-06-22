@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,8 +33,8 @@
 #include <Application.h>
 #include <InstanceList.h>
 
-
-template <typename T> bool listsIntersect(const QList<T> &l1, const QList<T> t2)
+template <typename T>
+bool listsIntersect(const QList<T> &l1, const QList<T> t2)
 {
     for (auto &item : l1)
     {
@@ -92,19 +92,19 @@ void InstanceView::rowsRemoved()
     scheduleDelayedItemsLayout();
 }
 
-void InstanceView::currentChanged(const QModelIndex& current, const QModelIndex& previous)
+void InstanceView::currentChanged(const QModelIndex &current, const QModelIndex &previous)
 {
     QAbstractItemView::currentChanged(current, previous);
     // TODO: for accessibility support, implement+register a factory, steal QAccessibleTable from Qt and return an instance of it for InstanceView.
 #ifndef QT_NO_ACCESSIBILITY
-    if (QAccessible::isActive() && current.isValid()) {
+    if (QAccessible::isActive() && current.isValid())
+    {
         QAccessibleEvent event(this, QAccessible::Focus);
         event.setChild(current.row());
         QAccessible::updateAccessibility(&event);
     }
 #endif /* !QT_NO_ACCESSIBILITY */
 }
-
 
 class LocaleString : public QString
 {
@@ -139,19 +139,19 @@ void InstanceView::updateScrollbar()
         {
             category->m_verticalPosition = totalHeight;
             totalHeight += category->totalHeight() + m_categoryMargin;
-            if(!itemScroll && category->totalHeight() != 0)
+            if (!itemScroll && category->totalHeight() != 0)
             {
                 itemScroll = category->contentHeight() / category->numRows();
             }
         }
         // do not divide by zero
-        if(itemScroll == 0)
+        if (itemScroll == 0)
             itemScroll = 64;
 
         totalHeight += m_bottomMargin;
-        verticalScrollBar()->setSingleStep ( itemScroll );
-        const int rowsPerPage = qMax ( viewport()->height() / itemScroll, 1 );
-        verticalScrollBar()->setPageStep ( rowsPerPage * itemScroll );
+        verticalScrollBar()->setSingleStep(itemScroll);
+        const int rowsPerPage = qMax(viewport()->height() / itemScroll, 1);
+        verticalScrollBar()->setPageStep(rowsPerPage * itemScroll);
 
         verticalScrollBar()->setRange(0, totalHeight - height());
     }
@@ -180,7 +180,8 @@ void InstanceView::updateGeometries()
             else
             {
                 auto cat = new VisualGroup(groupName, this);
-                if(fVisibility) {
+                if (fVisibility)
+                {
                     cat->collapsed = fVisibility(groupName);
                 }
                 cats.insert(groupName, cat);
@@ -225,12 +226,12 @@ VisualGroup *InstanceView::category(const QString &cat) const
     return nullptr;
 }
 
-VisualGroup *InstanceView::categoryAt(const QPoint &pos, VisualGroup::HitResults & result) const
+VisualGroup *InstanceView::categoryAt(const QPoint &pos, VisualGroup::HitResults &result) const
 {
     for (auto group : m_groups)
     {
         result = group->hitScan(pos);
-        if(result != VisualGroup::NoHit)
+        if (result != VisualGroup::NoHit)
         {
             return group;
         }
@@ -245,7 +246,7 @@ QString InstanceView::groupNameAt(const QPoint &point)
 
     VisualGroup::HitResults hitresult;
     auto group = categoryAt(point + offset(), hitresult);
-    if(group && (hitresult & (VisualGroup::HeaderHit | VisualGroup::BodyHit)))
+    if (group && (hitresult & (VisualGroup::HeaderHit | VisualGroup::BodyHit)))
     {
         return group->text;
     }
@@ -291,7 +292,7 @@ void InstanceView::mousePressEvent(QMouseEvent *event)
 
     if (index.isValid() && (index.flags() & Qt::ItemIsEnabled))
     {
-        if(index != currentIndex())
+        if (index != currentIndex())
         {
             // FIXME: better!
             m_currentCursorColumn = -1;
@@ -452,8 +453,7 @@ void InstanceView::mouseDoubleClickEvent(QMouseEvent *event)
             event->screenPos(),
             event->button(),
             event->buttons(),
-            event->modifiers()
-        );
+            event->modifiers());
         mousePressEvent(&me);
         return;
     }
@@ -557,7 +557,7 @@ void InstanceView::paintEvent(QPaintEvent *event)
 void InstanceView::resizeEvent(QResizeEvent *event)
 {
     int newItemsPerRow = calculateItemsPerRow();
-    if(newItemsPerRow != m_currentItemsPerRow)
+    if (newItemsPerRow != m_currentItemsPerRow)
     {
         m_currentCursorColumn = -1;
         m_currentItemsPerRow = newItemsPerRow;
@@ -616,7 +616,7 @@ void InstanceView::dropEvent(QDropEvent *event)
 
     if (event->source() == this)
     {
-        if(event->possibleActions() & Qt::MoveAction)
+        if (event->possibleActions() & Qt::MoveAction)
         {
             QPair<VisualGroup *, VisualGroup::HitResults> dropPos = rowDropPos(event->pos());
             const VisualGroup *group = dropPos.first;
@@ -659,7 +659,7 @@ void InstanceView::startDrag(Qt::DropActions supportedActions)
     executeDelayedItemsLayout();
 
     QModelIndexList indexes = selectionModel()->selectedIndexes();
-    if(indexes.count() == 0)
+    if (indexes.count() == 0)
         return;
 
     QMimeData *data = model()->mimeData(indexes);
@@ -684,14 +684,14 @@ void InstanceView::startDrag(Qt::DropActions supportedActions)
 
 QRect InstanceView::visualRect(const QModelIndex &index) const
 {
-    const_cast<InstanceView*>(this)->executeDelayedItemsLayout();
+    const_cast<InstanceView *>(this)->executeDelayedItemsLayout();
 
     return geometryRect(index).translated(-offset());
 }
 
 QRect InstanceView::geometryRect(const QModelIndex &index) const
 {
-    const_cast<InstanceView*>(this)->executeDelayedItemsLayout();
+    const_cast<InstanceView *>(this)->executeDelayedItemsLayout();
 
     if (!index.isValid() || isIndexHidden(index) || index.column() > 0)
     {
@@ -699,7 +699,7 @@ QRect InstanceView::geometryRect(const QModelIndex &index) const
     }
 
     int row = index.row();
-    if(geometryCache.contains(row))
+    if (geometryCache.contains(row))
     {
         return *geometryCache[row];
     }
@@ -719,7 +719,7 @@ QRect InstanceView::geometryRect(const QModelIndex &index) const
 
 QModelIndex InstanceView::indexAt(const QPoint &point) const
 {
-    const_cast<InstanceView*>(this)->executeDelayedItemsLayout();
+    const_cast<InstanceView *>(this)->executeDelayedItemsLayout();
 
     for (int i = 0; i < model()->rowCount(); ++i)
     {
@@ -794,7 +794,7 @@ QPair<VisualGroup *, VisualGroup::HitResults> InstanceView::rowDropPos(const QPo
 {
     VisualGroup::HitResults hitresult;
     auto group = categoryAt(pos + offset(), hitresult);
-    return qMakePair<VisualGroup*, int>(group, hitresult);
+    return qMakePair<VisualGroup *, int>(group, hitresult);
 }
 
 QPoint InstanceView::offset() const
@@ -826,128 +826,128 @@ QRegion InstanceView::visualRegionForSelection(const QItemSelection &selection) 
 QModelIndex InstanceView::moveCursor(QAbstractItemView::CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
 {
     auto current = currentIndex();
-    if(!current.isValid())
+    if (!current.isValid())
     {
         return current;
     }
     auto cat = category(current);
     int group_index = m_groups.indexOf(cat);
-    if(group_index < 0)
+    if (group_index < 0)
         return current;
 
     QPair<int, int> pos = cat->positionOf(current);
     int column = pos.first;
     int row = pos.second;
-    if(m_currentCursorColumn < 0)
+    if (m_currentCursorColumn < 0)
     {
         m_currentCursorColumn = column;
     }
-    switch(cursorAction)
+    switch (cursorAction)
     {
-        case MoveUp:
+    case MoveUp:
+    {
+        if (row == 0)
         {
-            if(row == 0)
+            int prevgroupindex = group_index - 1;
+            while (prevgroupindex >= 0)
             {
-                int prevgroupindex = group_index-1;
-                while(prevgroupindex >= 0)
+                auto prevgroup = m_groups[prevgroupindex];
+                if (prevgroup->collapsed)
                 {
-                    auto prevgroup = m_groups[prevgroupindex];
-                    if(prevgroup->collapsed)
-                    {
-                        prevgroupindex--;
-                        continue;
-                    }
-                    int newRow = prevgroup->numRows() - 1;
-                    int newRowSize = prevgroup->rows[newRow].size();
-                    int newColumn = m_currentCursorColumn;
-                    if (m_currentCursorColumn >= newRowSize)
-                    {
-                        newColumn = newRowSize - 1;
-                    }
-                    return prevgroup->rows[newRow][newColumn];
+                    prevgroupindex--;
+                    continue;
                 }
-            }
-            else
-            {
-                int newRow = row - 1;
-                int newRowSize = cat->rows[newRow].size();
+                int newRow = prevgroup->numRows() - 1;
+                int newRowSize = prevgroup->rows[newRow].size();
                 int newColumn = m_currentCursorColumn;
                 if (m_currentCursorColumn >= newRowSize)
                 {
                     newColumn = newRowSize - 1;
                 }
-                return cat->rows[newRow][newColumn];
+                return prevgroup->rows[newRow][newColumn];
             }
-            return current;
         }
-        case MoveDown:
+        else
         {
-            if(row == cat->rows.size() - 1)
+            int newRow = row - 1;
+            int newRowSize = cat->rows[newRow].size();
+            int newColumn = m_currentCursorColumn;
+            if (m_currentCursorColumn >= newRowSize)
             {
-                int nextgroupindex = group_index+1;
-                while (nextgroupindex < m_groups.size())
-                {
-                    auto nextgroup = m_groups[nextgroupindex];
-                    if(nextgroup->collapsed)
-                    {
-                        nextgroupindex++;
-                        continue;
-                    }
-                    int newRowSize = nextgroup->rows[0].size();
-                    int newColumn = m_currentCursorColumn;
-                    if (m_currentCursorColumn >= newRowSize)
-                    {
-                        newColumn = newRowSize - 1;
-                    }
-                    return nextgroup->rows[0][newColumn];
-                }
+                newColumn = newRowSize - 1;
             }
-            else
+            return cat->rows[newRow][newColumn];
+        }
+        return current;
+    }
+    case MoveDown:
+    {
+        if (row == cat->rows.size() - 1)
+        {
+            int nextgroupindex = group_index + 1;
+            while (nextgroupindex < m_groups.size())
             {
-                int newRow = row + 1;
-                int newRowSize = cat->rows[newRow].size();
+                auto nextgroup = m_groups[nextgroupindex];
+                if (nextgroup->collapsed)
+                {
+                    nextgroupindex++;
+                    continue;
+                }
+                int newRowSize = nextgroup->rows[0].size();
                 int newColumn = m_currentCursorColumn;
                 if (m_currentCursorColumn >= newRowSize)
                 {
                     newColumn = newRowSize - 1;
                 }
-                return cat->rows[newRow][newColumn];
+                return nextgroup->rows[0][newColumn];
             }
-            return current;
         }
-        case MoveLeft:
+        else
         {
-            if(column > 0)
+            int newRow = row + 1;
+            int newRowSize = cat->rows[newRow].size();
+            int newColumn = m_currentCursorColumn;
+            if (m_currentCursorColumn >= newRowSize)
             {
-                m_currentCursorColumn = column - 1;
-                return cat->rows[row][column - 1];
+                newColumn = newRowSize - 1;
             }
-            // TODO: moving to previous line
-            return current;
+            return cat->rows[newRow][newColumn];
         }
-        case MoveRight:
+        return current;
+    }
+    case MoveLeft:
+    {
+        if (column > 0)
         {
-            if(column < cat->rows[row].size() - 1)
-            {
-                m_currentCursorColumn = column + 1;
-                return cat->rows[row][column + 1];
-            }
-            // TODO: moving to next line
-            return current;
+            m_currentCursorColumn = column - 1;
+            return cat->rows[row][column - 1];
         }
-        case MoveHome:
+        // TODO: moving to previous line
+        return current;
+    }
+    case MoveRight:
+    {
+        if (column < cat->rows[row].size() - 1)
         {
-            m_currentCursorColumn = 0;
-            return cat->rows[row][0];
+            m_currentCursorColumn = column + 1;
+            return cat->rows[row][column + 1];
         }
-        case MoveEnd:
-        {
-            auto last = cat->rows[row].size() - 1;
-            m_currentCursorColumn = last;
-            return cat->rows[row][last];
-        }
-        default:
-            break;
+        // TODO: moving to next line
+        return current;
+    }
+    case MoveHome:
+    {
+        m_currentCursorColumn = 0;
+        return cat->rows[row][0];
+    }
+    case MoveEnd:
+    {
+        auto last = cat->rows[row].size() - 1;
+        m_currentCursorColumn = last;
+        return cat->rows[row][last];
+    }
+    default:
+        break;
     }
     return current;
 }

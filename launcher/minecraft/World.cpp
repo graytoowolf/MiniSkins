@@ -1,4 +1,4 @@
-/* Copyright 2015-2021 MultiMC Contributors
+/* Copyright 2015-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,30 +34,31 @@
 
 #include <nonstd/optional>
 
-using nonstd::optional;
 using nonstd::nullopt;
+using nonstd::optional;
 
-GameType::GameType(nonstd::optional<int> original):
-    original(original)
+GameType::GameType(nonstd::optional<int> original) : original(original)
 {
-    if(!original) {
+    if (!original)
+    {
         return;
     }
-    switch(*original) {
-        case 0:
-            type = GameType::Survival;
-            break;
-        case 1:
-            type = GameType::Creative;
-            break;
-        case 2:
-            type = GameType::Adventure;
-            break;
-        case 3:
-            type = GameType::Spectator;
-            break;
-        default:
-            break;
+    switch (*original)
+    {
+    case 0:
+        type = GameType::Survival;
+        break;
+    case 1:
+        type = GameType::Creative;
+        break;
+    case 2:
+        type = GameType::Adventure;
+        break;
+    case 3:
+        type = GameType::Spectator;
+        break;
+    default:
+        break;
     }
 }
 
@@ -65,18 +66,19 @@ QString GameType::toTranslatedString() const
 {
     switch (type)
     {
-        case GameType::Survival:
-            return QCoreApplication::translate("GameType", "Survival");
-        case GameType::Creative:
-            return QCoreApplication::translate("GameType", "Creative");
-        case GameType::Adventure:
-            return QCoreApplication::translate("GameType", "Adventure");
-        case GameType::Spectator:
-            return QCoreApplication::translate("GameType", "Spectator");
-        default:
-            break;
+    case GameType::Survival:
+        return QCoreApplication::translate("GameType", "Survival");
+    case GameType::Creative:
+        return QCoreApplication::translate("GameType", "Creative");
+    case GameType::Adventure:
+        return QCoreApplication::translate("GameType", "Adventure");
+    case GameType::Spectator:
+        return QCoreApplication::translate("GameType", "Spectator");
+    default:
+        break;
     }
-    if(original) {
+    if (original)
+    {
         return QCoreApplication::translate("GameType", "Unknown (%1)").arg(*original);
     }
     return QCoreApplication::translate("GameType", "Undefined");
@@ -86,38 +88,40 @@ QString GameType::toLogString() const
 {
     switch (type)
     {
-        case GameType::Survival:
-            return "Survival";
-        case GameType::Creative:
-            return "Creative";
-        case GameType::Adventure:
-            return "Adventure";
-        case GameType::Spectator:
-            return "Spectator";
-        default:
-            break;
+    case GameType::Survival:
+        return "Survival";
+    case GameType::Creative:
+        return "Creative";
+    case GameType::Adventure:
+        return "Adventure";
+    case GameType::Spectator:
+        return "Spectator";
+    default:
+        break;
     }
-    if(original) {
+    if (original)
+    {
         return QString("Unknown (%1)").arg(*original);
     }
     return "Undefined";
 }
 
-std::unique_ptr <nbt::tag_compound> parseLevelDat(QByteArray data)
+std::unique_ptr<nbt::tag_compound> parseLevelDat(QByteArray data)
 {
     QByteArray output;
-    if(!GZip::unzip(data, output))
+    if (!GZip::unzip(data, output))
     {
         return nullptr;
     }
     std::istringstream foo(std::string(output.constData(), output.size()));
-    try {
+    try
+    {
         auto pair = nbt::io::read_compound(foo);
 
-        if(pair.first != "")
+        if (pair.first != "")
             return nullptr;
 
-        if(pair.second == nullptr)
+        if (pair.second == nullptr)
             return nullptr;
 
         return std::move(pair.second);
@@ -129,18 +133,18 @@ std::unique_ptr <nbt::tag_compound> parseLevelDat(QByteArray data)
     }
 }
 
-QByteArray serializeLevelDat(nbt::tag_compound * levelInfo)
+QByteArray serializeLevelDat(nbt::tag_compound *levelInfo)
 {
     std::ostringstream s;
     nbt::io::write_tag("", *levelInfo, s);
-    QByteArray val( s.str().data(), (int) s.str().size() );
+    QByteArray val(s.str().data(), (int)s.str().size());
     return val;
 }
 
 QString getLevelDatFromFS(const QFileInfo &file)
 {
     QDir worldDir(file.filePath());
-    if(!file.isDir() || !worldDir.exists("level.dat"))
+    if (!file.isDir() || !worldDir.exists("level.dat"))
     {
         return QString();
     }
@@ -150,36 +154,36 @@ QString getLevelDatFromFS(const QFileInfo &file)
 QByteArray getLevelDatDataFromFS(const QFileInfo &file)
 {
     auto fullFilePath = getLevelDatFromFS(file);
-    if(fullFilePath.isNull())
+    if (fullFilePath.isNull())
     {
         return QByteArray();
     }
     QFile f(fullFilePath);
-    if(!f.open(QIODevice::ReadOnly))
+    if (!f.open(QIODevice::ReadOnly))
     {
         return QByteArray();
     }
     return f.readAll();
 }
 
-bool putLevelDatDataToFS(const QFileInfo &file, QByteArray & data)
+bool putLevelDatDataToFS(const QFileInfo &file, QByteArray &data)
 {
-    auto fullFilePath =  getLevelDatFromFS(file);
-    if(fullFilePath.isNull())
+    auto fullFilePath = getLevelDatFromFS(file);
+    if (fullFilePath.isNull())
     {
         return false;
     }
     QSaveFile f(fullFilePath);
-    if(!f.open(QIODevice::WriteOnly))
+    if (!f.open(QIODevice::WriteOnly))
     {
         return false;
     }
     QByteArray compressed;
-    if(!GZip::zip(data, compressed))
+    if (!GZip::zip(data, compressed))
     {
         return false;
     }
-    if(f.write(compressed) != compressed.size())
+    if (f.write(compressed) != compressed.size())
     {
         f.cancelWriting();
         return false;
@@ -196,15 +200,16 @@ void World::repath(const QFileInfo &file)
 {
     m_containerFile = file;
     m_folderName = file.fileName();
-    if(file.isFile() && file.suffix() == "zip")
+    if (file.isFile() && file.suffix() == "zip")
     {
         m_iconFile = QString();
         readFromZip(file);
     }
-    else if(file.isDir())
+    else if (file.isDir())
     {
         QFileInfo assumedIconPath(file.absoluteFilePath() + "/icon.png");
-        if(assumedIconPath.exists()) {
+        if (assumedIconPath.exists())
+        {
             m_iconFile = assumedIconPath.absoluteFilePath();
         }
         readFromFS(file);
@@ -213,10 +218,12 @@ void World::repath(const QFileInfo &file)
 
 bool World::resetIcon()
 {
-    if(m_iconFile.isNull()) {
+    if (m_iconFile.isNull())
+    {
         return false;
     }
-    if(QFile(m_iconFile).remove()) {
+    if (QFile(m_iconFile).remove())
+    {
         m_iconFile = QString();
         return true;
     }
@@ -226,7 +233,7 @@ bool World::resetIcon()
 void World::readFromFS(const QFileInfo &file)
 {
     auto bytes = getLevelDatDataFromFS(file);
-    if(bytes.isEmpty())
+    if (bytes.isEmpty())
     {
         is_valid = false;
         return;
@@ -261,7 +268,7 @@ void World::readFromZip(const QFileInfo &file)
     QuaZipFileInfo64 levelDatInfo;
     zippedFile.getFileInfo(&levelDatInfo);
     auto modTime = levelDatInfo.getNTFSmTime();
-    if(!modTime.isValid())
+    if (!modTime.isValid())
     {
         modTime = levelDatInfo.dateTime;
     }
@@ -277,12 +284,12 @@ void World::readFromZip(const QFileInfo &file)
 bool World::install(const QString &to, const QString &name)
 {
     auto finalPath = FS::PathCombine(to, FS::DirNameFromString(m_actualName, to));
-    if(!FS::ensureFolderPathExists(finalPath))
+    if (!FS::ensureFolderPathExists(finalPath))
     {
         return false;
     }
     bool ok = false;
-    if(m_containerFile.isFile())
+    if (m_containerFile.isFile())
     {
         QuaZip zip(m_containerFile.absoluteFilePath());
         if (!zip.open(QuaZip::mdUnzip))
@@ -291,16 +298,16 @@ bool World::install(const QString &to, const QString &name)
         }
         ok = !MMCZip::extractSubDir(&zip, m_containerOffsetPath, finalPath);
     }
-    else if(m_containerFile.isDir())
+    else if (m_containerFile.isDir())
     {
         QString from = m_containerFile.filePath();
         ok = FS::copy(from, finalPath)();
     }
 
-    if(ok && !name.isEmpty() && m_actualName != name)
+    if (ok && !name.isEmpty() && m_actualName != name)
     {
         World newWorld(finalPath);
-        if(newWorld.isValid())
+        if (newWorld.isValid())
         {
             newWorld.rename(name);
         }
@@ -310,24 +317,24 @@ bool World::install(const QString &to, const QString &name)
 
 bool World::rename(const QString &newName)
 {
-    if(m_containerFile.isFile())
+    if (m_containerFile.isFile())
     {
         return false;
     }
 
     auto data = getLevelDatDataFromFS(m_containerFile);
-    if(data.isEmpty())
+    if (data.isEmpty())
     {
         return false;
     }
 
     auto worldData = parseLevelDat(data);
-    if(!worldData)
+    if (!worldData)
     {
         return false;
     }
     auto &val = worldData->at("Data");
-    if(val.get_type() != nbt::tag_type::Compound)
+    if (val.get_type() != nbt::tag_type::Compound)
     {
         return false;
     }
@@ -348,106 +355,110 @@ bool World::rename(const QString &newName)
     return true;
 }
 
-namespace {
-
-optional<QString> read_string (nbt::value& parent, const char * name)
+namespace
 {
-    try
+
+    optional<QString> read_string(nbt::value &parent, const char *name)
     {
-        auto &namedValue = parent.at(name);
-        if(namedValue.get_type() != nbt::tag_type::String)
+        try
         {
+            auto &namedValue = parent.at(name);
+            if (namedValue.get_type() != nbt::tag_type::String)
+            {
+                return nullopt;
+            }
+            auto &tag_str = namedValue.as<nbt::tag_string>();
+            return QString::fromStdString(tag_str.get());
+        }
+        catch (const std::out_of_range &e)
+        {
+            // fallback for old world formats
+            qWarning() << "String NBT tag" << name << "could not be found.";
             return nullopt;
         }
-        auto & tag_str = namedValue.as<nbt::tag_string>();
-        return QString::fromStdString(tag_str.get());
-    }
-    catch (const std::out_of_range &e)
-    {
-        // fallback for old world formats
-        qWarning() << "String NBT tag" << name << "could not be found.";
-        return nullopt;
-    }
-    catch (const std::bad_cast &e)
-    {
-        // type mismatch
-        qWarning() << "NBT tag" << name << "could not be converted to string.";
-        return nullopt;
-    }
-}
-
-optional<int64_t> read_long (nbt::value& parent, const char * name)
-{
-    try
-    {
-        auto &namedValue = parent.at(name);
-        if(namedValue.get_type() != nbt::tag_type::Long)
+        catch (const std::bad_cast &e)
         {
+            // type mismatch
+            qWarning() << "NBT tag" << name << "could not be converted to string.";
             return nullopt;
         }
-        auto & tag_str = namedValue.as<nbt::tag_long>();
-        return tag_str.get();
     }
-    catch (const std::out_of_range &e)
-    {
-        // fallback for old world formats
-        qWarning() << "Long NBT tag" << name << "could not be found.";
-        return nullopt;
-    }
-    catch (const std::bad_cast &e)
-    {
-        // type mismatch
-        qWarning() << "NBT tag" << name << "could not be converted to long.";
-        return nullopt;
-    }
-}
 
-optional<int> read_int (nbt::value& parent, const char * name)
-{
-    try
+    optional<int64_t> read_long(nbt::value &parent, const char *name)
     {
-        auto &namedValue = parent.at(name);
-        if(namedValue.get_type() != nbt::tag_type::Int)
+        try
         {
+            auto &namedValue = parent.at(name);
+            if (namedValue.get_type() != nbt::tag_type::Long)
+            {
+                return nullopt;
+            }
+            auto &tag_str = namedValue.as<nbt::tag_long>();
+            return tag_str.get();
+        }
+        catch (const std::out_of_range &e)
+        {
+            // fallback for old world formats
+            qWarning() << "Long NBT tag" << name << "could not be found.";
             return nullopt;
         }
-        auto & tag_str = namedValue.as<nbt::tag_int>();
-        return tag_str.get();
+        catch (const std::bad_cast &e)
+        {
+            // type mismatch
+            qWarning() << "NBT tag" << name << "could not be converted to long.";
+            return nullopt;
+        }
     }
-    catch (const std::out_of_range &e)
-    {
-        // fallback for old world formats
-        qWarning() << "Int NBT tag" << name << "could not be found.";
-        return nullopt;
-    }
-    catch (const std::bad_cast &e)
-    {
-        // type mismatch
-        qWarning() << "NBT tag" << name << "could not be converted to int.";
-        return nullopt;
-    }
-}
 
-GameType read_gametype(nbt::value& parent, const char * name) {
-    return GameType(read_int(parent, name));
-}
+    optional<int> read_int(nbt::value &parent, const char *name)
+    {
+        try
+        {
+            auto &namedValue = parent.at(name);
+            if (namedValue.get_type() != nbt::tag_type::Int)
+            {
+                return nullopt;
+            }
+            auto &tag_str = namedValue.as<nbt::tag_int>();
+            return tag_str.get();
+        }
+        catch (const std::out_of_range &e)
+        {
+            // fallback for old world formats
+            qWarning() << "Int NBT tag" << name << "could not be found.";
+            return nullopt;
+        }
+        catch (const std::bad_cast &e)
+        {
+            // type mismatch
+            qWarning() << "NBT tag" << name << "could not be converted to int.";
+            return nullopt;
+        }
+    }
+
+    GameType read_gametype(nbt::value &parent, const char *name)
+    {
+        return GameType(read_int(parent, name));
+    }
 
 }
 
 void World::loadFromLevelDat(QByteArray data)
 {
     auto levelData = parseLevelDat(data);
-    if(!levelData)
+    if (!levelData)
     {
         is_valid = false;
         return;
     }
 
-    nbt::value * valPtr = nullptr;
-    try {
+    nbt::value *valPtr = nullptr;
+    try
+    {
         valPtr = &levelData->at("Data");
     }
-    catch (const std::out_of_range &e) {
+    catch (const std::out_of_range &e)
+    {
         qWarning() << "Unable to read NBT tags from " << m_folderName << ":" << e.what();
         is_valid = false;
         return;
@@ -455,7 +466,7 @@ void World::loadFromLevelDat(QByteArray data)
     nbt::value &val = *valPtr;
 
     is_valid = val.get_type() == nbt::tag_type::Compound;
-    if(!is_valid)
+    if (!is_valid)
         return;
 
     auto name = read_string(val, "LevelName");
@@ -467,19 +478,24 @@ void World::loadFromLevelDat(QByteArray data)
     m_gameType = read_gametype(val, "GameType");
 
     optional<int64_t> randomSeed;
-    try {
+    try
+    {
         auto &WorldGen_val = val.at("WorldGenSettings");
         randomSeed = read_long(WorldGen_val, "seed");
     }
-    catch (const std::out_of_range &) {}
-    if(!randomSeed) {
+    catch (const std::out_of_range &)
+    {
+    }
+    if (!randomSeed)
+    {
         randomSeed = read_long(val, "RandomSeed");
     }
     m_randomSeed = randomSeed ? *randomSeed : 0;
 
     qDebug() << "World Name:" << m_actualName;
     qDebug() << "Last Played:" << m_lastPlayed.toString();
-    if(randomSeed) {
+    if (randomSeed)
+    {
         qDebug() << "Seed:" << *randomSeed;
     }
     qDebug() << "GameType:" << m_gameType.toLogString();
@@ -500,13 +516,14 @@ bool World::replace(World &with)
 
 bool World::destroy()
 {
-    if(!is_valid) return false;
+    if (!is_valid)
+        return false;
     if (m_containerFile.isDir())
     {
         QDir d(m_containerFile.filePath());
         return d.removeRecursively();
     }
-    else if(m_containerFile.isFile())
+    else if (m_containerFile.isFile())
     {
         QFile file(m_containerFile.absoluteFilePath());
         return file.remove();

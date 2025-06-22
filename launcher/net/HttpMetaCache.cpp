@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -120,7 +120,7 @@ bool HttpMetaCache::updateEntry(MetaEntryPtr stale_entry)
     if (!m_entries.contains(stale_entry->baseId))
     {
         qCritical() << "Cannot add entry with unknown base: "
-                     << stale_entry->baseId.toLocal8Bit();
+                    << stale_entry->baseId.toLocal8Bit();
         return false;
     }
     if (stale_entry->stale)
@@ -135,7 +135,7 @@ bool HttpMetaCache::updateEntry(MetaEntryPtr stale_entry)
 
 bool HttpMetaCache::evictEntry(MetaEntryPtr entry)
 {
-    if(entry)
+    if (entry)
     {
         entry->stale = true;
         SaveEventually();
@@ -176,7 +176,7 @@ QString HttpMetaCache::getBasePath(QString base)
 
 void HttpMetaCache::Load()
 {
-    if(m_index_file.isNull())
+    if (m_index_file.isNull())
         return;
 
     QFile index(m_index_file);
@@ -231,7 +231,7 @@ void HttpMetaCache::SaveEventually()
 
 void HttpMetaCache::SaveNow()
 {
-    if(m_index_file.isNull())
+    if (m_index_file.isNull())
         return;
     QJsonObject toplevel;
     toplevel.insert("version", QJsonValue(QString("1")));
@@ -241,7 +241,7 @@ void HttpMetaCache::SaveNow()
         for (auto entry : group.entry_list)
         {
             // do not save stale entries. they are dead.
-            if(entry->stale)
+            if (entry->stale)
             {
                 continue;
             }

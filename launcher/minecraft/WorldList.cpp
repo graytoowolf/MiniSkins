@@ -1,4 +1,4 @@
-/* Copyright 2015-2021 MultiMC Contributors
+/* Copyright 2015-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ WorldList::WorldList(const QString &dir)
 
 void WorldList::startWatching()
 {
-    if(is_watching)
+    if (is_watching)
     {
         return;
     }
@@ -54,7 +54,7 @@ void WorldList::startWatching()
 
 void WorldList::stopWatching()
 {
-    if(!is_watching)
+    if (!is_watching)
     {
         return;
     }
@@ -80,11 +80,11 @@ bool WorldList::update()
     // if there are any untracked files...
     for (QFileInfo entry : folderContents)
     {
-        if(!entry.isDir())
+        if (!entry.isDir())
             continue;
 
         World w(entry);
-        if(w.isValid())
+        if (w.isValid())
         {
             newWorlds.append(w);
         }
@@ -140,13 +140,13 @@ bool WorldList::resetIcon(int row)
     if (row >= worlds.size() || row < 0)
         return false;
     World &m = worlds[row];
-    if(m.resetIcon()) {
+    if (m.resetIcon())
+    {
         emit dataChanged(index(row), index(row), {WorldList::IconFileRole});
         return true;
     }
     return false;
 }
-
 
 int WorldList::columnCount(const QModelIndex &parent) const
 {
@@ -164,7 +164,7 @@ QVariant WorldList::data(const QModelIndex &index, int role) const
     if (row < 0 || row >= worlds.size())
         return QVariant();
 
-    auto & world = worlds[row];
+    auto &world = worlds[row];
     switch (role)
     {
     case Qt::DisplayRole:
@@ -260,13 +260,12 @@ QStringList WorldList::mimeTypes() const
 
 class WorldMimeData : public QMimeData
 {
-Q_OBJECT
+    Q_OBJECT
 
 public:
     WorldMimeData(QList<World> worlds)
     {
         m_worlds = worlds;
-
     }
     QStringList formats() const
     {
@@ -277,17 +276,18 @@ protected:
     QVariant retrieveData(const QString &mimetype, QVariant::Type type) const
     {
         QList<QUrl> urls;
-        for(auto &world: m_worlds)
+        for (auto &world : m_worlds)
         {
-            if(!world.isValid() || !world.isOnFS())
+            if (!world.isValid() || !world.isOnFS())
                 continue;
             QString worldPath = world.container().absoluteFilePath();
             qDebug() << worldPath;
             urls.append(QUrl::fromLocalFile(worldPath));
         }
-        const_cast<WorldMimeData*>(this)->setUrls(urls);
+        const_cast<WorldMimeData *>(this)->setUrls(urls);
         return QMimeData::retrieveData(mimetype, type);
     }
+
 private:
     QList<World> m_worlds;
 };
@@ -298,16 +298,16 @@ QMimeData *WorldList::mimeData(const QModelIndexList &indexes) const
         return new QMimeData();
 
     QList<World> worlds;
-    for(auto idx : indexes)
+    for (auto idx : indexes)
     {
-        if(idx.column() != 0)
+        if (idx.column() != 0)
             continue;
         int row = idx.row();
         if (row < 0 || row >= this->worlds.size())
             continue;
         worlds.append(this->worlds[row]);
     }
-    if(!worlds.size())
+    if (!worlds.size())
     {
         return new QMimeData();
     }
@@ -340,7 +340,7 @@ void WorldList::installWorld(QFileInfo filename)
 {
     qDebug() << "installing: " << filename.absoluteFilePath();
     World w(filename);
-    if(!w.isValid())
+    if (!w.isValid())
     {
         return;
     }
@@ -371,7 +371,7 @@ bool WorldList::dropMimeData(const QMimeData *data, Qt::DropAction action, int r
 
             QFileInfo worldInfo(filename);
 
-            if(!m_dir.entryInfoList().contains(worldInfo))
+            if (!m_dir.entryInfoList().contains(worldInfo))
             {
                 installWorld(worldInfo);
             }

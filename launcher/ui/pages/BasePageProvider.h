@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ public:
 class GenericPageProvider : public BasePageProvider
 {
     typedef std::function<BasePage *()> PageCreator;
+
 public:
     explicit GenericPageProvider(const QString &dialogTitle)
         : m_dialogTitle(dialogTitle)
@@ -56,10 +57,11 @@ public:
         m_creators.append(page);
     }
 
-    template<typename PageClass>
+    template <typename PageClass>
     void addPage()
     {
-        addPageCreator([](){return new PageClass();});
+        addPageCreator([]()
+                       { return new PageClass(); });
     }
 
 private:

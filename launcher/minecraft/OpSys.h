@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +28,11 @@ OpSys OpSys_fromString(QString);
 QString OpSys_toString(OpSys);
 
 #ifdef Q_OS_WIN32
-    #define currentSystem Os_Windows
+#define currentSystem Os_Windows
 #elif defined Q_OS_MAC
-    #define currentSystem Os_OSX
+#define currentSystem Os_OSX
 #elif defined Q_OS_FREEBSD
-    #define currentSystem Os_FreeBSD
+#define currentSystem Os_FreeBSD
 #else
-    #define currentSystem Os_Linux
+#define currentSystem Os_Linux
 #endif

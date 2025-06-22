@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ QString OpSys_toString(OpSys name)
     switch (name)
     {
     case Os_FreeBSD:
-	return "freebsd";
+        return "freebsd";
     case Os_Linux:
         return "linux";
     case Os_OSX:

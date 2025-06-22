@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,14 +72,17 @@ void UpdateChecker::checkForUpdate(bool notifyNoUpdate)
     for (ChannelListEntry entry : m_channels)
     {
         qDebug() << "channelEntry = " << entry.id;
-        if(entry.id == "develop") {
+        if (entry.id == "develop")
+        {
             developUrl = entry.url;
         }
-        if (entry.id == updateChannel) {
+        if (entry.id == updateChannel)
+        {
             m_newRepoUrl = entry.url;
             qDebug() << "is intended update channel: " << entry.id;
         }
-        if (entry.id == m_currentChannel) {
+        if (entry.id == m_currentChannel)
+        {
             m_currentRepoUrl = entry.url;
             qDebug() << "is current update channel: " << entry.id;
         }
@@ -87,7 +90,8 @@ void UpdateChecker::checkForUpdate(bool notifyNoUpdate)
 
     qDebug() << "m_repoUrl = " << m_newRepoUrl;
 
-    if (m_newRepoUrl.isEmpty()) {
+    if (m_newRepoUrl.isEmpty())
+    {
         qWarning() << "m_repoUrl was empty. defaulting to 'develop': " << developUrl;
         m_newRepoUrl = developUrl;
     }
@@ -106,7 +110,8 @@ void UpdateChecker::checkForUpdate(bool notifyNoUpdate)
 
     indexJob = new NetJob("GoUpdate Repository Index", m_network);
     indexJob->addNetAction(Net::Download::makeByteArray(indexUrl, &indexData));
-    connect(indexJob.get(), &NetJob::succeeded, [this, notifyNoUpdate](){ updateCheckFinished(notifyNoUpdate); });
+    connect(indexJob.get(), &NetJob::succeeded, [this, notifyNoUpdate]()
+            { updateCheckFinished(notifyNoUpdate); });
     connect(indexJob.get(), &NetJob::failed, this, &UpdateChecker::updateCheckFailed);
     indexJob->start();
 }
@@ -123,7 +128,7 @@ void UpdateChecker::updateCheckFinished(bool notifyNoUpdate)
     if (jsonError.error != QJsonParseError::NoError || !jsonDoc.isObject())
     {
         qCritical() << "Failed to parse GoUpdate repository index. JSON error"
-                     << jsonError.errorString() << "at offset" << jsonError.offset;
+                    << jsonError.errorString() << "at offset" << jsonError.offset;
         m_updateChecking = false;
         return;
     }
@@ -135,7 +140,7 @@ void UpdateChecker::updateCheckFinished(bool notifyNoUpdate)
     if (apiVersion != API_VERSION || !success)
     {
         qCritical() << "Failed to check for updates. API version mismatch. We're using"
-                     << API_VERSION << "server has" << apiVersion;
+                    << API_VERSION << "server has" << apiVersion;
         m_updateChecking = false;
         return;
     }
@@ -193,7 +198,8 @@ void UpdateChecker::updateChanList(bool notifyNoUpdate)
     m_chanListLoading = true;
     chanListJob = new NetJob("Update System Channel List", m_network);
     chanListJob->addNetAction(Net::Download::makeByteArray(QUrl(m_channelUrl), &chanlistData));
-    connect(chanListJob.get(), &NetJob::succeeded, [this, notifyNoUpdate]() { chanListDownloadFinished(notifyNoUpdate); });
+    connect(chanListJob.get(), &NetJob::succeeded, [this, notifyNoUpdate]()
+            { chanListDownloadFinished(notifyNoUpdate); });
     connect(chanListJob.get(), &NetJob::failed, this, &UpdateChecker::chanListDownloadFailed);
     chanListJob->start();
 }
@@ -232,12 +238,11 @@ void UpdateChecker::chanListDownloadFinished(bool notifyNoUpdate)
     for (QJsonValue chanVal : channelArray)
     {
         QJsonObject channelObj = chanVal.toObject();
-        ChannelListEntry entry {
+        ChannelListEntry entry{
             channelObj.value("id").toVariant().toString(),
             channelObj.value("name").toVariant().toString(),
             channelObj.value("description").toVariant().toString(),
-            channelObj.value("url").toVariant().toString()
-        };
+            channelObj.value("url").toVariant().toString()};
         if (entry.id.isEmpty() || entry.name.isEmpty() || entry.url.isEmpty())
         {
             qCritical() << "Channel list entry with empty ID, name, or URL. Skipping.";
@@ -254,7 +259,8 @@ void UpdateChecker::chanListDownloadFinished(bool notifyNoUpdate)
     qDebug() << "Successfully loaded UpdateChecker channel list.";
 
     // If we're waiting to check for updates, do that now.
-    if (m_checkUpdateWaiting) {
+    if (m_checkUpdateWaiting)
+    {
         checkForUpdate(notifyNoUpdate);
     }
 
@@ -267,4 +273,3 @@ void UpdateChecker::chanListDownloadFailed(QString reason)
     qCritical() << QString("Failed to download channel list: %1").arg(reason);
     emit channelListLoaded();
 }
-

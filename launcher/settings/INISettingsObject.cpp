@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ void INISettingsObject::suspendSave()
 void INISettingsObject::resumeSave()
 {
     m_suspendSave = false;
-    if(m_doSave)
+    if (m_doSave)
     {
         m_ini.saveFile(m_filePath);
     }
@@ -56,13 +56,13 @@ void INISettingsObject::changeSetting(const Setting &setting, QVariant value)
         {
             auto list = setting.configKeys();
             m_ini.set(list.takeFirst(), value);
-            for(auto iter: list)
+            for (auto iter : list)
                 m_ini.remove(iter);
         }
         // invalid -> remove all (just like resetSetting)
         else
         {
-            for(auto iter: setting.configKeys())
+            for (auto iter : setting.configKeys())
                 m_ini.remove(iter);
         }
         doSave();
@@ -71,7 +71,7 @@ void INISettingsObject::changeSetting(const Setting &setting, QVariant value)
 
 void INISettingsObject::doSave()
 {
-    if(m_suspendSave)
+    if (m_suspendSave)
     {
         m_doSave = true;
     }
@@ -86,7 +86,7 @@ void INISettingsObject::resetSetting(const Setting &setting)
     // if we have the setting, remove all the synonyms. ALL OF THEM
     if (contains(setting.id()))
     {
-        for(auto iter: setting.configKeys())
+        for (auto iter : setting.configKeys())
             m_ini.remove(iter);
         doSave();
     }
@@ -97,9 +97,9 @@ QVariant INISettingsObject::retrieveValue(const Setting &setting)
     // if we have the setting, return value of the first matching synonym
     if (contains(setting.id()))
     {
-        for(auto iter: setting.configKeys())
+        for (auto iter : setting.configKeys())
         {
-            if(m_ini.contains(iter))
+            if (m_ini.contains(iter))
                 return m_ini[iter];
         }
     }

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,13 +46,12 @@ enum class GroupsState
     Dirty
 };
 
-
 class InstanceList : public QAbstractListModel
 {
     Q_OBJECT
 
 public:
-    explicit InstanceList(SettingsObjectPtr settings, const QString & instDir, QObject *parent = 0);
+    explicit InstanceList(SettingsObjectPtr settings, const QString &instDir, QObject *parent = 0);
     virtual ~InstanceList();
 
 public:
@@ -61,13 +60,13 @@ public:
     QVariant data(const QModelIndex &index, int role) const override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
 
-    bool setData(const QModelIndex & index, const QVariant & value, int role) override;
+    bool setData(const QModelIndex &index, const QVariant &value, int role) override;
 
     enum AdditionalRoles
     {
         GroupRole = Qt::UserRole,
         InstancePointerRole = 0x34B1CB48, ///< Return pointer to real instance
-        InstanceIDRole = 0x34B1CB49 ///< Return id if the instance
+        InstanceIDRole = 0x34B1CB49       ///< Return id if the instance
     };
     /*!
      * \brief Error codes returned by functions in the InstanceList class.
@@ -98,14 +97,14 @@ public:
     QStringList getGroups();
     bool isGroupCollapsed(const QString &groupName);
 
-    GroupId getInstanceGroup(const InstanceId & id) const;
-    void setInstanceGroup(const InstanceId & id, const GroupId& name);
+    GroupId getInstanceGroup(const InstanceId &id) const;
+    void setInstanceGroup(const InstanceId &id, const GroupId &name);
 
-    void deleteGroup(const GroupId & name);
-    void deleteInstance(const InstanceId & id);
+    void deleteGroup(const GroupId &name);
+    void deleteInstance(const InstanceId &id);
 
     // Wrap an instance creation task in some more task machinery and make it ready to be used
-    Task * wrapInstanceTask(InstanceTask * task);
+    Task *wrapInstanceTask(InstanceTask *task);
 
     /**
      * Create a new empty staging area for instance creation and @return a path/key top commit it later.
@@ -117,13 +116,13 @@ public:
      * Commit the staging area given by @keyPath to the provider - used when creation succeeds.
      * Used by instance manipulation tasks.
      */
-    bool commitStagedInstance(const QString & keyPath, const QString& instanceName, const QString & groupName);
+    bool commitStagedInstance(const QString &keyPath, const QString &instanceName, const QString &groupName);
 
     /**
      * Destroy a previously created staging area given by @keyPath - used when creation fails.
      * Used by instance manipulation tasks.
      */
-    bool destroyStagingPath(const QString & keyPath);
+    bool destroyStagingPath(const QString &keyPath);
 
     int getTotalPlayTime();
 
@@ -131,9 +130,9 @@ public:
 
     Qt::DropActions supportedDropActions() const override;
 
-    bool canDropMimeData(const QMimeData * data, Qt::DropAction action, int row, int column, const QModelIndex & parent) const override;
+    bool canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) const override;
 
-    bool dropMimeData(const QMimeData * data, Qt::DropAction action, int row, int column, const QModelIndex & parent) override;
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) override;
 
     QStringList mimeTypes() const override;
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
@@ -162,7 +161,7 @@ private:
     void loadGroupList();
     void saveGroupList();
     QList<InstanceId> discoverInstances();
-    InstancePtr loadInstance(const InstanceId& id);
+    InstancePtr loadInstance(const InstanceId &id);
 
 private:
     int m_watchLevel = 0;
@@ -173,7 +172,7 @@ private:
 
     SettingsObjectPtr m_globalSettings;
     QString m_instDir;
-    QFileSystemWatcher * m_watcher;
+    QFileSystemWatcher *m_watcher;
     // FIXME: this is so inefficient that looking at it is almost painful.
     QSet<QString> m_collapsedGroups;
     QMap<InstanceId, GroupId> m_instanceGroupIndex;

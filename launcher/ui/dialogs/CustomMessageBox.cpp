@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,19 +17,19 @@
 
 namespace CustomMessageBox
 {
-QMessageBox *selectable(QWidget *parent, const QString &title, const QString &text,
-                        QMessageBox::Icon icon, QMessageBox::StandardButtons buttons,
-                        QMessageBox::StandardButton defaultButton)
-{
-    QMessageBox *messageBox = new QMessageBox(parent);
-    messageBox->setWindowTitle(title);
-    messageBox->setText(text);
-    messageBox->setStandardButtons(buttons);
-    messageBox->setDefaultButton(defaultButton);
-    messageBox->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    messageBox->setIcon(icon);
-    messageBox->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    QMessageBox *selectable(QWidget *parent, const QString &title, const QString &text,
+                            QMessageBox::Icon icon, QMessageBox::StandardButtons buttons,
+                            QMessageBox::StandardButton defaultButton)
+    {
+        QMessageBox *messageBox = new QMessageBox(parent);
+        messageBox->setWindowTitle(title);
+        messageBox->setText(text);
+        messageBox->setStandardButtons(buttons);
+        messageBox->setDefaultButton(defaultButton);
+        messageBox->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        messageBox->setIcon(icon);
+        messageBox->setTextInteractionFlags(Qt::TextBrowserInteraction);
 
-    return messageBox;
-}
+        return messageBox;
+    }
 }

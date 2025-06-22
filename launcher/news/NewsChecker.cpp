@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 
 #include <QDebug>
 
-NewsChecker::NewsChecker(shared_qobject_ptr<QNetworkAccessManager> network, const QString& feedUrl)
+NewsChecker::NewsChecker(shared_qobject_ptr<QNetworkAccessManager> network, const QString &feedUrl)
 {
     m_network = network;
     m_feedUrl = feedUrl;
@@ -37,7 +37,7 @@ void NewsChecker::reloadNews()
 
     qDebug() << "Reloading news.";
 
-    NetJob* job = new NetJob("News RSS Feed", m_network);
+    NetJob *job = new NetJob("News RSS Feed", m_network);
     job->addNetAction(Net::Download::makeByteArray(m_feedUrl, &newsData));
     QObject::connect(job, &NetJob::succeeded, this, &NewsChecker::rssDownloadFinished);
     QObject::connect(job, &NetJob::failed, this, &NewsChecker::rssDownloadFailed);
@@ -98,7 +98,6 @@ void NewsChecker::rssDownloadFailed(QString reason)
     fail(tr("Failed to load news RSS feed:\n%1").arg(reason));
 }
 
-
 QList<NewsEntryPtr> NewsChecker::getNewsEntries() const
 {
     return m_newsEntries;
@@ -122,11 +121,10 @@ void NewsChecker::succeed()
     emit newsLoaded();
 }
 
-void NewsChecker::fail(const QString& errorMsg)
+void NewsChecker::fail(const QString &errorMsg)
 {
     m_lastLoadError = errorMsg;
     qDebug() << "Failed to load news:" << errorMsg;
     m_newsNetJob.reset();
     emit newsLoadingFailed(errorMsg);
 }
-

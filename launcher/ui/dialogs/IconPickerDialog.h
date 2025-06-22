@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 namespace Ui
 {
-class IconPickerDialog;
+    class IconPickerDialog;
 }
 
 class IconPickerDialog : public QDialog
@@ -38,8 +38,7 @@ protected:
 private:
     Ui::IconPickerDialog *ui;
 
-private
-slots:
+private slots:
     void selectionChanged(QItemSelection, QItemSelection);
     void activated(QModelIndex);
     void delayed_scroll(QModelIndex);

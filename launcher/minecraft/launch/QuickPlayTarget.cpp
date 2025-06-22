@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,8 @@
 #include <QStringList>
 
 // FIXME: the way this is written, it can't ever do any sort of validation and can accept total junk
-QuickPlayTarget QuickPlayTarget::parseMultiplayer(const QString &fullAddress) {
+QuickPlayTarget QuickPlayTarget::parseMultiplayer(const QString &fullAddress)
+{
     QStringList split = fullAddress.split(":");
 
     // The logic below replicates the exact logic minecraft uses for parsing server addresses.
@@ -35,7 +36,7 @@ QuickPlayTarget QuickPlayTarget::parseMultiplayer(const QString &fullAddress) {
             if (port.startsWith(":") && !ipv6.isEmpty())
             {
                 port = port.mid(1);
-                split = QStringList({ ipv6, port });
+                split = QStringList({ipv6, port});
             }
             else
             {
@@ -63,7 +64,7 @@ QuickPlayTarget QuickPlayTarget::parseMultiplayer(const QString &fullAddress) {
         }
     }
 
-    return QuickPlayTarget { realAddress, realPort };
+    return QuickPlayTarget{realAddress, realPort};
 }
 
 QuickPlayTarget QuickPlayTarget::parseSingleplayer(const QString &worldName)

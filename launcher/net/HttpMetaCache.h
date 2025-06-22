@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +23,11 @@ class HttpMetaCache;
 
 class MetaEntry
 {
-friend class HttpMetaCache;
+    friend class HttpMetaCache;
+
 protected:
     MetaEntry() {}
+
 public:
     bool isStale()
     {
@@ -64,6 +66,7 @@ public:
     {
         this->md5sum = md5sum;
     }
+
 protected:
     QString baseId;
     QString basePath;
@@ -105,8 +108,7 @@ public:
     void SaveEventually();
     void Load();
     QString getBasePath(QString base);
-public
-slots:
+public slots:
     void SaveNow();
 
 private:

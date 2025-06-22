@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,9 @@ class VersionListView : public QTreeView
 {
     Q_OBJECT
 public:
-
     explicit VersionListView(QWidget *parent = 0);
     virtual void paintEvent(QPaintEvent *event) override;
-    virtual void setModel(QAbstractItemModel* model) override;
+    virtual void setModel(QAbstractItemModel *model) override;
 
     enum EmptyMode
     {
@@ -40,7 +39,7 @@ public slots:
     virtual void reset() override;
 
 protected slots:
-    virtual void rowsAboutToBeRemoved(const QModelIndex & parent, int start, int end) override;
+    virtual void rowsAboutToBeRemoved(const QModelIndex &parent, int start, int end) override;
     virtual void rowsInserted(const QModelIndex &parent, int start, int end) override;
 
 private: /* methods */

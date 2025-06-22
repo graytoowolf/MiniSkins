@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,10 +44,10 @@ struct AssetsIndex
 /// FIXME: this is absolutely horrendous. REDO!!!!
 namespace AssetsUtils
 {
-bool loadAssetsIndexJson(const QString &id, const QString &file, AssetsIndex& index);
+    bool loadAssetsIndexJson(const QString &id, const QString &file, AssetsIndex &index);
 
-QDir getAssetsDir(const QString &assetsId, const QString &resourcesFolder);
+    QDir getAssetsDir(const QString &assetsId, const QString &resourcesFolder);
 
-/// Reconstruct a virtual assets folder for the given assets ID and return the folder
-bool reconstructAssets(QString assetsId, QString resourcesFolder);
+    /// Reconstruct a virtual assets folder for the given assets ID and return the folder
+    bool reconstructAssets(QString assetsId, QString resourcesFolder);
 }

@@ -1,4 +1,4 @@
-/* Copyright 2018-2021 MultiMC Contributors
+/* Copyright 2018-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 namespace Ui
 {
-class CustomCommands;
+    class CustomCommands;
 }
 
 class CustomCommands : public QWidget
@@ -29,7 +29,7 @@ class CustomCommands : public QWidget
 public:
     explicit CustomCommands(QWidget *parent = 0);
     virtual ~CustomCommands();
-    void initialize(bool checkable, bool checked, const QString & prelaunch, const QString & wrapper, const QString & postexit);
+    void initialize(bool checkable, bool checked, const QString &prelaunch, const QString &wrapper, const QString &postexit);
 
     bool checked() const;
     QString prelaunchCommand() const;
@@ -39,5 +39,3 @@ public:
 private:
     Ui::CustomCommands *ui;
 };
-
-

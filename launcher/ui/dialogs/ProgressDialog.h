@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ class Task;
 
 namespace Ui
 {
-class ProgressDialog;
+    class ProgressDialog;
 }
 
 class ProgressDialog : public QDialog
@@ -43,8 +43,7 @@ public:
 
     Task *getTask();
 
-public
-slots:
+public slots:
     void onTaskStarted();
     void onTaskFailed(QString failure);
     void onTaskSucceeded();
@@ -52,9 +51,7 @@ slots:
     void changeStatus(const QString &status);
     void changeProgress(qint64 current, qint64 total);
 
-
-private
-slots:
+private slots:
     void on_skipButton_clicked(bool checked);
 
 protected:

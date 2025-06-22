@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 
 namespace Ui
 {
-class NewInstanceDialog;
+    class NewInstanceDialog;
 }
 
 class PageContainer;
@@ -35,16 +35,16 @@ class NewInstanceDialog : public QDialog, public BasePageProvider
     Q_OBJECT
 
 public:
-    explicit NewInstanceDialog(const QString & initialGroup, const QString & url = QString(), QWidget *parent = 0);
+    explicit NewInstanceDialog(const QString &initialGroup, const QString &url = QString(), QWidget *parent = 0);
     ~NewInstanceDialog();
 
     void updateDialogState();
 
-    void setSuggestedPack(const QString & name = QString(), InstanceTask * task = nullptr);
+    void setSuggestedPack(const QString &name = QString(), InstanceTask *task = nullptr);
     void setSuggestedIconFromFile(const QString &path, const QString &name);
     void setSuggestedIcon(const QString &key);
 
-    InstanceTask * extractTask();
+    InstanceTask *extractTask();
 
     QString dialogTitle() override;
     QList<BasePage *> getPages() override;
@@ -66,8 +66,8 @@ private slots:
 
 private:
     Ui::NewInstanceDialog *ui = nullptr;
-    PageContainer * m_container = nullptr;
-    QDialogButtonBox * m_buttons = nullptr;
+    PageContainer *m_container = nullptr;
+    QDialogButtonBox *m_buttons = nullptr;
 
     QString InstIconKey;
     ImportPage *importPage = nullptr;

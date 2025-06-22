@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ LauncherPartLaunch::LauncherPartLaunch(LaunchTask *parent) : LaunchStep(parent)
 #ifdef Q_OS_WIN
 // returns 8.3 file format from long path
 #include <windows.h>
-QString shortPathName(const QString & file)
+QString shortPathName(const QString &file)
 {
     auto input = file.toStdWString();
     std::wstring output;
@@ -42,15 +42,15 @@ QString shortPathName(const QString & file)
     // when it succeeds, it returns length excluding null character
     // See: https://msdn.microsoft.com/en-us/library/windows/desktop/aa364989(v=vs.85).aspx
     output.resize(length);
-    GetShortPathNameW(input.c_str(),(LPWSTR)output.c_str(),length);
-    output.resize(length-1);
+    GetShortPathNameW(input.c_str(), (LPWSTR)output.c_str(), length);
+    output.resize(length - 1);
     QString ret = QString::fromStdWString(output);
     return ret;
 }
 #endif
 
 // if the string survives roundtrip through local 8bit encoding...
-bool fitsInLocal8bit(const QString & string)
+bool fitsInLocal8bit(const QString &string)
 {
     return string == QString::fromLocal8Bit(string.toLocal8Bit());
 }
@@ -92,7 +92,7 @@ void LauncherPartLaunch::executeTask()
     args << "-cp";
 #ifdef Q_OS_WIN
     QStringList processed;
-    for(auto & item: classPath)
+    for (auto &item : classPath)
     {
         if (!fitsInLocal8bit(item))
         {
@@ -112,7 +112,7 @@ void LauncherPartLaunch::executeTask()
     qDebug() << args.join(' ');
 
     QString wrapperCommandStr = instance->getWrapperCommand().trimmed();
-    if(!wrapperCommandStr.isEmpty())
+    if (!wrapperCommandStr.isEmpty())
     {
         auto wrapperArgs = Commandline::splitArgs(wrapperCommandStr);
         auto wrapperCommand = wrapperArgs.takeFirst();
@@ -136,51 +136,51 @@ void LauncherPartLaunch::executeTask()
 
 void LauncherPartLaunch::on_state(LoggedProcess::State state)
 {
-    switch(state)
+    switch (state)
     {
-        case LoggedProcess::FailedToStart:
+    case LoggedProcess::FailedToStart:
+    {
+        //: Error message displayed if instace can't start
+        const char *reason = QT_TR_NOOP("Could not launch minecraft!");
+        emit logLine(reason, MessageLevel::Fatal);
+        emitFailed(tr(reason));
+        return;
+    }
+    case LoggedProcess::Aborted:
+    case LoggedProcess::Crashed:
+    {
+        m_parent->setPid(-1);
+        emitFailed(tr("Game crashed."));
+        return;
+    }
+    case LoggedProcess::Finished:
+    {
+        m_parent->setPid(-1);
+        // if the exit code wasn't 0, report this as a crash
+        auto exitCode = m_process.exitCode();
+        if (exitCode != 0)
         {
-            //: Error message displayed if instace can't start
-            const char *reason = QT_TR_NOOP("Could not launch minecraft!");
-            emit logLine(reason, MessageLevel::Fatal);
-            emitFailed(tr(reason));
-            return;
-        }
-        case LoggedProcess::Aborted:
-        case LoggedProcess::Crashed:
-        {
-            m_parent->setPid(-1);
             emitFailed(tr("Game crashed."));
             return;
         }
-        case LoggedProcess::Finished:
-        {
-            m_parent->setPid(-1);
-            // if the exit code wasn't 0, report this as a crash
-            auto exitCode = m_process.exitCode();
-            if(exitCode != 0)
-            {
-                emitFailed(tr("Game crashed."));
-                return;
-            }
-            //FIXME: make this work again
-            // m_postlaunchprocess.processEnvironment().insert("INST_EXITCODE", QString(exitCode));
-            // run post-exit
-            emitSucceeded();
-            break;
-        }
-        case LoggedProcess::Running:
-            emit logLine(QString("Minecraft process ID: %1\n\n").arg(m_process.processId()), MessageLevel::Launcher);
-            m_parent->setPid(m_process.processId());
-            m_parent->instance()->setLastLaunch();
-            // send the launch script to the launcher part
-            m_process.write(m_launchScript.toUtf8());
+        // FIXME: make this work again
+        //  m_postlaunchprocess.processEnvironment().insert("INST_EXITCODE", QString(exitCode));
+        //  run post-exit
+        emitSucceeded();
+        break;
+    }
+    case LoggedProcess::Running:
+        emit logLine(QString("Minecraft process ID: %1\n\n").arg(m_process.processId()), MessageLevel::Launcher);
+        m_parent->setPid(m_process.processId());
+        m_parent->instance()->setLastLaunch();
+        // send the launch script to the launcher part
+        m_process.write(m_launchScript.toUtf8());
 
-            mayProceed = true;
-            emit readyForLaunch();
-            break;
-        default:
-            break;
+        mayProceed = true;
+        emit readyForLaunch();
+        break;
+    default:
+        break;
     }
 }
 
@@ -191,7 +191,7 @@ void LauncherPartLaunch::setWorkingDirectory(const QString &wd)
 
 void LauncherPartLaunch::proceed()
 {
-    if(mayProceed)
+    if (mayProceed)
     {
         QString launchString("launch\n");
         m_process.write(launchString.toUtf8());
@@ -201,7 +201,7 @@ void LauncherPartLaunch::proceed()
 
 bool LauncherPartLaunch::abort()
 {
-    if(mayProceed)
+    if (mayProceed)
     {
         mayProceed = false;
         QString launchString("abort\n");

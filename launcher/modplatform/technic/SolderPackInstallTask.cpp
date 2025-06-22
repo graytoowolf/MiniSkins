@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  * Copyright 2021-2022 Jamie Mansfield <jmansfield@cadixdev.org>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,16 +28,17 @@ Technic::SolderPackInstallTask::SolderPackInstallTask(
     shared_qobject_ptr<QNetworkAccessManager> network,
     const QUrl &sourceUrl,
     const QString &version,
-    const QString &minecraftVersion
-) {
+    const QString &minecraftVersion)
+{
     m_sourceUrl = sourceUrl;
     m_minecraftVersion = minecraftVersion;
     m_version = version;
     m_network = network;
 }
 
-bool Technic::SolderPackInstallTask::abort() {
-    if(m_abortable)
+bool Technic::SolderPackInstallTask::abort()
+{
+    if (m_abortable)
     {
         return m_filesNetJob->abort();
     }
@@ -62,9 +63,10 @@ void Technic::SolderPackInstallTask::fileListSucceeded()
 {
     setStatus(tr("Downloading modpack"));
 
-    QJsonParseError parse_error {};
+    QJsonParseError parse_error{};
     QJsonDocument doc = QJsonDocument::fromJson(m_response, &parse_error);
-    if (parse_error.error != QJsonParseError::NoError) {
+    if (parse_error.error != QJsonParseError::NoError)
+    {
         qWarning() << "Error while parsing JSON response from Solder at " << parse_error.offset << " reason: " << parse_error.errorString();
         qWarning() << m_response;
         return;
@@ -72,10 +74,12 @@ void Technic::SolderPackInstallTask::fileListSucceeded()
     auto obj = doc.object();
 
     TechnicSolder::PackBuild build;
-    try {
+    try
+    {
         TechnicSolder::loadPackBuild(build, obj);
     }
-    catch (const JSONValidationError& e) {
+    catch (const JSONValidationError &e)
+    {
         emitFailed(tr("Could not understand pack manifest:\n") + e.cause());
         m_filesNetJob.reset();
         return;
@@ -91,7 +95,8 @@ void Technic::SolderPackInstallTask::fileListSucceeded()
         auto path = FS::PathCombine(m_outputDir.path(), QString("%1").arg(i));
 
         auto dl = Net::Download::makeFile(mod.url, path);
-        if (!mod.md5.isEmpty()) {
+        if (!mod.md5.isEmpty())
+        {
             auto rawMd5 = QByteArray::fromHex(mod.md5.toLatin1());
             dl->addValidator(new Net::ChecksumValidator(QCryptographicHash::Md5, rawMd5));
         }
@@ -115,7 +120,7 @@ void Technic::SolderPackInstallTask::downloadSucceeded()
     setStatus(tr("Extracting modpack"));
     m_filesNetJob.reset();
     m_extractFuture = QtConcurrent::run([this]()
-    {
+                                        {
         int i = 0;
         QString extractDir = FS::PathCombine(m_stagingPath, ".minecraft");
         FS::ensureFolderPathExists(extractDir);
@@ -129,8 +134,7 @@ void Technic::SolderPackInstallTask::downloadSucceeded()
             }
             i++;
         }
-        return true;
-    });
+        return true; });
     connect(&m_extractFutureWatcher, &QFutureWatcher<QStringList>::finished, this, &Technic::SolderPackInstallTask::extractFinished);
     connect(&m_extractFutureWatcher, &QFutureWatcher<QStringList>::canceled, this, &Technic::SolderPackInstallTask::extractAborted);
     m_extractFutureWatcher.setFuture(m_extractFuture);
@@ -166,7 +170,7 @@ void Technic::SolderPackInstallTask::extractFinished()
         QFileInfo file(filepath);
         auto permissions = QFile::permissions(filepath);
         auto origPermissions = permissions;
-        if(file.isDir())
+        if (file.isDir())
         {
             // Folder +rwx for current user
             permissions |= QFileDevice::Permission::ReadUser | QFileDevice::Permission::WriteUser | QFileDevice::Permission::ExeUser;
@@ -176,9 +180,9 @@ void Technic::SolderPackInstallTask::extractFinished()
             // File +rw for current user
             permissions |= QFileDevice::Permission::ReadUser | QFileDevice::Permission::WriteUser;
         }
-        if(origPermissions != permissions)
+        if (origPermissions != permissions)
         {
-            if(!QFile::setPermissions(filepath, permissions))
+            if (!QFile::setPermissions(filepath, permissions))
             {
                 logWarning(tr("Could not fix permissions for %1").arg(filepath));
             }

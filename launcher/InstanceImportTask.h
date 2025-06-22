@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ class InstanceImportTask : public InstanceTask
 {
     Q_OBJECT
 public:
-    explicit InstanceImportTask(const QUrl sourceUrl, const QString& additionalParam1 = QString(), const QString& additionalParam2 = QString());
+    explicit InstanceImportTask(const QUrl sourceUrl, const QString &additionalParam1 = QString(), const QString &additionalParam2 = QString());
 
 protected:
     //! Entry point for tasks.
@@ -66,7 +66,8 @@ private: /* data */
     std::unique_ptr<QuaZip> m_packZip;
     QFuture<nonstd::optional<QStringList>> m_extractFuture;
     QFutureWatcher<nonstd::optional<QStringList>> m_extractFutureWatcher;
-    enum class ModpackType{
+    enum class ModpackType
+    {
         Unknown,
         MultiMC,
         Technic,

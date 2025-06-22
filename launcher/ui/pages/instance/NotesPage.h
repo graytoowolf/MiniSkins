@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 
 namespace Ui
 {
-class NotesPage;
+    class NotesPage;
 }
 
 class NotesPage : public QWidget, public BasePage
@@ -40,7 +40,7 @@ public:
     virtual QIcon icon() const override
     {
         auto icon = APPLICATION->getThemedIcon("notes");
-        if(icon.isNull())
+        if (icon.isNull())
             icon = APPLICATION->getThemedIcon("news");
         return icon;
     }

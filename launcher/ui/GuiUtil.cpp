@@ -22,7 +22,7 @@ QString GuiUtil::uploadPaste(const QString &text, QWidget *parentWidget)
     std::unique_ptr<UploadTask> paste;
     if(LogPlatform == "paste.ee")
     {
-        if(APIKeySetting == "multimc")
+        if(APIKeySetting == "miniskins")
         {
             APIKeySetting = BuildConfig.PASTE_EE_KEY;
         }

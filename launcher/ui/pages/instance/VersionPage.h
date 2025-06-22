@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 
 namespace Ui
 {
-class VersionPage;
+    class VersionPage;
 }
 
 class VersionPage : public QMainWindow, public BasePage
@@ -74,14 +74,14 @@ private slots:
     void updateVersionControls();
 
 private:
-    Component * current();
+    Component *current();
     int currentRow();
     void updateButtons(int row = -1);
     void preselect(int row = 0);
     int doUpdate();
 
 protected:
-    QMenu * createPopupMenu() override;
+    QMenu *createPopupMenu() override;
 
     /// FIXME: this shouldn't be necessary!
     bool reloadPackProfile();
@@ -102,5 +102,5 @@ private slots:
     void onGameUpdateError(QString error);
     void packageCurrent(const QModelIndex &current, const QModelIndex &previous);
     void showContextMenu(const QPoint &pos);
-    void onFilterTextChanged(const QString & newContents);
+    void onFilterTextChanged(const QString &newContents);
 };

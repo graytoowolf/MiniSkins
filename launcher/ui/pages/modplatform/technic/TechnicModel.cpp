@@ -1,4 +1,4 @@
-/* Copyright 2020-2021 MultiMC Contributors
+/* Copyright 2020-2021 MiniSkins Contributors
  * Copyright 2021 Jamie Mansfield <jmansfield@cadixdev.org>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,22 +29,22 @@ Technic::ListModel::~ListModel()
 {
 }
 
-QVariant Technic::ListModel::data(const QModelIndex& index, int role) const
+QVariant Technic::ListModel::data(const QModelIndex &index, int role) const
 {
     int pos = index.row();
-    if(pos >= modpacks.size() || pos < 0 || !index.isValid())
+    if (pos >= modpacks.size() || pos < 0 || !index.isValid())
     {
         return QString("INVALID INDEX %1").arg(pos);
     }
 
     Modpack pack = modpacks.at(pos);
-    if(role == Qt::DisplayRole)
+    if (role == Qt::DisplayRole)
     {
         return pack.name;
     }
-    else if(role == Qt::DecorationRole)
+    else if (role == Qt::DecorationRole)
     {
-        if(m_logoMap.contains(pack.logoName))
+        if (m_logoMap.contains(pack.logoName))
         {
             return (m_logoMap.value(pack.logoName));
         }
@@ -52,7 +52,7 @@ QVariant Technic::ListModel::data(const QModelIndex& index, int role) const
         ((ListModel *)this)->requestLogo(pack.logoName, pack.logoUrl);
         return icon;
     }
-    else if(role == Qt::UserRole)
+    else if (role == Qt::UserRole)
     {
         QVariant v;
         v.setValue(pack);
@@ -61,28 +61,31 @@ QVariant Technic::ListModel::data(const QModelIndex& index, int role) const
     return QVariant();
 }
 
-int Technic::ListModel::columnCount(const QModelIndex&) const
+int Technic::ListModel::columnCount(const QModelIndex &) const
 {
     return 1;
 }
 
-int Technic::ListModel::rowCount(const QModelIndex&) const
+int Technic::ListModel::rowCount(const QModelIndex &) const
 {
     return modpacks.size();
 }
 
-void Technic::ListModel::searchWithTerm(const QString& term)
+void Technic::ListModel::searchWithTerm(const QString &term)
 {
-    if(currentSearchTerm == term && currentSearchTerm.isNull() == term.isNull()) {
+    if (currentSearchTerm == term && currentSearchTerm.isNull() == term.isNull())
+    {
         return;
     }
     currentSearchTerm = term;
-    if(jobPtr) {
+    if (jobPtr)
+    {
         jobPtr->abort();
         searchState = ResetRequested;
         return;
     }
-    else {
+    else
+    {
         beginResetModel();
         modpacks.clear();
         endResetModel();
@@ -95,24 +98,28 @@ void Technic::ListModel::performSearch()
 {
     NetJob *netJob = new NetJob("Technic::Search", APPLICATION->network());
     QString searchUrl = "";
-    if (currentSearchTerm.isEmpty()) {
+    if (currentSearchTerm.isEmpty())
+    {
         searchUrl = QString("%1trending?build=%2")
-                .arg(BuildConfig.TECHNIC_API_BASE_URL, BuildConfig.TECHNIC_API_BUILD);
+                        .arg(BuildConfig.TECHNIC_API_BASE_URL, BuildConfig.TECHNIC_API_BUILD);
         searchMode = List;
     }
-    else if (currentSearchTerm.startsWith("http://api.technicpack.net/modpack/")) {
+    else if (currentSearchTerm.startsWith("http://api.technicpack.net/modpack/"))
+    {
         searchUrl = QString("https://%1?build=%2")
-                .arg(currentSearchTerm.mid(7), BuildConfig.TECHNIC_API_BUILD);
+                        .arg(currentSearchTerm.mid(7), BuildConfig.TECHNIC_API_BUILD);
         searchMode = Single;
     }
-    else if (currentSearchTerm.startsWith("https://api.technicpack.net/modpack/")) {
+    else if (currentSearchTerm.startsWith("https://api.technicpack.net/modpack/"))
+    {
         searchUrl = QString("%1?build=%2").arg(currentSearchTerm, BuildConfig.TECHNIC_API_BUILD);
         searchMode = Single;
     }
-    else {
+    else
+    {
         searchUrl = QString(
-            "%1search?build=%2&q=%3"
-        ).arg(BuildConfig.TECHNIC_API_BASE_URL, BuildConfig.TECHNIC_API_BUILD, currentSearchTerm);
+                        "%1search?build=%2&q=%3")
+                        .arg(BuildConfig.TECHNIC_API_BASE_URL, BuildConfig.TECHNIC_API_BUILD, currentSearchTerm);
         searchMode = List;
     }
     netJob->addNetAction(Net::Download::makeByteArray(QUrl(searchUrl), &response));
@@ -128,7 +135,7 @@ void Technic::ListModel::searchRequestFinished()
 
     QJsonParseError parse_error;
     QJsonDocument doc = QJsonDocument::fromJson(response, &parse_error);
-    if(parse_error.error != QJsonParseError::NoError)
+    if (parse_error.error != QJsonParseError::NoError)
     {
         qWarning() << "Error while parsing JSON response from Technic at " << parse_error.offset << " reason: " << parse_error.errorString();
         qWarning() << response;
@@ -136,65 +143,75 @@ void Technic::ListModel::searchRequestFinished()
     }
 
     QList<Modpack> newList;
-    try {
+    try
+    {
         auto root = Json::requireObject(doc);
 
-        switch (searchMode) {
-            case List: {
-                auto objs = Json::requireArray(root, "modpacks");
-                for (auto technicPack: objs) {
-                    Modpack pack;
-                    auto technicPackObject = Json::requireValueObject(technicPack);
-                    pack.name = Json::requireString(technicPackObject, "name");
-                    pack.slug = Json::requireString(technicPackObject, "slug");
-                    if (pack.slug == "vanilla")
-                        continue;
-
-                    auto rawURL = Json::ensureString(technicPackObject, "iconUrl", "null");
-                    if(rawURL == "null") {
-                        pack.logoUrl = "null";
-                        pack.logoName = "null";
-                    }
-                    else {
-                        pack.logoUrl = rawURL;
-                        pack.logoName = rawURL.section(QLatin1Char('/'), -1).section(QLatin1Char('.'), 0, 0);
-                    }
-                    pack.broken = false;
-                    newList.append(pack);
-                }
-                break;
-            }
-            case Single: {
-                if (root.contains("error")) {
-                    // Invalid API url
-                    break;
-                }
-
+        switch (searchMode)
+        {
+        case List:
+        {
+            auto objs = Json::requireArray(root, "modpacks");
+            for (auto technicPack : objs)
+            {
                 Modpack pack;
-                pack.name = Json::requireString(root, "displayName");
-                pack.slug = Json::requireString(root, "name");
+                auto technicPackObject = Json::requireValueObject(technicPack);
+                pack.name = Json::requireString(technicPackObject, "name");
+                pack.slug = Json::requireString(technicPackObject, "slug");
+                if (pack.slug == "vanilla")
+                    continue;
 
-                if (root.contains("icon")) {
-                    auto iconObj = Json::requireObject(root, "icon");
-                    auto iconUrl = Json::requireString(iconObj, "url");
-
-                    pack.logoUrl = iconUrl;
-                    pack.logoName = iconUrl.section(QLatin1Char('/'), -1).section(QLatin1Char('.'), 0, 0);
-                }
-                else {
+                auto rawURL = Json::ensureString(technicPackObject, "iconUrl", "null");
+                if (rawURL == "null")
+                {
                     pack.logoUrl = "null";
                     pack.logoName = "null";
                 }
-
+                else
+                {
+                    pack.logoUrl = rawURL;
+                    pack.logoName = rawURL.section(QLatin1Char('/'), -1).section(QLatin1Char('.'), 0, 0);
+                }
                 pack.broken = false;
                 newList.append(pack);
+            }
+            break;
+        }
+        case Single:
+        {
+            if (root.contains("error"))
+            {
+                // Invalid API url
                 break;
             }
+
+            Modpack pack;
+            pack.name = Json::requireString(root, "displayName");
+            pack.slug = Json::requireString(root, "name");
+
+            if (root.contains("icon"))
+            {
+                auto iconObj = Json::requireObject(root, "icon");
+                auto iconUrl = Json::requireString(iconObj, "url");
+
+                pack.logoUrl = iconUrl;
+                pack.logoName = iconUrl.section(QLatin1Char('/'), -1).section(QLatin1Char('.'), 0, 0);
+            }
+            else
+            {
+                pack.logoUrl = "null";
+                pack.logoName = "null";
+            }
+
+            pack.broken = false;
+            newList.append(pack);
+            break;
+        }
         }
     }
     catch (const JSONValidationError &err)
     {
-        qCritical() << "Couldn't parse technic search results:" << err.cause() ;
+        qCritical() << "Couldn't parse technic search results:" << err.cause();
         return;
     }
     searchState = Finished;
@@ -203,9 +220,9 @@ void Technic::ListModel::searchRequestFinished()
     endInsertRows();
 }
 
-void Technic::ListModel::getLogo(const QString& logo, const QString& logoUrl, Technic::LogoCallback callback)
+void Technic::ListModel::getLogo(const QString &logo, const QString &logoUrl, Technic::LogoCallback callback)
 {
-    if(m_logoMap.contains(logo))
+    if (m_logoMap.contains(logo))
     {
         callback(APPLICATION->metacache()->resolveEntry("TechnicPacks", QString("logos/%1").arg(logo))->getFullPath());
     }
@@ -219,7 +236,7 @@ void Technic::ListModel::searchRequestFailed()
 {
     jobPtr.reset();
 
-    if(searchState == ResetRequested)
+    if (searchState == ResetRequested)
     {
         beginResetModel();
         modpacks.clear();
@@ -233,14 +250,13 @@ void Technic::ListModel::searchRequestFailed()
     }
 }
 
-
 void Technic::ListModel::logoLoaded(QString logo, QString out)
 {
     m_loadingLogos.removeAll(logo);
     m_logoMap.insert(logo, QIcon(out));
-    for(int i = 0; i < modpacks.size(); i++)
+    for (int i = 0; i < modpacks.size(); i++)
     {
-        if(modpacks[i].logoName == logo)
+        if (modpacks[i].logoName == logo)
         {
             emit dataChanged(createIndex(i, 0), createIndex(i, 0), {Qt::DecorationRole});
         }
@@ -255,7 +271,7 @@ void Technic::ListModel::logoFailed(QString logo)
 
 void Technic::ListModel::requestLogo(QString logo, QString url)
 {
-    if(m_loadingLogos.contains(logo) || m_failedLogos.contains(logo) || logo == "null")
+    if (m_loadingLogos.contains(logo) || m_failedLogos.contains(logo) || logo == "null")
     {
         return;
     }
@@ -267,14 +283,10 @@ void Technic::ListModel::requestLogo(QString logo, QString url)
     auto fullPath = entry->getFullPath();
 
     QObject::connect(job, &NetJob::succeeded, this, [this, logo, fullPath]
-    {
-        logoLoaded(logo, fullPath);
-    });
+                     { logoLoaded(logo, fullPath); });
 
     QObject::connect(job, &NetJob::failed, this, [this, logo]
-    {
-        logoFailed(logo);
-    });
+                     { logoFailed(logo); });
 
     job->start();
 

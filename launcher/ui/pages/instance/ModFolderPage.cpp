@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,9 +37,11 @@
 
 #include "Version.h"
 
-namespace {
+namespace
+{
     // FIXME: wasteful
-    void RemoveThePrefix(QString & string) {
+    void RemoveThePrefix(QString &string)
+    {
         QRegularExpression regex(QStringLiteral("^(([Tt][Hh][eE])|([Tt][eE][Hh])) +"));
         string.remove(regex);
         string = string.trimmed();
@@ -54,76 +56,89 @@ public:
     }
 
 protected:
-    bool filterAcceptsRow(int source_row, const QModelIndex & source_parent) const override {
+    bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override
+    {
         ModFolderModel *model = qobject_cast<ModFolderModel *>(sourceModel());
-        if(!model) {
+        if (!model)
+        {
             return false;
         }
         const auto &mod = model->at(source_row);
-        if(mod.name().contains(filterRegExp())) {
+        if (mod.name().contains(filterRegExp()))
+        {
             return true;
         }
-        if(mod.description().contains(filterRegExp())) {
+        if (mod.description().contains(filterRegExp()))
+        {
             return true;
         }
-        for(auto & author: mod.authors()) {
-            if (author.contains(filterRegExp())) {
+        for (auto &author : mod.authors())
+        {
+            if (author.contains(filterRegExp()))
+            {
                 return true;
             }
         }
         return false;
     }
 
-    bool lessThan(const QModelIndex & source_left, const QModelIndex & source_right) const override
+    bool lessThan(const QModelIndex &source_left, const QModelIndex &source_right) const override
     {
         ModFolderModel *model = qobject_cast<ModFolderModel *>(sourceModel());
-        if(
+        if (
             !model ||
             !source_left.isValid() ||
             !source_right.isValid() ||
-            source_left.column() != source_right.column()
-        ) {
+            source_left.column() != source_right.column())
+        {
             return QSortFilterProxyModel::lessThan(source_left, source_right);
         }
 
         // we are now guaranteed to have two valid indexes in the same column... we love the provided invariants unconditionally and proceed.
 
-        auto column = (ModFolderModel::Columns) source_left.column();
+        auto column = (ModFolderModel::Columns)source_left.column();
         bool invert = false;
-        switch(column) {
-            // GH-2550 - sort by enabled/disabled
-            case ModFolderModel::ActiveColumn: {
-                auto dataL = source_left.data(Qt::CheckStateRole).toBool();
-                auto dataR = source_right.data(Qt::CheckStateRole).toBool();
-                if(dataL != dataR) {
-                    return dataL > dataR;
-                }
-                // fallthrough
-                invert = sortOrder() == Qt::DescendingOrder;
+        switch (column)
+        {
+        // GH-2550 - sort by enabled/disabled
+        case ModFolderModel::ActiveColumn:
+        {
+            auto dataL = source_left.data(Qt::CheckStateRole).toBool();
+            auto dataR = source_right.data(Qt::CheckStateRole).toBool();
+            if (dataL != dataR)
+            {
+                return dataL > dataR;
             }
-            // GH-2722 - sort mod names in a way that discards "The" prefixes
-            case ModFolderModel::NameColumn: {
-                auto dataL = model->data(model->index(source_left.row(), ModFolderModel::NameColumn)).toString();
-                RemoveThePrefix(dataL);
-                auto dataR = model->data(model->index(source_right.row(), ModFolderModel::NameColumn)).toString();
-                RemoveThePrefix(dataR);
+            // fallthrough
+            invert = sortOrder() == Qt::DescendingOrder;
+        }
+        // GH-2722 - sort mod names in a way that discards "The" prefixes
+        case ModFolderModel::NameColumn:
+        {
+            auto dataL = model->data(model->index(source_left.row(), ModFolderModel::NameColumn)).toString();
+            RemoveThePrefix(dataL);
+            auto dataR = model->data(model->index(source_right.row(), ModFolderModel::NameColumn)).toString();
+            RemoveThePrefix(dataR);
 
-                auto less = dataL.compare(dataR, sortCaseSensitivity());
-                if(less != 0) {
-                    return invert ? (less > 0) : (less < 0);
-                }
-                // fallthrough
-                invert = sortOrder() == Qt::DescendingOrder;
+            auto less = dataL.compare(dataR, sortCaseSensitivity());
+            if (less != 0)
+            {
+                return invert ? (less > 0) : (less < 0);
             }
-            // GH-2762 - sort versions by parsing them as versions
-            case ModFolderModel::VersionColumn: {
-                auto dataL = Version(model->data(model->index(source_left.row(), ModFolderModel::VersionColumn)).toString());
-                auto dataR = Version(model->data(model->index(source_right.row(), ModFolderModel::VersionColumn)).toString());
-                return invert ? (dataL > dataR) : (dataL < dataR);
-            }
-            default: {
-                return QSortFilterProxyModel::lessThan(source_left, source_right);
-            }
+            // fallthrough
+            invert = sortOrder() == Qt::DescendingOrder;
+        }
+        // GH-2762 - sort versions by parsing them as versions
+        case ModFolderModel::VersionColumn:
+        {
+            auto dataL = Version(model->data(model->index(source_left.row(), ModFolderModel::VersionColumn)).toString());
+            auto dataR = Version(model->data(model->index(source_right.row(), ModFolderModel::VersionColumn)).toString());
+            return invert ? (dataL > dataR) : (dataL < dataR);
+        }
+        default:
+        {
+            return QSortFilterProxyModel::lessThan(source_left, source_right);
+        }
         }
     }
 };
@@ -135,10 +150,8 @@ ModFolderPage::ModFolderPage(
     QString iconName,
     QString displayName,
     QString helpPage,
-    QWidget *parent
-) :
-    QMainWindow(parent),
-    ui(new Ui::ModFolderPage)
+    QWidget *parent) : QMainWindow(parent),
+                       ui(new Ui::ModFolderPage)
 {
     ui->setupUi(this);
     ui->actionsToolbar->insertSpacer(ui->actionView_configs);
@@ -170,23 +183,24 @@ ModFolderPage::ModFolderPage(
     connect(m_inst, &BaseInstance::runningStatusChanged, this, &ModFolderPage::on_RunningState_changed);
 }
 
-void ModFolderPage::modItemActivated(const QModelIndex&)
+void ModFolderPage::modItemActivated(const QModelIndex &)
 {
-    if(!m_controlsEnabled) {
+    if (!m_controlsEnabled)
+    {
         return;
     }
     auto selection = m_filterModel->mapSelectionToSource(ui->modTreeView->selectionModel()->selection());
     m_mods->setModStatus(selection.indexes(), ModFolderModel::Toggle);
 }
 
-QMenu * ModFolderPage::createPopupMenu()
+QMenu *ModFolderPage::createPopupMenu()
 {
-    QMenu* filteredMenu = QMainWindow::createPopupMenu();
-    filteredMenu->removeAction(ui->actionsToolbar->toggleViewAction() );
+    QMenu *filteredMenu = QMainWindow::createPopupMenu();
+    filteredMenu->removeAction(ui->actionsToolbar->toggleViewAction());
     return filteredMenu;
 }
 
-void ModFolderPage::ShowContextMenu(const QPoint& pos)
+void ModFolderPage::ShowContextMenu(const QPoint &pos)
 {
     auto menu = ui->actionsToolbar->createContextMenu(this, tr("Context menu"));
     menu->exec(ui->modTreeView->mapToGlobal(pos));
@@ -203,12 +217,11 @@ void ModFolderPage::closedImpl()
     m_mods->stopWatching();
 }
 
-void ModFolderPage::on_filterTextChanged(const QString& newContents)
+void ModFolderPage::on_filterTextChanged(const QString &newContents)
 {
     m_viewFilter = newContents;
     m_filterModel->setFilterFixedString(m_viewFilter);
 }
-
 
 CoreModFolderPage::CoreModFolderPage(BaseInstance *inst, std::shared_ptr<ModFolderModel> mods,
                                      QString id, QString iconName, QString displayName,
@@ -225,7 +238,8 @@ ModFolderPage::~ModFolderPage()
 
 void ModFolderPage::on_RunningState_changed(bool running)
 {
-    if(m_controlsEnabled == !running) {
+    if (m_controlsEnabled == !running)
+    {
         return;
     }
     m_controlsEnabled = !running;
@@ -250,15 +264,15 @@ bool CoreModFolderPage::shouldDisplay() const
         auto version = inst->getPackProfile();
         if (!version)
             return true;
-        if(!version->getComponent("net.minecraftforge"))
+        if (!version->getComponent("net.minecraftforge"))
         {
             return false;
         }
-        if(!version->getComponent("net.minecraft"))
+        if (!version->getComponent("net.minecraft"))
         {
             return false;
         }
-        if(version->getComponent("net.minecraft")->getReleaseDateTime() < g_VersionFilterData.legacyCutoffDate)
+        if (version->getComponent("net.minecraft")->getReleaseDateTime() < g_VersionFilterData.legacyCutoffDate)
         {
             return true;
         }
@@ -296,7 +310,8 @@ bool ModFolderPage::eventFilter(QObject *obj, QEvent *ev)
 
 void ModFolderPage::on_actionAdd_triggered()
 {
-    if(!m_controlsEnabled) {
+    if (!m_controlsEnabled)
+    {
         return;
     }
     auto list = GuiUtil::BrowseForFiles(
@@ -317,7 +332,8 @@ void ModFolderPage::on_actionAdd_triggered()
 
 void ModFolderPage::on_actionEnable_triggered()
 {
-    if(!m_controlsEnabled) {
+    if (!m_controlsEnabled)
+    {
         return;
     }
     auto selection = m_filterModel->mapSelectionToSource(ui->modTreeView->selectionModel()->selection());
@@ -326,7 +342,8 @@ void ModFolderPage::on_actionEnable_triggered()
 
 void ModFolderPage::on_actionDisable_triggered()
 {
-    if(!m_controlsEnabled) {
+    if (!m_controlsEnabled)
+    {
         return;
     }
     auto selection = m_filterModel->mapSelectionToSource(ui->modTreeView->selectionModel()->selection());
@@ -335,7 +352,8 @@ void ModFolderPage::on_actionDisable_triggered()
 
 void ModFolderPage::on_actionRemove_triggered()
 {
-    if(!m_controlsEnabled) {
+    if (!m_controlsEnabled)
+    {
         return;
     }
     auto selection = m_filterModel->mapSelectionToSource(ui->modTreeView->selectionModel()->selection());

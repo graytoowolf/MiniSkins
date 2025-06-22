@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
     loadSettings();
 
     // Updater
-    if(!BuildConfig.UPDATER_ENABLED)
+    if (!BuildConfig.UPDATER_ENABLED)
     {
         ui->updateSettingsBox->setHidden(true);
     }
@@ -67,7 +67,7 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
     connect(ui->fontSizeBox, SIGNAL(valueChanged(int)), SLOT(refreshFontPreview()));
     connect(ui->consoleFont, SIGNAL(currentFontChanged(QFont)), SLOT(refreshFontPreview()));
 
-    //move mac data button
+    // move mac data button
     QFile file(QDir::current().absolutePath() + "/dontmovemacdata");
     if (!file.exists())
     {
@@ -161,7 +161,7 @@ void LauncherPage::applySettings()
     // Updates
     s->set("AutoUpdate", ui->autoUpdateCheckBox->isChecked());
     auto original = s->get("IconTheme").toString();
-    //FIXME: make generic
+    // FIXME: make generic
     switch (ui->themeComboBox->currentIndex())
     {
     case 1:
@@ -196,7 +196,7 @@ void LauncherPage::applySettings()
     const DownloadSource &secondSource = sources[ui->downloadcomboBox->currentIndex()];
     s->set("Downloadsource", secondSource.getType());
     s->set("Downloadsourceurl", secondSource.getUrl());
-    s->set("Downloadsourceproxy",secondSource.isProxy());
+    s->set("Downloadsourceproxy", secondSource.isProxy());
 
     switch (ui->threadcomboBox->currentIndex())
     {
@@ -218,14 +218,14 @@ void LauncherPage::applySettings()
         break;
     }
 
-    if(original != s->get("IconTheme"))
+    if (original != s->get("IconTheme"))
     {
         APPLICATION->setIconTheme(s->get("IconTheme").toString());
     }
 
     auto originalAppTheme = s->get("ApplicationTheme").toString();
     auto newAppTheme = ui->themeComboBoxColors->currentData().toString();
-    if(originalAppTheme != newAppTheme)
+    if (originalAppTheme != newAppTheme)
     {
         s->set("ApplicationTheme", newAppTheme);
         APPLICATION->setApplicationTheme(newAppTheme, false);
@@ -265,7 +265,7 @@ void LauncherPage::loadSettings()
     auto s = APPLICATION->settings();
     // Updates
     ui->autoUpdateCheckBox->setChecked(s->get("AutoUpdate").toBool());
-    //FIXME: make generic
+    // FIXME: make generic
     auto theme = s->get("IconTheme").toString();
     if (theme == "pe_dark")
     {
@@ -304,7 +304,7 @@ void LauncherPage::loadSettings()
         ui->themeComboBox->setCurrentIndex(0);
     }
 
-    int i =0;
+    int i = 0;
     auto download = s->get("Downloadsource").toString();
     int selectedIndex = -1;
     for (const DownloadSource &source : sources)
@@ -322,21 +322,25 @@ void LauncherPage::loadSettings()
         ui->downloadcomboBox->setCurrentIndex(selectedIndex); // 在循环结束后一次性设置
     }
 
-
     auto thread = s->get("Threads").toString();
-    if(thread == "4"){
+    if (thread == "4")
+    {
         ui->threadcomboBox->setCurrentIndex(0);
     }
-    else if(thread == "6"){
+    else if (thread == "6")
+    {
         ui->threadcomboBox->setCurrentIndex(1);
     }
-    else if(thread == "8"){
+    else if (thread == "8")
+    {
         ui->threadcomboBox->setCurrentIndex(2);
     }
-    else if(thread == "16"){
+    else if (thread == "16")
+    {
         ui->threadcomboBox->setCurrentIndex(3);
     }
-    else if(thread == "32"){
+    else if (thread == "32")
+    {
         ui->threadcomboBox->setCurrentIndex(4);
     }
     else
@@ -344,15 +348,14 @@ void LauncherPage::loadSettings()
         ui->threadcomboBox->setCurrentIndex(2);
     }
 
-
     {
         auto currentTheme = s->get("ApplicationTheme").toString();
         auto themes = APPLICATION->getValidApplicationThemes();
         int idx = 0;
-        for(auto &theme: themes)
+        for (auto &theme : themes)
         {
             ui->themeComboBoxColors->addItem(theme->name(), theme->id());
-            if(currentTheme == theme->id())
+            if (currentTheme == theme->id())
             {
                 ui->themeComboBoxColors->setCurrentIndex(idx);
             }
@@ -370,7 +373,7 @@ void LauncherPage::loadSettings()
 
     bool conversionOk = true;
     int fontSize = APPLICATION->settings()->get("ConsoleFontSize").toInt(&conversionOk);
-    if(!conversionOk)
+    if (!conversionOk)
     {
         fontSize = 11;
     }

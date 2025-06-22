@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,12 +26,12 @@ LegacyModList::LegacyModList(const QString &dir, const QString &list_file)
     m_dir.setSorting(QDir::Name | QDir::IgnoreCase | QDir::LocaleAware);
 }
 
-    struct OrderItem
-    {
-        QString id;
-        bool enabled = false;
-    };
-    typedef QList<OrderItem> OrderList;
+struct OrderItem
+{
+    QString id;
+    bool enabled = false;
+};
+typedef QList<OrderItem> OrderList;
 
 static void internalSort(QList<LegacyModList::Mod> &what)
 {

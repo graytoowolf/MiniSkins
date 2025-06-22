@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ QVariant OverrideSetting::defValue() const
 
 QVariant OverrideSetting::get() const
 {
-    if(isOverriding())
+    if (isOverriding())
     {
         return Setting::get();
     }

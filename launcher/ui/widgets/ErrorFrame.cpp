@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,9 +27,8 @@ void ErrorFrame::clear()
     setDescription(QString());
 }
 
-ErrorFrame::ErrorFrame(QWidget *parent) :
-    QFrame(parent),
-    ui(new Ui::ErrorFrame)
+ErrorFrame::ErrorFrame(QWidget *parent) : QFrame(parent),
+                                          ui(new Ui::ErrorFrame)
 {
     ui->setupUi(this);
     ui->label_Description->setHidden(true);
@@ -44,7 +43,7 @@ ErrorFrame::~ErrorFrame()
 
 void ErrorFrame::updateHiddenState()
 {
-    if(ui->label_Description->isHidden() && ui->label_Title->isHidden())
+    if (ui->label_Description->isHidden() && ui->label_Title->isHidden())
     {
         setHidden(true);
     }
@@ -56,7 +55,7 @@ void ErrorFrame::updateHiddenState()
 
 void ErrorFrame::setTitle(QString text)
 {
-    if(text.isEmpty())
+    if (text.isEmpty())
     {
         ui->label_Title->setHidden(true);
     }
@@ -70,7 +69,7 @@ void ErrorFrame::setTitle(QString text)
 
 void ErrorFrame::setDescription(QString text)
 {
-    if(text.isEmpty())
+    if (text.isEmpty())
     {
         ui->label_Description->setHidden(true);
         updateHiddenState();
@@ -87,9 +86,10 @@ void ErrorFrame::setDescription(QString text)
     QChar rem('\n');
     QString finaltext;
     finaltext.reserve(intermediatetext.size());
-    foreach(const QChar& c, intermediatetext)
+    foreach (const QChar &c, intermediatetext)
     {
-        if(c == rem && prev){
+        if (c == rem && prev)
+        {
             continue;
         }
         prev = c == rem;
@@ -97,7 +97,7 @@ void ErrorFrame::setDescription(QString text)
     }
     QString labeltext;
     labeltext.reserve(300);
-    if(finaltext.length() > 290)
+    if (finaltext.length() > 290)
     {
         ui->label_Description->setOpenExternalLinks(false);
         ui->label_Description->setTextFormat(Qt::TextFormat::RichText);
@@ -116,7 +116,7 @@ void ErrorFrame::setDescription(QString text)
 
 void ErrorFrame::ellipsisHandler(const QString &link)
 {
-    if(!currentBox)
+    if (!currentBox)
     {
         currentBox = CustomMessageBox::selectable(this, QString(), desc);
         connect(currentBox, &QMessageBox::finished, this, &ErrorFrame::boxClosed);

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +24,13 @@
 
 namespace Ui
 {
-class CFPage;
+    class CFPage;
 }
 
 class NewInstanceDialog;
 
-namespace CurseForge {
+namespace CurseForge
+{
     class ListModel;
 }
 
@@ -38,7 +39,7 @@ class CFPage : public QWidget, public BasePage
     Q_OBJECT
 
 public:
-    explicit CFPage(NewInstanceDialog* dialog, QWidget *parent = 0);
+    explicit CFPage(NewInstanceDialog *dialog, QWidget *parent = 0);
     virtual ~CFPage();
     virtual QString displayName() const override
     {
@@ -60,7 +61,7 @@ public:
 
     void openedImpl() override;
 
-    bool eventFilter(QObject * watched, QEvent * event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void suggestCurrent();
@@ -74,8 +75,8 @@ private slots:
 
 private:
     Ui::CFPage *ui = nullptr;
-    NewInstanceDialog* dialog = nullptr;
-    CurseForge::ListModel* listModel = nullptr;
+    NewInstanceDialog *dialog = nullptr;
+    CurseForge::ListModel *listModel = nullptr;
     CurseForge::IndexedPack m_current;
 
     QString selectedVersion;

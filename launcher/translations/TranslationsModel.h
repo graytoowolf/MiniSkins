@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    int columnCount(const QModelIndex & parent) const override;
+    int columnCount(const QModelIndex &parent) const override;
 
     bool selectLanguage(QString key);
     void updateLanguage(QString key);
@@ -40,7 +40,7 @@ public:
     void downloadIndex();
 
 private:
-    Language *findLanguage(const QString & key);
+    Language *findLanguage(const QString &key);
     void reloadLocalFiles();
     void downloadTranslation(QString key);
     void downloadNext();
@@ -56,7 +56,6 @@ private slots:
     void dlFailed(QString reason);
     void dlGood();
     void translationDirChanged(const QString &path);
-
 
 private: /* data */
     struct Private;

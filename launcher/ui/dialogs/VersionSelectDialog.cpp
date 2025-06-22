@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ VersionSelectDialog::VersionSelectDialog(BaseVersionList *vlist, QString title, 
     m_buttonBox = new QDialogButtonBox(this);
     m_buttonBox->setObjectName(QStringLiteral("buttonBox"));
     m_buttonBox->setOrientation(Qt::Horizontal);
-    m_buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
+    m_buttonBox->setStandardButtons(QDialogButtonBox::Cancel | QDialogButtonBox::Ok);
     m_horizontalLayout->addWidget(m_buttonBox);
 
     m_verticalLayout->addLayout(m_horizontalLayout);
@@ -83,7 +83,7 @@ void VersionSelectDialog::retranslate()
     m_refreshButton->setText(tr("&Refresh"));
 }
 
-void VersionSelectDialog::setCurrentVersion(const QString& version)
+void VersionSelectDialog::setCurrentVersion(const QString &version)
 {
     m_currentVersion = version;
     m_versionWidget->setCurrentVersion(version);
@@ -108,7 +108,7 @@ int VersionSelectDialog::exec()
 {
     QDialog::open();
     m_versionWidget->initialize(m_vlist);
-    if(resizeOnColumn != -1)
+    if (resizeOnColumn != -1)
     {
         m_versionWidget->setResizeOn(resizeOnColumn);
     }

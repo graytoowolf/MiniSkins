@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@
 #include <QDir>
 
 #ifdef major
-    #undef major
+#undef major
 #endif
 #ifdef minor
-    #undef minor
+#undef minor
 #endif
 
-static QString replaceSuffix (QString target, const QString &suffix, const QString &replacement)
+static QString replaceSuffix(QString target, const QString &suffix, const QString &replacement)
 {
     if (!target.endsWith(suffix))
     {
@@ -43,7 +43,7 @@ static QString replaceSuffix (QString target, const QString &suffix, const QStri
 static bool unzipNatives(QString source, QString targetFolder, bool applyJnilibHack, bool nativeOpenAL, bool nativeGLFW)
 {
     QuaZip zip(source);
-    if(!zip.open(QuaZip::mdUnzip))
+    if (!zip.open(QuaZip::mdUnzip))
     {
         return false;
     }
@@ -56,13 +56,15 @@ static bool unzipNatives(QString source, QString targetFolder, bool applyJnilibH
     {
         QString name = zip.getCurrentFileName();
         auto lowercase = name.toLower();
-        if (nativeGLFW && name.contains("glfw")) {
+        if (nativeGLFW && name.contains("glfw"))
+        {
             continue;
         }
-        if (nativeOpenAL && name.contains("openal")) {
+        if (nativeOpenAL && name.contains("openal"))
+        {
             continue;
         }
-        if(applyJnilibHack)
+        if (applyJnilibHack)
         {
             name = replaceSuffix(name, ".jnilib", ".dylib");
         }
@@ -73,7 +75,7 @@ static bool unzipNatives(QString source, QString targetFolder, bool applyJnilibH
         }
     } while (zip.goToNextFile());
     zip.close();
-    if(zip.getZipError()!=0)
+    if (zip.getZipError() != 0)
     {
         return false;
     }
@@ -85,7 +87,7 @@ void ExtractNatives::executeTask()
     auto instance = m_parent->instance();
     std::shared_ptr<MinecraftInstance> minecraftInstance = std::dynamic_pointer_cast<MinecraftInstance>(instance);
     auto toExtract = minecraftInstance->getNativeJars();
-    if(toExtract.isEmpty())
+    if (toExtract.isEmpty())
     {
         emitSucceeded();
         return;
@@ -94,12 +96,12 @@ void ExtractNatives::executeTask()
     bool nativeOpenAL = settings->get("UseNativeOpenAL").toBool();
     bool nativeGLFW = settings->get("UseNativeGLFW").toBool();
 
-    auto outputPath  = minecraftInstance->getNativePath();
+    auto outputPath = minecraftInstance->getNativePath();
     auto javaVersion = minecraftInstance->getJavaVersion();
     bool jniHackEnabled = javaVersion.major() >= 8;
-    for(const auto &source: toExtract)
+    for (const auto &source : toExtract)
     {
-        if(!unzipNatives(source, outputPath, jniHackEnabled, nativeOpenAL, nativeGLFW))
+        if (!unzipNatives(source, outputPath, jniHackEnabled, nativeOpenAL, nativeGLFW))
         {
             const char *reason = QT_TR_NOOP("Couldn't extract native jar '%1' to destination '%2'");
             emit logLine(QString(reason).arg(source, outputPath), MessageLevel::Fatal);

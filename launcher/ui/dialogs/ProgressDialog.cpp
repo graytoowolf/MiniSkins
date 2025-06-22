@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,9 +53,9 @@ ProgressDialog::~ProgressDialog()
 
 void ProgressDialog::updateSize()
 {
-        QSize qSize = QSize(480, minimumSizeHint().height());
+    QSize qSize = QSize(480, minimumSizeHint().height());
     resize(qSize);
-        setFixedSize(qSize);
+    setFixedSize(qSize);
 }
 
 int ProgressDialog::execWithTask(Task *task)
@@ -63,13 +63,13 @@ int ProgressDialog::execWithTask(Task *task)
     this->task = task;
     QDialog::DialogCode result;
 
-    if(!task)
+    if (!task)
     {
         qDebug() << "Programmer error: progress dialog created with null task.";
         return Accepted;
     }
 
-    if(handleImmediateResult(result))
+    if (handleImmediateResult(result))
     {
         return result;
     }
@@ -82,17 +82,17 @@ int ProgressDialog::execWithTask(Task *task)
     connect(task, SIGNAL(progress(qint64, qint64)), SLOT(changeProgress(qint64, qint64)));
 
     // if this didn't connect to an already running task, invoke start
-    if(!task->isRunning())
+    if (!task->isRunning())
     {
         task->start();
     }
-    if(task->isRunning())
+    if (task->isRunning())
     {
         changeProgress(task->getProgress(), task->getTotalProgress());
         changeStatus(task->getStatus());
         return QDialog::exec();
     }
-    else if(handleImmediateResult(result))
+    else if (handleImmediateResult(result))
     {
         return result;
     }
@@ -116,9 +116,9 @@ int ProgressDialog::execWithTask(std::unique_ptr<Task> &task)
 
 bool ProgressDialog::handleImmediateResult(QDialog::DialogCode &result)
 {
-    if(task->isFinished())
+    if (task->isFinished())
     {
-        if(task->wasSuccessful())
+        if (task->wasSuccessful())
         {
             result = QDialog::Accepted;
         }
@@ -164,14 +164,14 @@ void ProgressDialog::changeProgress(qint64 current, qint64 total)
 
 void ProgressDialog::keyPressEvent(QKeyEvent *e)
 {
-    if(ui->skipButton->isVisible())
+    if (ui->skipButton->isVisible())
     {
         if (e->key() == Qt::Key_Escape)
         {
             on_skipButton_clicked(true);
             return;
         }
-        else if(e->key() == Qt::Key_Tab)
+        else if (e->key() == Qt::Key_Tab)
         {
             ui->skipButton->setFocusPolicy(Qt::StrongFocus);
             ui->skipButton->setFocus();

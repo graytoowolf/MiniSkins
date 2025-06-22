@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ bool PageContainer::selectPage(QString pageId)
     {
         index = m_proxyModel->mapFromSource(m_model->index(page->listIndex));
     }
-    if(!index.isValid())
+    if (!index.isValid())
     {
         index = m_proxyModel->index(0, 0);
     }
@@ -111,10 +111,10 @@ bool PageContainer::selectPage(QString pageId)
 void PageContainer::refreshContainer()
 {
     m_proxyModel->invalidate();
-    if(!m_currentPage->shouldDisplay())
+    if (!m_currentPage->shouldDisplay())
     {
         auto index = m_proxyModel->index(0, 0);
-        if(index.isValid())
+        if (index.isValid())
         {
             m_pageList->setCurrentIndex(index);
         }
@@ -157,7 +157,7 @@ void PageContainer::createUI()
     m_layout->addWidget(m_pageList, 0, 0, 2, 1);
     m_layout->addLayout(m_pageStack, 1, 1, 1, 1);
     m_layout->setColumnStretch(1, 4);
-    m_layout->setContentsMargins(0,0,0,6);
+    m_layout->setContentsMargins(0, 0, 0, 6);
     setLayout(m_layout);
 }
 
@@ -218,7 +218,7 @@ void PageContainer::currentChanged(const QModelIndex &current)
 
 bool PageContainer::prepareToClose()
 {
-    if(!saveAll())
+    if (!saveAll())
     {
         return false;
     }

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,8 @@ public:
         DateColumn,
         NUM_COLUMNS
     };
-    enum ModStatusAction {
+    enum ModStatusAction
+    {
         Disable,
         Enable,
         Toggle
@@ -61,7 +62,7 @@ public:
     /// flags, mostly to support drag&drop
     virtual Qt::ItemFlags flags(const QModelIndex &index) const override;
     QStringList mimeTypes() const override;
-    bool dropMimeData(const QMimeData * data, Qt::DropAction action, int row, int column, const QModelIndex & parent) override;
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) override;
 
     virtual int rowCount(const QModelIndex &) const override
     {
@@ -74,8 +75,7 @@ public:
     size_t size() const
     {
         return mods.size();
-    }
-    ;
+    };
     bool empty() const
     {
         return size() == 0;
@@ -95,7 +95,7 @@ public:
     /**
      * Adds the given mod to the list at the given index - if the list supports custom ordering
      */
-    bool installMod(const QString& filename);
+    bool installMod(const QString &filename);
 
     /// Deletes all the selected mods
     bool deleteMods(const QModelIndexList &indexes);
@@ -113,7 +113,7 @@ public:
         return m_dir;
     }
 
-    const QList<Mod> & allMods()
+    const QList<Mod> &allMods()
     {
         return mods;
     }
@@ -121,8 +121,7 @@ public:
 public slots:
     void disableInteraction(bool disabled);
 
-private
-slots:
+private slots:
     void directoryChanged(QString path);
     void finishUpdate();
     void finishModParse(int token);
@@ -131,7 +130,7 @@ signals:
     void updateFinished();
 
 private:
-    void resolveMod(Mod& m);
+    void resolveMod(Mod &m);
     bool setModStatus(int index, ModStatusAction action);
 
 protected:

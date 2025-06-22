@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,12 @@
 #include "minecraft/auth/AuthSession.h"
 
 // FIXME: temporary wrapper for existing task.
-class ExtractNatives: public LaunchStep
+class ExtractNatives : public LaunchStep
 {
     Q_OBJECT
 public:
-    explicit ExtractNatives(LaunchTask *parent) : LaunchStep(parent){};
-    virtual ~ExtractNatives(){};
+    explicit ExtractNatives(LaunchTask *parent) : LaunchStep(parent) {};
+    virtual ~ExtractNatives() {};
 
     void executeTask() override;
     bool canAbort() const override
@@ -34,5 +34,3 @@ public:
     }
     void finalize() override;
 };
-
-

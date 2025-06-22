@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ class QFileSystemModel;
 class QIdentityProxyModel;
 namespace Ui
 {
-class ScreenshotsPage;
+    class ScreenshotsPage;
 }
 
 struct ScreenShot;
@@ -69,7 +69,7 @@ public:
     }
 
 protected:
-    QMenu * createPopupMenu() override;
+    QMenu *createPopupMenu() override;
 
 private slots:
     void on_actionUpload_triggered();

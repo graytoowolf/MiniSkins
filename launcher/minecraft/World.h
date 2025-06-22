@@ -1,4 +1,4 @@
-/* Copyright 2015-2021 MultiMC Contributors
+/* Copyright 2015-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,10 @@
 #include <QDateTime>
 #include <nonstd/optional>
 
-struct GameType {
+struct GameType
+{
     GameType() = default;
-    GameType (nonstd::optional<int> original);
+    GameType(nonstd::optional<int> original);
 
     QString toTranslatedString() const;
     QString toLogString() const;
@@ -86,7 +87,7 @@ public:
     bool resetIcon();
 
     bool rename(const QString &to);
-    bool install(const QString &to, const QString &name= QString());
+    bool install(const QString &to, const QString &name = QString());
 
     // WEAK compare operator - used for replacing worlds
     bool operator==(const World &other) const;
@@ -97,7 +98,6 @@ private:
     void loadFromLevelDat(QByteArray data);
 
 protected:
-
     QFileInfo m_containerFile;
     QString m_containerOffsetPath;
     QString m_folderName;

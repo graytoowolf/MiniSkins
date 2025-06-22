@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ class QVBoxLayout;
 class QProgressBar;
 class Filter;
 
-class VersionSelectWidget: public QWidget
+class VersionSelectWidget : public QWidget
 {
     Q_OBJECT
 public:
@@ -43,7 +43,7 @@ public:
     void selectRecommended();
     void selectCurrent();
 
-    void setCurrentVersion(const QString & version);
+    void setCurrentVersion(const QString &version);
     void setFuzzyFilter(BaseVersionList::ModelRoles role, QString filter);
     void setExactFilter(BaseVersionList::ModelRoles role, QString filter);
     void setFilter(BaseVersionList::ModelRoles role, Filter *filter);
@@ -55,7 +55,7 @@ signals:
     void selectedVersionChanged(BaseVersionPtr version);
 
 protected:
-    virtual void closeEvent ( QCloseEvent* );
+    virtual void closeEvent(QCloseEvent *);
 
 private slots:
     void onTaskSucceeded();
@@ -71,7 +71,7 @@ private:
     BaseVersionList *m_vlist = nullptr;
     VersionProxyModel *m_proxyModel = nullptr;
     int resizeOnColumn = 0;
-    Task * loadTask;
+    Task *loadTask;
     bool preselectedAlready = false;
 
 private:

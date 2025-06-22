@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,11 +79,14 @@ public:
     {
         return m_url;
     }
-    void setExtraHeader(const QString& key, const QString & value) {
-        if(value.isNull()) {
+    void setExtraHeader(const QString &key, const QString &value)
+    {
+        if (value.isNull())
+        {
             m_extra_headers.remove(key);
         }
-        else {
+        else
+        {
             m_extra_headers.insert(key, value);
         }
     }
@@ -102,7 +105,8 @@ protected slots:
     virtual void downloadReadyRead() = 0;
 
 public slots:
-    void start(shared_qobject_ptr<QNetworkAccessManager> network) {
+    void start(shared_qobject_ptr<QNetworkAccessManager> network)
+    {
         m_network = network;
         startImpl();
     }

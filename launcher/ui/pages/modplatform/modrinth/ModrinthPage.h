@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2021 MultiMC Contributors
+ * Copyright 2013-2021 MiniSkins Contributors
  * Copyright 2021-2022 kb1000
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,8 @@ namespace Ui
 
 class NewInstanceDialog;
 
-namespace Modrinth {
+namespace Modrinth
+{
     class ListModel;
 }
 
@@ -62,7 +63,7 @@ public:
 private slots:
     void triggerSearch();
     void onSelectionChanged(QModelIndex first, QModelIndex second);
-    void onVersionSelectionChanged(const QString & version);
+    void onVersionSelectionChanged(const QString &version);
     void onPackDataChanged(const QString &id);
     void forceDocumentLayout();
 

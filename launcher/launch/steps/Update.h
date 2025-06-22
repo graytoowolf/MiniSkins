@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 #include <net/Mode.h>
 
 // FIXME: stupid. should be defined by the instance type? or even completely abstracted away...
-class Update: public LaunchStep
+class Update : public LaunchStep
 {
     Q_OBJECT
 public:
-    explicit Update(LaunchTask *parent, Net::Mode mode):LaunchStep(parent), m_mode(mode) {};
+    explicit Update(LaunchTask *parent, Net::Mode mode) : LaunchStep(parent), m_mode(mode) {};
     virtual ~Update() {};
 
     void executeTask() override;

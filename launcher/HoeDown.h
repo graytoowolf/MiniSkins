@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,15 +36,15 @@ public:
         {
             hoedown_buffer_free(buf);
         }
-        const char * cstr()
+        const char *cstr()
         {
             return hoedown_buffer_cstr(buf);
         }
         void put(QByteArray input)
         {
-            hoedown_buffer_put(buf, (uint8_t *) input.data(), input.size());
+            hoedown_buffer_put(buf, (uint8_t *)input.data(), input.size());
         }
-        const uint8_t * data() const
+        const uint8_t *data() const
         {
             return buf->data;
         }
@@ -52,12 +52,12 @@ public:
         {
             return buf->size;
         }
-        hoedown_buffer * buf;
+        hoedown_buffer *buf;
     } ib, ob;
     HoeDown()
     {
-        renderer = hoedown_html_renderer_new((hoedown_html_flags) 0,0);
-        document = hoedown_document_new(renderer, (hoedown_extensions) HOEDOWN_EXT_TABLES, 8);
+        renderer = hoedown_html_renderer_new((hoedown_html_flags)0, 0);
+        document = hoedown_document_new(renderer, (hoedown_extensions)HOEDOWN_EXT_TABLES, 8);
     }
     ~HoeDown()
     {
@@ -70,7 +70,8 @@ public:
         hoedown_document_render(document, ob.buf, ib.data(), ib.size());
         return ob.cstr();
     }
+
 private:
-    hoedown_document * document;
-    hoedown_renderer * renderer;
+    hoedown_document *document;
+    hoedown_renderer *renderer;
 };

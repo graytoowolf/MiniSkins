@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -346,37 +346,37 @@ bool Mod::addModsToJson(const QString &jsonPath, const QList<ModInfo> &modInfos,
     bool hasChanges = false;
 
     for (const ModInfo &modInfo : modInfos)
+    {
+        // 检查是否已存在该projectID的模组
+        bool found = false;
+        for (int i = 0; i < modsArray.size(); ++i)
         {
-            // 检查是否已存在该projectID的模组
-            bool found = false;
-            for (int i = 0; i < modsArray.size(); ++i)
+            QJsonObject modObj = modsArray[i].toObject();
+            if (modObj["projectID"].toInt() == modInfo.projectId)
             {
-                QJsonObject modObj = modsArray[i].toObject();
-                if (modObj["projectID"].toInt() == modInfo.projectId)
-                {
-                    // 更新现有条目
-                    modObj["fileID"] = modInfo.fileId;
-                    modObj["name"] = modInfo.name;
-                    modObj["required"] = required;
-                    modsArray[i] = modObj;
-                    found = true;
-                    hasChanges = true;
-                    break;
-                }
-            }
-            if (!found && !modInfo.name.isEmpty())
-            {
-                // 添加新模组
-                QJsonObject newMod;
-                newMod["fileID"] = modInfo.fileId;
-                newMod["name"] = modInfo.name;
-                newMod["projectID"] = modInfo.projectId;
-                newMod["required"] = required;
-
-                modsArray.append(newMod);
+                // 更新现有条目
+                modObj["fileID"] = modInfo.fileId;
+                modObj["name"] = modInfo.name;
+                modObj["required"] = required;
+                modsArray[i] = modObj;
+                found = true;
                 hasChanges = true;
+                break;
             }
         }
+        if (!found && !modInfo.name.isEmpty())
+        {
+            // 添加新模组
+            QJsonObject newMod;
+            newMod["fileID"] = modInfo.fileId;
+            newMod["name"] = modInfo.name;
+            newMod["projectID"] = modInfo.projectId;
+            newMod["required"] = required;
+
+            modsArray.append(newMod);
+            hasChanges = true;
+        }
+    }
 
     if (hasChanges)
     {

@@ -1,4 +1,4 @@
-/* Copyright 2013-2023 MultiMC Contributors
+/* Copyright 2013-2023 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ class LegacyInstance : public BaseInstance
 {
     Q_OBJECT
 public:
-
     explicit LegacyInstance(SettingsObjectPtr globalSettings, SettingsObjectPtr settings, const QString &rootDir);
 
     virtual void saveNow() override {}
@@ -52,7 +51,7 @@ public:
 
     QString gameRoot() const override; // Path to the instance's minecraft directory.
     QString modsRoot() const override; // Path to the instance's minecraft directory.
-    QString binRoot() const; // Path to the instance's minecraft bin directory.
+    QString binRoot() const;           // Path to the instance's minecraft bin directory.
 
     /// Get the curent base jar of this instance. By default, it's the
     /// versions/$version/$version.jar
@@ -112,7 +111,7 @@ public:
         return false;
     }
     shared_qobject_ptr<LaunchTask> createLaunchTask(
-            AuthSessionPtr account, QuickPlayTargetPtr quickPlayTarget) override
+        AuthSessionPtr account, QuickPlayTargetPtr quickPlayTarget) override
     {
         return nullptr;
     }
@@ -136,6 +135,7 @@ public:
     {
         return {};
     }
+
 protected:
     mutable std::shared_ptr<LegacyModList> jar_mod_list;
     mutable std::shared_ptr<WorldList> m_world_list;

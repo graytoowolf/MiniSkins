@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,14 +50,14 @@ public:
 
     bool addThemeIcon(const QString &key);
     bool addIcon(const QString &key, const QString &name, const QString &path, const IconType type);
-    void saveIcon(const QString &key, const QString &path, const char * format) const;
+    void saveIcon(const QString &key, const QString &path, const char *format) const;
     bool deleteIcon(const QString &key);
     bool iconFileExists(const QString &key) const;
 
     void installIcons(const QStringList &iconFiles);
     void installIcon(const QString &file, const QString &name);
 
-    const MMCIcon * icon(const QString &key) const;
+    const MMCIcon *icon(const QString &key) const;
 
     void startWatching();
     void stopWatching();
@@ -77,7 +77,8 @@ public slots:
 
 protected slots:
     void fileChanged(const QString &path);
-    void SettingChanged(const Setting & setting, QVariant value);
+    void SettingChanged(const Setting &setting, QVariant value);
+
 private:
     shared_qobject_ptr<QFileSystemWatcher> m_watcher;
     bool is_watching;

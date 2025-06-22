@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 #pragma once
 #include <QTreeView>
 
-class ModListView: public QTreeView
+class ModListView : public QTreeView
 {
     Q_OBJECT
 public:
-    explicit ModListView ( QWidget* parent = 0 );
-    virtual void setModel ( QAbstractItemModel* model );
+    explicit ModListView(QWidget *parent = 0);
+    virtual void setModel(QAbstractItemModel *model);
 };

@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ std::shared_ptr<Setting> SettingsObject::registerOverride(std::shared_ptr<Settin
     if (contains(original->id()))
     {
         qCritical() << QString("Failed to register setting %1. ID already exists.")
-                   .arg(original->id());
+                           .arg(original->id());
         return nullptr; // Fail
     }
     auto override = std::make_shared<OverrideSetting>(original, gate);
@@ -52,7 +52,7 @@ std::shared_ptr<Setting> SettingsObject::registerPassthrough(std::shared_ptr<Set
     if (contains(original->id()))
     {
         qCritical() << QString("Failed to register setting %1. ID already exists.")
-                   .arg(original->id());
+                           .arg(original->id());
         return nullptr; // Fail
     }
     auto passthrough = std::make_shared<PassthroughSetting>(original, gate);
@@ -69,7 +69,7 @@ std::shared_ptr<Setting> SettingsObject::registerSetting(QStringList synonyms, Q
     if (contains(synonyms.first()))
     {
         qCritical() << QString("Failed to register setting %1. ID already exists.")
-                   .arg(synonyms.first());
+                           .arg(synonyms.first());
         return nullptr; // Fail
     }
     auto setting = std::make_shared<Setting>(synonyms, defVal);

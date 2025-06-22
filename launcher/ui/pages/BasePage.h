@@ -1,4 +1,4 @@
-/* Copyright 2013-2021 MultiMC Contributors
+/* Copyright 2013-2021 MiniSkins Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,15 +43,17 @@ public:
     }
     virtual void openedImpl() {}
     virtual void closedImpl() {}
-    virtual void setParentContainer(BasePageContainer * container)
+    virtual void setParentContainer(BasePageContainer *container)
     {
         m_container = container;
     };
+
 public:
     int stackIndex = -1;
     int listIndex = -1;
+
 protected:
-    BasePageContainer * m_container = nullptr;
+    BasePageContainer *m_container = nullptr;
     bool isOpened = false;
 };
 
