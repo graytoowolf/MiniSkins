@@ -1,6 +1,6 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
-    <qresource prefix="/icons/multimc">
+    <qresource prefix="/icons/miniskins">
         <file>index.theme</file>
 
         <!-- REDDIT logo icon, needs reddit license! -->

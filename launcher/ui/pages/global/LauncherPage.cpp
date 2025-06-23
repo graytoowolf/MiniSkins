@@ -190,7 +190,7 @@ void LauncherPage::applySettings()
         break;
     case 0:
     default:
-        s->set("IconTheme", "multimc");
+        s->set("IconTheme", "miniskins");
         break;
     }
     const DownloadSource &secondSource = sources[ui->downloadcomboBox->currentIndex()];
