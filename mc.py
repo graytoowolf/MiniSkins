@@ -5,6 +5,7 @@ import json
 import hashlib
 import requests
 import shutil
+import zipfile
 from pathlib import Path
 
 def calculate_md5(file_path):
@@ -27,6 +28,23 @@ def get_file_permissions(file_path):
         return 511
     else:
         return 438
+
+def create_zip_archive(source_dir, zip_path):
+    """创建压缩包"""
+    try:
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zipf:
+            for file_path in source_dir.rglob('*'):
+                if file_path.is_file():
+                    # 计算相对路径，保持目录结构
+                    relative_path = file_path.relative_to(source_dir)
+                    zipf.write(file_path, relative_path)
+                    print(f"已添加到压缩包: {relative_path}")
+
+        print(f"已成功创建压缩包：{zip_path}")
+        return True
+    except Exception as e:
+        print(f"错误：创建压缩包时发生错误 - {e}")
+        return False
 
 def parse_args(args):
     """解析命令行参数为字典"""
@@ -53,9 +71,12 @@ def main():
     url_prefix = params.get("url", "https://mmc.miniskins.top")
 
     # 如果输出目录不存在则创建
-    output_dir = Path(os.getcwd()) / "qiniu" / "win32"
+    qiniu_dir = Path(os.getcwd()) / "qiniu"
+    output_dir = qiniu_dir / "win32"
+    miniskins_dir = qiniu_dir / "MiniSkins"
+
+    # 创建目录结构（parents=True会自动创建父目录）
     output_dir.mkdir(parents=True, exist_ok=True)
-    miniskins_dir = Path(os.getcwd()) / "qiniu" / "MiniSkins"
     miniskins_dir.mkdir(parents=True, exist_ok=True)
 
     # 打印环境信息，便于调试
@@ -107,6 +128,16 @@ def main():
         if not install_dir.exists():
             print(f"警告：install目录不存在 - {install_dir}")
             return 0
+
+        # 新增：创建压缩包
+        print("\n开始创建install目录的压缩包...")
+        zip_path = qiniu_dir / "MiniSkins.zip"
+        if not create_zip_archive(install_dir, zip_path):
+            print("警告：压缩包创建失败，但继续处理其他功能")
+        else:
+            print(f"压缩包已保存至：{zip_path}")
+
+        print("\n开始处理install目录中的文件...")
 
         # 创建文件列表
         files_list = []
