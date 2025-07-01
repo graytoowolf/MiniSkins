@@ -5,12 +5,12 @@
 #include <QProcess>
 #include <QDir>
 #include "minecraft/launch/QuickPlayTarget.h"
+#include "PackProfile.h"
 
 class ModFolderModel;
 class WorldList;
 class GameOptions;
 class LaunchStep;
-class PackProfile;
 
 class MinecraftInstance: public BaseInstance
 {

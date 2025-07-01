@@ -23,12 +23,24 @@
 #include "BaseInstance.h"
 
 #include "QObjectPtr.h"
+#include "minecraft/MinecraftInstance.h"
+#include "net/NetJob.h"
+#include <QDateTime>
 
 class QFileSystemWatcher;
 class InstanceTask;
 using InstanceId = QString;
 using GroupId = QString;
 using InstanceLocator = std::pair<InstancePtr, int>;
+using MinecraftInstancePtr = std::shared_ptr<MinecraftInstance>;
+
+// MOD下载信息结构体
+struct ModDownloadInfo {
+    int modId;
+    int fileId;
+    QString fileName;
+    QString filePath;
+};
 
 enum class InstCreateError
 {
@@ -162,6 +174,19 @@ private:
     void saveGroupList();
     QList<InstanceId> discoverInstances();
     InstancePtr loadInstance(const InstanceId &id);
+private:
+    void scanAndProcessBlacklistedMods(InstancePtr instance);
+    void processWhitelistedMods(InstancePtr instance, const QMap<int, QString> &whitelist, const QList<fingerprint::ModInfo> &modInfoList, QSet<int> &whitelistedModIds);
+
+    // 白名单MOD下载相关方法
+    QJsonArray parseMMCPackComponents(MinecraftInstancePtr instance);
+    int getModLoaderTypeFromInstance(MinecraftInstancePtr instance);
+    QString getMinecraftVersionFromInstance(MinecraftInstancePtr instance);
+    void downloadWhitelistMods(MinecraftInstancePtr instance, const QList<int> &modIds, const QString &gameVersion, int modLoaderType);
+    void processNextModInQueue();
+    void fetchModFileInfo(int modId);
+    void downloadModFile(int modId, int fileId, const QString &fileName, const QString &downloadUrl);
+
 
 private:
     int m_watchLevel = 0;
@@ -179,4 +204,12 @@ private:
     QSet<InstanceId> instanceSet;
     bool m_groupsLoaded = false;
     bool m_instancesProbed = false;
+
+    // 白名单MOD下载状态跟踪
+    QList<int> m_downloadQueue;              // 待下载的MOD ID队列
+    QSet<int> m_processedMods;               // 已处理的MOD ID集合（避免循环依赖）
+    QList<ModDownloadInfo> m_downloadedFiles; // 已下载的文件信息
+    QString m_currentGameVersion;            // 当前游戏版本
+    int m_currentModLoaderType;              // 当前模组加载器类型
+    MinecraftInstancePtr m_currentInstance;  // 当前处理的实例
 };

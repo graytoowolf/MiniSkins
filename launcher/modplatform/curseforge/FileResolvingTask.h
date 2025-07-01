@@ -29,17 +29,15 @@ namespace CurseForge
 
     private:
         CurseForge::ComparisonResult compareManifests(const QString &jsonFilePathA);
-        void processWhitelistedMods();
-        void continueExecution();
-        void processNextModInQueue();
 
     protected slots:
-        void netJobFinished();
+        void netJobFinished(QNetworkReply *reply);
         void netJobprogress(qint64 current, qint64 total);
         void processModData(const QJsonArray &dataArray);
         QString getTargetFolderByClassId(int classId);
         void prepareDownloads();
-        void downloadFinished();
+        void downloadFinished(QNetworkReply *reply);
+        void modInfoFinished(QNetworkReply *reply);
 
     private: /* data */
         shared_qobject_ptr<QNetworkAccessManager> m_network;
@@ -48,14 +46,6 @@ namespace CurseForge
         NetJob::Ptr m_dljob;
         QString m_path;
         QString m_filePath;
-        QNetworkReply *m_rep;
-
-        // 用于处理MOD依赖的成员变量
-        QQueue<int> m_modsToQueryQueue; // 待处理的MOD ID队列
-        QSet<int> m_processedModIds; // 已处理的MOD ID集合
-        QList<NetJob*> m_activeNetJobs; // 活动的网络请求任务
-        QString m_currentMcVersion; // 当前Minecraft版本
-        int m_currentModLoaderType; // 当前模组加载器类型
-        QSet<int> m_initialManifestModIds; // 初始清单中的MOD ID集合
+        // 移除了 m_rep 成员变量，现在每个网络请求都使用独立的 QNetworkReply 对象
     };
 }

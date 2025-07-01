@@ -392,7 +392,7 @@ void InstanceImportTask::processCurseForge()
                 continue;
             }
             QString filename = result.fileName;
-            if (!result.required || APPLICATION->isModBlacklisted(result.projectId))
+            if (!result.required)
             {
                 filename += ".disabled";
             }
