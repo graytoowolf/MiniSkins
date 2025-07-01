@@ -29,21 +29,48 @@ def get_file_permissions(file_path):
     else:
         return 438
 
-def create_zip_archive(source_dir, zip_path):
-    """创建压缩包"""
+def create_zip_archive(source_dir, zip_path, folder_name="MiniSkins"):
+    """创建压缩包 - 复制源目录并重命名后压缩整个文件夹"""
     try:
+        # 创建临时目录用于复制和重命名
+        temp_dir = zip_path.parent / "temp_for_zip"
+        target_dir = temp_dir / folder_name
+        
+        # 如果临时目录已存在，先删除
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+        
+        # 创建临时目录
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 复制整个install目录到临时目录并重命名为MiniSkins
+        shutil.copytree(source_dir, target_dir)
+        print(f"已复制目录：{source_dir} -> {target_dir}")
+        
+        # 创建压缩包，压缩整个MiniSkins文件夹
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zipf:
-            for file_path in source_dir.rglob('*'):
+            for file_path in target_dir.rglob('*'):
                 if file_path.is_file():
-                    # 计算相对路径，保持目录结构
-                    relative_path = file_path.relative_to(source_dir)
+                    # 计算相对于temp_dir的路径，这样压缩包中会包含MiniSkins文件夹
+                    relative_path = file_path.relative_to(temp_dir)
                     zipf.write(file_path, relative_path)
                     print(f"已添加到压缩包: {relative_path}")
-
+        
+        # 清理临时目录
+        shutil.rmtree(temp_dir)
+        print(f"已清理临时目录：{temp_dir}")
+        
         print(f"已成功创建压缩包：{zip_path}")
         return True
     except Exception as e:
         print(f"错误：创建压缩包时发生错误 - {e}")
+        # 确保清理临时目录
+        temp_dir = zip_path.parent / "temp_for_zip"
+        if temp_dir.exists():
+            try:
+                shutil.rmtree(temp_dir)
+            except:
+                pass
         return False
 
 def parse_args(args):
@@ -132,7 +159,7 @@ def main():
         # 新增：创建压缩包
         print("\n开始创建install目录的压缩包...")
         zip_path = qiniu_dir / "MiniSkins.zip"
-        if not create_zip_archive(install_dir, zip_path):
+        if not create_zip_archive(install_dir, zip_path, "MiniSkins"):
             print("警告：压缩包创建失败，但继续处理其他功能")
         else:
             print(f"压缩包已保存至：{zip_path}")
