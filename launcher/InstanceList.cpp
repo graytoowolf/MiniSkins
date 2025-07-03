@@ -232,7 +232,6 @@ void InstanceList::setInstanceGroup(const InstanceId &id, const GroupId &name)
     auto inst = getInstanceById(id);
     if (!inst)
     {
-        qDebug() << "Attempt to set a null instance's group";
         return;
     }
 
@@ -269,7 +268,6 @@ QStringList InstanceList::getGroups()
 void InstanceList::deleteGroup(const QString &name)
 {
     bool removed = false;
-    qDebug() << "Delete group" << name;
     for (auto &instance : m_instances)
     {
         const auto &instID = instance->id();
@@ -277,7 +275,6 @@ void InstanceList::deleteGroup(const QString &name)
         if (instGroupName == name)
         {
             m_instanceGroupIndex.remove(instID);
-            qDebug() << "Remove" << instID << "from group" << name;
             removed = true;
             auto idx = getInstIndex(instance.get());
             if (idx > 0)
@@ -302,7 +299,6 @@ void InstanceList::deleteInstance(const InstanceId &id)
     auto inst = getInstanceById(id);
     if (!inst)
     {
-        qDebug() << "Cannot delete instance" << id << ". No such instance is present (deleted externally?).";
         return;
     }
 
@@ -311,14 +307,11 @@ void InstanceList::deleteInstance(const InstanceId &id)
         saveGroupList();
     }
 
-    qDebug() << "Will delete instance" << id;
     if (!FS::deletePath(inst->instanceRoot()))
     {
         qWarning() << "Deletion of instance" << id << "has not been completely successful ...";
         return;
     }
-
-    qDebug() << "Instance" << id << "has been deleted by the launcher.";
 }
 
 static QMap<InstanceId, InstanceLocator> getIdMapping(const QList<InstancePtr> &list)
@@ -340,7 +333,6 @@ static QMap<InstanceId, InstanceLocator> getIdMapping(const QList<InstancePtr> &
 
 QList<InstanceId> InstanceList::discoverInstances()
 {
-    qDebug() << "Discovering instances in" << m_instDir;
     QList<InstanceId> out;
     QDirIterator iter(m_instDir, QDir::Dirs | QDir::NoDot | QDir::NoDotDot | QDir::Readable | QDir::Hidden, QDirIterator::FollowSymlinks);
     while (iter.hasNext())
@@ -356,13 +348,11 @@ QList<InstanceId> InstanceList::discoverInstances()
             QFileInfo instDirInfo(m_instDir);
             if (targetInfo.canonicalPath() == instDirInfo.canonicalFilePath())
             {
-                qDebug() << "Ignoring symlink" << subDir << "that leads into the instances folder";
                 continue;
             }
         }
         auto id = dirInfo.fileName();
         out.append(id);
-        qDebug() << "Found instance ID" << id;
     }
     instanceSet = out.toSet();
     m_instancesProbed = true;
@@ -388,7 +378,7 @@ InstanceList::InstListError InstanceList::loadList()
             {
                 auto instPair = existingIds[id];
                 existingIds.remove(id);
-                qDebug() << "Should keep and soft-reload" << id;
+                // Keep existing instance
             }
         }
         else
@@ -587,16 +577,14 @@ InstancePtr InstanceList::loadInstance(const InstanceId &id)
     {
         inst.reset(new NullInstance(m_globalSettings, instanceSettings, instanceRoot));
     }
-    qDebug() << "Loaded instance " << inst->name() << " from " << inst->instanceRoot();
+    // Instance loaded successfully
     return inst;
 }
 
 void InstanceList::saveGroupList()
 {
-    qDebug() << "Will save group list now.";
     if (!m_instancesProbed)
     {
-        qDebug() << "Group saving prevented because we don't know the full list of instances yet.";
         return;
     }
     WatchLock foo(m_watcher, m_instDir);
@@ -610,7 +598,6 @@ void InstanceList::saveGroupList()
             continue;
         if (!instanceSet.contains(id))
         {
-            qDebug() << "Skipping saving missing instance" << id << "to groups list.";
             continue;
         }
 
@@ -648,7 +635,6 @@ void InstanceList::saveGroupList()
     try
     {
         FS::write(groupFileName, doc.toJson());
-        qDebug() << "Group list saved.";
     }
     catch (const FS::FileSystemException &e)
     {
@@ -658,8 +644,6 @@ void InstanceList::saveGroupList()
 
 void InstanceList::loadGroupList()
 {
-    qDebug() << "Will load group list now.";
-
     QString groupFileName = m_instDir + "/instgroups.json";
 
     // if there's no group file, fail
@@ -751,7 +735,6 @@ void InstanceList::loadGroupList()
     }
     m_groupsLoaded = true;
     m_groupNameCache.unite(groupSet);
-    qDebug() << "Group list loaded.";
 }
 
 void InstanceList::instanceDirContentsChanged(const QString &path)
@@ -777,7 +760,6 @@ void InstanceList::on_InstFolderChanged(const Setting &setting, QVariant value)
 
 void InstanceList::on_GroupStateChanged(const QString &group, bool collapsed)
 {
-    qDebug() << "Group" << group << (collapsed ? "collapsed" : "expanded");
     if (collapsed)
     {
         m_collapsedGroups.insert(group);
@@ -862,7 +844,7 @@ private slots:
             emitFailed(tr("Failed to commit instance, even after multiple retries. It is being blocked by something."));
             return;
         }
-        qDebug() << "Failed to commit instance" << m_instanceName << "Initiating backoff:" << sleepTime;
+        // Failed to commit instance, retrying with backoff
         m_backoffTimer.start(sleepTime * 500);
     }
     void childFailed(const QString &reason)
@@ -916,8 +898,10 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
         {
             instID = APPLICATION->getID();
             // 复制文件的通用函数
-            auto copyFileWithReplace = [](const QString& source, const QString& target) -> bool {
-                if (QFile::exists(target)) {
+            auto copyFileWithReplace = [](const QString &source, const QString &target) -> bool
+            {
+                if (QFile::exists(target))
+                {
                     QFile::remove(target);
                 }
                 return QFile::copy(source, target);
@@ -929,24 +913,30 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
             QDir sourceDir(sourceDirPath);
             sourceDir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
 
-            for (const QString &subdirectory : sourceDir.entryList()) {
+            for (const QString &subdirectory : sourceDir.entryList())
+            {
                 QString sourceSubdirPath = FS::PathCombine(sourceDirPath, subdirectory);
                 QString targetSubdirPath = FS::PathCombine(targetDirPath, subdirectory);
 
-                if (subdirectory == "mods") {
+                if (subdirectory == "mods")
+                {
                     // 特殊处理mods目录，复制文件而不是移动
                     QDir().mkpath(targetSubdirPath);
                     QDir modsDir(sourceSubdirPath);
                     modsDir.setFilter(QDir::Files | QDir::NoDotAndDotDot);
-                    for (const QString &modFile : modsDir.entryList()) {
+                    for (const QString &modFile : modsDir.entryList())
+                    {
                         QString sourceModPath = FS::PathCombine(sourceSubdirPath, modFile);
                         QString targetModPath = FS::PathCombine(targetSubdirPath, modFile);
                         copyFileWithReplace(sourceModPath, targetModPath);
                     }
-                } else {
+                }
+                else
+                {
                     // 其他目录直接替换
                     QDir targetSubdir(targetSubdirPath);
-                    if (targetSubdir.exists()) {
+                    if (targetSubdir.exists())
+                    {
                         targetSubdir.removeRecursively();
                     }
                     sourceDir.rename(sourceSubdirPath, targetSubdirPath);
@@ -958,7 +948,8 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
             sourceFilesDir.setFilter(QDir::Files | QDir::NoDotAndDotDot);
             QString targetInstancePath = FS::PathCombine(m_instDir, instID);
 
-            for (const QString &file : sourceFilesDir.entryList()) {
+            for (const QString &file : sourceFilesDir.entryList())
+            {
                 QString sourceFilePath = FS::PathCombine(path, file);
                 QString targetFilePath = FS::PathCombine(targetInstancePath, file);
 
@@ -1014,24 +1005,23 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
             }
         }
     }
-
     // 处理黑白名单功能
     auto instance = getInstanceById(instID);
-    if (instance) {
+    if (instance)
+    {
         auto minecraftInstance = std::dynamic_pointer_cast<MinecraftInstance>(instance);
-        if (minecraftInstance) {
+        if (minecraftInstance)
+        {
             auto packProfile = minecraftInstance->getPackProfile();
-            if (packProfile) {
+            if (packProfile)
+            {
                 // 检查是否有模组加载器
-                int modLoaderTypeInt = getModLoaderTypeFromInstance(minecraftInstance);
+                int modLoaderTypeInt = getModLoaderTypeFromInstance(packProfile);
                 bool hasModLoader = (modLoaderTypeInt != 0);
-                qDebug() << "Mod loader detected:" << (hasModLoader ? "Yes" : "No") << "(type:" << modLoaderTypeInt << ")";
                 // 如果有模组加载器，则处理黑白名单
-                if (hasModLoader) {
-                    qDebug() << "Found mod loader:" << modLoaderTypeInt << ", processing blacklist/whitelist...";
+                if (hasModLoader)
+                {
                     scanAndProcessBlacklistedMods(instance);
-                } else {
-                    qDebug() << "No mod loader found, skipping blacklist/whitelist processing";
                 }
             }
         }
@@ -1045,37 +1035,36 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
 
 void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
 {
-    qDebug() << "Scanning for blacklisted mods...";
-
     auto minecraftInstance = std::dynamic_pointer_cast<MinecraftInstance>(instance);
-    if (!minecraftInstance) {
-        qDebug() << "Invalid or non-Minecraft instance:" << (instance ? instance->id() : "null");
+    if (!minecraftInstance)
+    {
         return;
     }
 
     QString modsPath = minecraftInstance->modsRoot();
     QDir modsDir(modsPath);
-    if (!modsDir.exists()) {
-        qDebug() << "Mods directory does not exist:" << modsPath;
+    if (!modsDir.exists())
+    {
         return;
     }
 
     // 获取所有.jar文件并创建ModInfo列表
     QFileInfoList jarFiles = modsDir.entryInfoList({"*.jar"}, QDir::Files);
-    if (jarFiles.isEmpty()) {
-        qDebug() << "No jar files found in mods directory";
+    if (jarFiles.isEmpty())
+    {
         return;
     }
 
     QList<fingerprint::ModInfo> modInfoList;
-    for (const QFileInfo& fileInfo : jarFiles) {
+    for (const QFileInfo &fileInfo : jarFiles)
+    {
         modInfoList.append(fingerprint::ModInfo(fileInfo.absoluteFilePath()));
     }
 
     // 计算指纹
     modInfoList = fingerprint::processModInfoList(modInfoList);
-    if (modInfoList.isEmpty()) {
-        qDebug() << "No valid mod info found";
+    if (modInfoList.isEmpty())
+    {
         return;
     }
 
@@ -1088,13 +1077,16 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
     QJsonArray modsJsonArray;
 
     // 处理白名单MOD
-    if (!whitelist.isEmpty()) {
+    if (!whitelist.isEmpty())
+    {
         processWhitelistedMods(instance, whitelist, modInfoList, whitelistedModIds);
     }
 
     // 处理每个MOD
-    for (const auto& modInfo : modInfoList) {
-        if (modInfo.projectId <= 0) continue;
+    for (const auto &modInfo : modInfoList)
+    {
+        if (modInfo.projectId <= 0)
+            continue;
 
         QJsonObject modObj;
         modObj["projectID"] = modInfo.projectId;
@@ -1104,66 +1096,65 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
         modObj["required"] = true;
 
         bool isBlacklisted = blacklist.contains(modInfo.projectId);
-        if (isBlacklisted && !whitelistedModIds.contains(modInfo.projectId)) {
+        if (isBlacklisted && !whitelistedModIds.contains(modInfo.projectId))
+        {
             modsToDisable.append(modInfo.filePath);
             modObj["required"] = false;
             modObj["fileName"] = modObj["fileName"].toString() + ".disabled";
-            qDebug() << "Blacklisted mod found:" << modInfo.name << "(ID:" << modInfo.projectId << ")";
-        } else if (isBlacklisted) {
-            qDebug() << "Mod" << modInfo.name << "(ID:" << modInfo.projectId << ") is blacklisted but protected by whitelist";
         }
 
         modsJsonArray.append(modObj);
     }
 
     // 禁用被标记的mod文件
-    for (const QString& filePath : modsToDisable) {
+    for (const QString &filePath : modsToDisable)
+    {
         QFile file(filePath);
-        if (file.exists() && file.rename(filePath + ".disabled")) {
-            qDebug() << "Disabled mod file:" << QFileInfo(filePath).fileName();
+        if (file.exists())
+        {
+            file.rename(filePath + ".disabled");
         }
     }
 
     // 保存mods.json文件
     QString modsJsonPath = minecraftInstance->modlist();
     QFile modsJsonFile(modsJsonPath);
-    if (modsJsonFile.open(QIODevice::WriteOnly)) {
+    if (modsJsonFile.open(QIODevice::WriteOnly))
+    {
         modsJsonFile.write(QJsonDocument(modsJsonArray).toJson());
-        qDebug() << "Saved mods.json with" << modsJsonArray.size() << "mods";
-    } else {
-        qDebug() << "Failed to save mods.json to:" << modsJsonPath;
     }
-
-    qDebug() << "Mod processing complete. Disabled:" << modsToDisable.size() << "mods";
 }
 
 void InstanceList::processWhitelistedMods(InstancePtr instance, const QMap<int, QString> &whitelist, const QList<fingerprint::ModInfo> &modInfoList, QSet<int> &whitelistedModIds)
 {
-    if (whitelist.isEmpty()) {
-        qDebug() << "Whitelist is empty, skipping whitelist processing";
+    if (whitelist.isEmpty())
+    {
         return;
     }
 
     auto minecraftInstance = std::dynamic_pointer_cast<MinecraftInstance>(instance);
-    if (!minecraftInstance) {
-        qDebug() << "Not a Minecraft instance:" << instance->id();
+    if (!minecraftInstance)
+    {
         return;
     }
 
     // 收集白名单中的MOD ID
-    for (auto it = whitelist.begin(); it != whitelist.end(); ++it) {
+    for (auto it = whitelist.begin(); it != whitelist.end(); ++it)
+    {
         whitelistedModIds.insert(it.key());
     }
 
     // 创建已有mod的ID集合
     QSet<int> existingModIds;
-    for (const auto &modInfo : modInfoList) {
-        if (modInfo.projectId > 0) {
+    for (const auto &modInfo : modInfoList)
+    {
+        if (modInfo.projectId > 0)
+        {
             existingModIds.insert(modInfo.projectId);
             // 如果是白名单MOD，添加到保护列表
-            if (whitelist.contains(modInfo.projectId)) {
+            if (whitelist.contains(modInfo.projectId))
+            {
                 whitelistedModIds.insert(modInfo.projectId);
-                qDebug() << "Found whitelisted mod:" << modInfo.name << "(ID:" << modInfo.projectId << ")";
             }
         }
     }
@@ -1172,35 +1163,29 @@ void InstanceList::processWhitelistedMods(InstancePtr instance, const QMap<int, 
     QStringList missingWhitelistMods;
     QList<int> missingModIds;
 
-    for (auto it = whitelist.constBegin(); it != whitelist.constEnd(); ++it) {
+    for (auto it = whitelist.constBegin(); it != whitelist.constEnd(); ++it)
+    {
         int modId = it.key();
         QString modName = it.value();
 
-        if (!existingModIds.contains(modId)) {
+        if (!existingModIds.contains(modId))
+        {
             missingWhitelistMods.append(QString("%1 (ID: %2)").arg(modName).arg(modId));
             missingModIds.append(modId);
-            qDebug() << "Missing whitelist mod:" << modName << "(ID:" << modId << ")";
         }
     }
 
     // 如果有缺失的白名单MOD，开始下载流程
-    if (!missingModIds.isEmpty()) {
-        qDebug() << "Found" << missingWhitelistMods.size() << "missing whitelist mods:" << missingWhitelistMods;
-
+    if (!missingModIds.isEmpty())
+    {
         // 获取游戏版本和模组加载器信息
-        QString gameVersion = getMinecraftVersionFromInstance(minecraftInstance);
-        int modLoaderType = getModLoaderTypeFromInstance(minecraftInstance);
-
-        qDebug() << "Game version:" << gameVersion << ", Mod loader type:" << modLoaderType;
+        auto packProfile = minecraftInstance->getPackProfile();
+        QString gameVersion = getMinecraftVersionFromInstance(packProfile);
+        int modLoaderType = getModLoaderTypeFromInstance(packProfile);
 
         // 开始递归下载白名单MOD及其依赖
         downloadWhitelistMods(minecraftInstance, missingModIds, gameVersion, modLoaderType);
-
-    } else {
-        qDebug() << "All whitelist mods are present";
     }
-
-    qDebug() << "Total mods protected by whitelist:" << whitelistedModIds.size();
 }
 
 // 通用的mmc-pack.json解析函数
@@ -1208,14 +1193,14 @@ QJsonArray InstanceList::parseMMCPackComponents(MinecraftInstancePtr instance)
 {
     QString mmcPackPath = FS::PathCombine(instance->instanceRoot(), "mmc-pack.json");
 
-    if (!QFile::exists(mmcPackPath)) {
-        qDebug() << "mmc-pack.json not found at:" << mmcPackPath;
+    if (!QFile::exists(mmcPackPath))
+    {
         return QJsonArray();
     }
 
     QFile mmcPackFile(mmcPackPath);
-    if (!mmcPackFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "Failed to open mmc-pack.json for reading";
+    if (!mmcPackFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
         return QJsonArray();
     }
 
@@ -1226,69 +1211,79 @@ QJsonArray InstanceList::parseMMCPackComponents(MinecraftInstancePtr instance)
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(content.toUtf8(), &parseError);
 
-    if (parseError.error != QJsonParseError::NoError) {
-        qDebug() << "Failed to parse mmc-pack.json:" << parseError.errorString();
+    if (parseError.error != QJsonParseError::NoError)
+    {
         return QJsonArray();
     }
 
     return doc.object()["components"].toArray();
 }
 
-int InstanceList::getModLoaderTypeFromInstance(MinecraftInstancePtr instance)
+int InstanceList::getModLoaderTypeFromInstance(PackProfilePtr packProfile)
 {
-    QJsonArray components = parseMMCPackComponents(instance);
-    if (components.isEmpty()) {
+    if (!packProfile) {
         return 0; // Any/Unknown
     }
 
-    // 模组加载器映射表
-    static const QMap<QString, int> loaderMap = {
-        {"net.minecraftforge", 1},      // Forge
-        {"net.fabricmc.fabric-loader", 4}, // Fabric
-        {"org.quiltmc.quilt-loader", 5},   // Quilt
-        {"net.neoforged", 6}              // NeoForge
-    };
-
-    for (const QJsonValue &value : components) {
-        QString uid = value.toObject()["uid"].toString();
-        if (loaderMap.contains(uid)) {
-            qDebug() << "Found mod loader:" << uid << "(type:" << loaderMap[uid] << ")";
-            return loaderMap[uid];
+    // 确保 PackProfile 已加载组件数据
+    if (packProfile->rowCount() == 0) {
+        if (!packProfile->reload(Net::Mode::Offline)) {
+            return 0;
         }
     }
 
-    qDebug() << "No mod loader found in mmc-pack.json";
+    // 使用 PackProfile API 检查模组加载器
+    const auto& loaderMap = getModLoaderTypeMap();
+    for (auto it = loaderMap.begin(); it != loaderMap.end(); ++it) {
+        auto component = packProfile->getComponent(it.key());
+        if (component) {
+            return it.value();
+        }
+    }
+
     return 0; // Any/Unknown
 }
 
-QString InstanceList::getMinecraftVersionFromInstance(MinecraftInstancePtr instance)
+const QMap<QString, int> &InstanceList::getModLoaderTypeMap()
 {
-    QJsonArray components = parseMMCPackComponents(instance);
-    if (components.isEmpty()) {
+    static const QMap<QString, int> loaderMap = {
+        {"net.minecraftforge", 1},         // Forge
+        {"net.fabricmc.fabric-loader", 4}, // Fabric
+        {"org.quiltmc.quilt-loader", 5},   // Quilt
+        {"net.neoforged", 6}               // NeoForge
+    };
+    return loaderMap;
+}
+
+QString InstanceList::getMinecraftVersionFromInstance(PackProfilePtr packProfile)
+{
+    if (!packProfile) {
         return QString();
     }
 
-    for (const QJsonValue &value : components) {
-        QJsonObject component = value.toObject();
-        if (component["uid"].toString() == "net.minecraft") {
-            QString version = component["version"].toString();
-            qDebug() << "Found Minecraft version:" << version;
-            return version;
+    // 确保 PackProfile 已加载组件数据
+    if (packProfile->rowCount() == 0) {
+        if (!packProfile->reload(Net::Mode::Offline)) {
+            return QString();
         }
     }
 
-    qDebug() << "Minecraft version not found in mmc-pack.json";
+    // 使用 PackProfile API 获取 Minecraft 版本
+    auto minecraftComponent = packProfile->getComponent("net.minecraft");
+    if (minecraftComponent) {
+        QString version = minecraftComponent->getVersion();
+        return version;
+    }
+
     return QString();
 }
 
 void InstanceList::downloadWhitelistMods(MinecraftInstancePtr instance, const QList<int> &modIds, const QString &gameVersion, int modLoaderType)
 {
-    if (modIds.isEmpty()) {
-        qDebug() << "No mods to download";
+    if (modIds.isEmpty())
+    {
         return;
     }
-
-    qDebug() << "Starting download process for" << modIds.size() << "mods";
 
     // 创建下载状态跟踪
     m_downloadQueue = modIds;
@@ -1304,23 +1299,21 @@ void InstanceList::downloadWhitelistMods(MinecraftInstancePtr instance, const QL
 
 void InstanceList::processNextModInQueue()
 {
-    if (m_downloadQueue.isEmpty()) {
-        qDebug() << "All mods processed. Downloaded" << m_downloadedFiles.size() << "files";
+    if (m_downloadQueue.isEmpty())
+    {
         return;
     }
 
     int modId = m_downloadQueue.takeFirst();
 
     // 检查是否已经处理过这个MOD（避免循环依赖）
-    if (m_processedMods.contains(modId)) {
-        qDebug() << "Mod" << modId << "already processed, skipping";
+    if (m_processedMods.contains(modId))
+    {
         processNextModInQueue();
         return;
     }
 
     m_processedMods.insert(modId);
-
-    qDebug() << "Processing mod ID:" << modId;
 
     // 获取MOD文件信息
     fetchModFileInfo(modId);
@@ -1334,8 +1327,6 @@ void InstanceList::fetchModFileInfo(int modId)
                          .arg(m_currentModLoaderType)
                          .arg(m_currentGameVersion);
 
-    qDebug() << "Fetching mod file info from:" << apiUrl;
-
     // 创建网络请求
     NetJob *job = new NetJob(QString("ModFileInfo-%1").arg(modId), APPLICATION->network());
     QByteArray *responseData = new QByteArray();
@@ -1345,11 +1336,11 @@ void InstanceList::fetchModFileInfo(int modId)
     job->addNetAction(download);
 
     // 处理响应
-    connect(job, &NetJob::succeeded, this, [this, job, responseData, modId]() {
+    connect(job, &NetJob::succeeded, this, [this, job, responseData, modId]()
+            {
         job->deleteLater();
 
         if (!responseData || responseData->isEmpty()) {
-            qDebug() << "Empty response for mod" << modId;
             delete responseData;
             processNextModInQueue();
             return;
@@ -1360,7 +1351,6 @@ void InstanceList::fetchModFileInfo(int modId)
         QJsonArray filesArray = rootObj.value("data").toArray();
 
         if (filesArray.isEmpty()) {
-            qDebug() << "No files found for mod" << modId;
             delete responseData;
             processNextModInQueue();
             return;
@@ -1372,7 +1362,7 @@ void InstanceList::fetchModFileInfo(int modId)
         QString fileName = fileObj["fileName"].toString();
         QString downloadUrl = fileObj["downloadUrl"].toString();
 
-        qDebug() << "Found file for mod" << modId << ":" << fileName << "(FileID:" << fileId << ")";
+
         // 获取MOD名称并更新白名单中的名称（如果是临时名称）
         if (APPLICATION->getModNameFromWhitelist(modId) == "Provisional Name") {
             QString modName;
@@ -1392,7 +1382,6 @@ void InstanceList::fetchModFileInfo(int modId)
             // 如果成功获取到名称，更新白名单
             if (!modName.isEmpty()) {
                 APPLICATION->updateModWhitelistName(modId, modName);
-                qDebug() << "Updated whitelist mod name for" << modId << "from 'Provisional Name' to" << modName;
             }
         }
 
@@ -1406,7 +1395,6 @@ void InstanceList::fetchModFileInfo(int modId)
             // relationType: 1=EmbeddedLibrary, 2=OptionalDependency, 3=RequiredDependency, 4=Tool, 5=Incompatible, 6=Include
             if (relationType == 3) { // RequiredDependency
                 if (!m_processedMods.contains(depModId) && !m_downloadQueue.contains(depModId)) {
-                    qDebug() << "Adding required dependency:" << depModId << "for mod" << modId;
                     m_downloadQueue.prepend(depModId); // 优先处理依赖
                 }
             }
@@ -1416,19 +1404,16 @@ void InstanceList::fetchModFileInfo(int modId)
         if (!downloadUrl.isEmpty()) {
             downloadModFile(modId, fileId, fileName, downloadUrl);
         } else {
-            qDebug() << "No download URL for mod" << modId;
             processNextModInQueue();
         }
 
-        delete responseData;
-    });
+        delete responseData; });
 
-    connect(job, &NetJob::failed, this, [this, job, responseData, modId](QString reason) {
-        qDebug() << "Failed to fetch mod file info for" << modId << ":" << reason;
+    connect(job, &NetJob::failed, this, [this, job, responseData](QString reason)
+            {
         job->deleteLater();
         delete responseData;
-        processNextModInQueue();
-    });
+        processNextModInQueue(); });
 
     job->start();
 }
@@ -1439,13 +1424,11 @@ void InstanceList::downloadModFile(int modId, int fileId, const QString &fileNam
     QString filePath = FS::PathCombine(modsPath, fileName);
 
     // 检查文件是否已存在
-    if (QFile::exists(filePath)) {
-        qDebug() << "File already exists:" << fileName;
+    if (QFile::exists(filePath))
+    {
         processNextModInQueue();
         return;
     }
-
-    qDebug() << "Downloading mod file:" << fileName << "from" << downloadUrl;
 
     // 创建下载任务
     NetJob *job = new NetJob(QString("ModDownload-%1").arg(modId), APPLICATION->network());
@@ -1454,9 +1437,8 @@ void InstanceList::downloadModFile(int modId, int fileId, const QString &fileNam
     job->addNetAction(download);
 
     // 处理下载完成
-    connect(job, &NetJob::succeeded, this, [this, job, modId, fileId, fileName, filePath]() {
-        qDebug() << "Successfully downloaded:" << fileName;
-
+    connect(job, &NetJob::succeeded, this, [this, job, modId, fileId, fileName, filePath]()
+            {
         // 记录下载的文件信息
         ModDownloadInfo info;
         info.modId = modId;
@@ -1466,19 +1448,15 @@ void InstanceList::downloadModFile(int modId, int fileId, const QString &fileNam
         m_downloadedFiles.append(info);
 
         job->deleteLater();
-        processNextModInQueue();
-    });
+        processNextModInQueue(); });
 
-    connect(job, &NetJob::failed, this, [this, job, modId, fileName](QString reason) {
-        qDebug() << "Failed to download" << fileName << "for mod" << modId << ":" << reason;
+    connect(job, &NetJob::failed, this, [this, job](QString reason)
+            {
         job->deleteLater();
-        processNextModInQueue();
-    });
+        processNextModInQueue(); });
 
     job->start();
 }
-
-
 
 bool InstanceList::destroyStagingPath(const QString &keyPath)
 {
