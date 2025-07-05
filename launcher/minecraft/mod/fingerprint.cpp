@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include "fingerprint.h"
+#include "ModJsonManager.h"
 #include <QString>
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -125,7 +126,7 @@ namespace fingerprint
     return QString();
   }
 
-  ModInfo processModInfo(const ModInfo &modInfo)
+  ModInfo processModInfo(const ModInfo &modInfo, ModJsonManager *jsonManager)
   {
     ModInfo result = modInfo;
 
@@ -134,6 +135,21 @@ namespace fingerprint
     if (result.fileFingerprint.isEmpty())
     {
       return result; // 返回带有文件路径但无效的ModInfo
+    }
+
+    // 如果提供了 jsonManager，先检查指纹是否已存在
+    if (jsonManager && jsonManager->isInitialized())
+    {
+      ModInfo cachedInfo = jsonManager->getModInfoByFingerprint(result.fileFingerprint);
+      if (cachedInfo.isValid)
+      {
+        // 使用缓存的信息，但保留原始文件路径
+        result.projectId = cachedInfo.projectId;
+        result.fileId = cachedInfo.fileId;
+        result.name = cachedInfo.name;
+        result.isValid = true;
+        return result;
+      }
     }
 
     // 构建请求 JSON
@@ -219,7 +235,7 @@ namespace fingerprint
     return result;
   }
 
-  QList<ModInfo> processModInfoList(const QList<ModInfo> &modInfoList)
+  QList<ModInfo> processModInfoList(const QList<ModInfo> &modInfoList, ModJsonManager *jsonManager)
   {
     QList<ModInfo> results;
     if (modInfoList.isEmpty())
@@ -227,7 +243,7 @@ namespace fingerprint
       return results;
     }
 
-    // 首先为所有ModInfo获取文件指纹
+    // 首先为所有ModInfo获取文件指纹，并检查缓存
     QList<ModInfo> processedList;
     QJsonArray fingerprintArray;
     QMap<qlonglong, int> fingerprintToIndex; // 用于映射指纹到结果列表索引
@@ -236,9 +252,25 @@ namespace fingerprint
     {
       ModInfo modInfo = modInfoList[i];
       modInfo.fileFingerprint = getJarFingerprint(modInfo.filePath);
+      
+      // 如果提供了 jsonManager，先检查指纹是否已存在
+      if (jsonManager && jsonManager->isInitialized() && !modInfo.fileFingerprint.isEmpty())
+      {
+        ModInfo cachedInfo = jsonManager->getModInfoByFingerprint(modInfo.fileFingerprint);
+        if (cachedInfo.isValid)
+        {
+          // 使用缓存的信息，但保留原始文件路径
+          modInfo.projectId = cachedInfo.projectId;
+          modInfo.fileId = cachedInfo.fileId;
+          modInfo.name = cachedInfo.name;
+          modInfo.isValid = true;
+        }
+      }
+      
       processedList.append(modInfo);
 
-      if (!modInfo.fileFingerprint.isEmpty())
+      // 只有未从缓存获取到信息的才需要API请求
+      if (!modInfo.isValid && !modInfo.fileFingerprint.isEmpty())
       {
         bool ok;
         qlonglong fingerprintValue = modInfo.fileFingerprint.toULongLong(&ok);
@@ -250,7 +282,7 @@ namespace fingerprint
       }
     }
 
-    // 如果没有有效的指纹，返回只包含文件路径和指纹的列表
+    // 如果没有需要API请求的指纹，返回处理后的列表（包含缓存的信息）
     if (fingerprintArray.isEmpty())
     {
       return processedList;

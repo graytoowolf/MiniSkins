@@ -14,6 +14,7 @@
  */
 
 #include "ModFolderModel.h"
+#include "ModJsonManager.h"
 #include <FileSystem.h>
 #include <QMimeData>
 #include <QUrl>
@@ -36,6 +37,10 @@ ModFolderModel::ModFolderModel(const QString &dir) : QAbstractListModel(), m_dir
     m_dir.setSorting(QDir::Name | QDir::IgnoreCase | QDir::LocaleAware);
     m_watcher = new QFileSystemWatcher(this);
     connect(m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(directoryChanged(QString)));
+
+    // 初始化ModJsonManager
+    QString jsonPath = QDir::cleanPath(m_dir.absoluteFilePath("../../mod.json"));
+    m_jsonManager.initialize(jsonPath);
 }
 
 void ModFolderModel::startWatching()
@@ -135,19 +140,12 @@ void ModFolderModel::finishUpdate()
         }
         std::sort(removedRows.begin(), removedRows.end(), std::greater<int>());
 
-        // 在删除前获取JSON路径，避免所有mod被删除后无法获取
-        QString jsonPath;
-        if (!mods.isEmpty())
-        {
-            jsonPath = mods.first().getModJsonPath();
-        }
-
         for (auto iter = removedRows.begin(); iter != removedRows.end(); iter++)
         {
             int removedIndex = *iter;
             beginRemoveRows(QModelIndex(), removedIndex, removedIndex);
             auto removedIter = mods.begin() + removedIndex;
-            removedModNames.append(removedIter->filename().fileName());
+            removedModNames.append(removedIter->name());
             if (removedIter->isResolving())
             {
                 activeTickets.remove(removedIter->resolutionTicket());
@@ -156,10 +154,11 @@ void ModFolderModel::finishUpdate()
             endRemoveRows();
         }
 
-        // 从JSON中删除被移除的mod
-        if (!removedModNames.isEmpty() && !jsonPath.isEmpty())
+        // 批量从JSON文件中移除模组记录
+        if (!removedModNames.isEmpty())
         {
-            Mod::removeModsFromJson(jsonPath, removedModNames);
+            m_jsonManager.removeMods(removedModNames);
+            m_jsonManager.save();
         }
     }
 
@@ -171,21 +170,29 @@ void ModFolderModel::finishUpdate()
         {
             beginInsertRows(QModelIndex(), mods.size(), mods.size() + added.size() - 1);
             QList<ModInfo> modInfoList;
+            QStringList addedModNames;
             for (auto &addedMod : added)
             {
                 mods.append(newMods[addedMod]);
                 resolveMod(mods.last());
-                if (!Mod::isModExistsByName(mods.last().getModJsonPath(), addedMod))
+
+                // 收集新添加的模组信息
+                QString modName = mods.last().name();
+                if (!m_jsonManager.isModExistsByName(modName))
                 {
+                    addedModNames.append(modName);
                     modInfoList.append(ModInfo(mods.last().filename().absoluteFilePath()));
                 }
             }
+
+            // 批量处理ModInfo获取完整信息，然后添加到JSON文件
             if (!modInfoList.isEmpty())
             {
                 QList<ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
-
-                Mod::addModsToJson(mods.last().getModJsonPath(), processedModInfos, true);
+                m_jsonManager.addMods(processedModInfos);
+                m_jsonManager.save();
             }
+
             endInsertRows();
         }
     }
@@ -328,6 +335,17 @@ bool ModFolderModel::installMod(const QString &filename)
         }
         FS::updateTimestamp(newpath);
         installedMod.repath(newpath);
+
+        // 添加新模组到JSON文件
+        QString modName = installedMod.name();
+        if (!m_jsonManager.isModExistsByName(modName))
+        {
+            ModInfo modInfo(newpath);
+            ModInfo processedModInfo = fingerprint::processModInfo(modInfo);
+            m_jsonManager.addMod(processedModInfo);
+            m_jsonManager.save();
+        }
+
         update();
         return true;
     }
@@ -346,6 +364,17 @@ bool ModFolderModel::installMod(const QString &filename)
             return false;
         }
         installedMod.repath(newpath);
+
+        // 添加新模组到JSON文件
+        QString modName = installedMod.name();
+        if (!m_jsonManager.isModExistsByName(modName))
+        {
+            ModInfo modInfo(newpath);
+            ModInfo processedModInfo = fingerprint::processModInfo(modInfo);
+            m_jsonManager.addMod(processedModInfo);
+            m_jsonManager.save();
+        }
+
         update();
         return true;
     }
@@ -383,11 +412,32 @@ bool ModFolderModel::deleteMods(const QModelIndexList &indexes)
     if (indexes.isEmpty())
         return true;
 
+    QStringList modNamesToRemove;
+    // 先收集所有需要删除的mod名称，再执行删除操作
+    for (auto i : indexes)
+    {
+        Mod &m = mods[i.row()];
+        QString modName = m.name();
+        if (m_jsonManager.isModExistsByName(modName))
+        {
+            modNamesToRemove.append(modName);
+        }
+    }
+
+    // 执行文件删除操作
     for (auto i : indexes)
     {
         Mod &m = mods[i.row()];
         m.destroy();
     }
+
+    // 批量从JSON文件中移除模组记录
+    if (!modNamesToRemove.isEmpty())
+    {
+        m_jsonManager.removeMods(modNamesToRemove);
+        m_jsonManager.save();
+    }
+
     return true;
 }
 
@@ -494,11 +544,21 @@ bool ModFolderModel::setModStatus(int row, ModFolderModel::ModStatusAction actio
 
     // preserve the row, but change its ID
     auto oldId = mod.mmc_id();
+    QString oldName = mod.name();
     if (!mod.enable(!mod.enabled()))
     {
         return false;
     }
     auto newId = mod.mmc_id();
+    QString newName = mod.name();
+
+    // 更新JSON文件中的模组信息
+    if (m_jsonManager.isModExistsByName(oldName))
+    {
+        m_jsonManager.updateMod(oldName, newName, false);
+        m_jsonManager.save();
+    }
+
     if (modsIndex.contains(newId))
     {
         // NOTE: this could handle a corner case, where we are overwriting a file, because the same 'mod' exists both enabled and disabled

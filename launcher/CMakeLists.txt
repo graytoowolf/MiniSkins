@@ -334,6 +334,8 @@ set(MINECRAFT_SOURCES
 
     minecraft/mod/Mod.h
     minecraft/mod/Mod.cpp
+    minecraft/mod/ModJsonManager.h
+    minecraft/mod/ModJsonManager.cpp
     minecraft/mod/ModDetails.h
     minecraft/mod/ModFolderModel.h
     minecraft/mod/ModFolderModel.cpp
@@ -700,6 +702,10 @@ SET(LAUNCHER_SOURCES
     ui/pages/instance/ModFolderPage.h
     ui/pages/instance/ModDownloadPage.cpp
     ui/pages/instance/ModDownloadPage.h
+    ui/pages/instance/ModDownloadPageStyles.cpp
+    ui/pages/instance/ModDownloadPageStyles.h
+    ui/pages/instance/ModDownloadPageUIFactory.cpp
+    ui/pages/instance/ModDownloadPageUIFactory.h
     ui/pages/instance/NotesPage.cpp
     ui/pages/instance/NotesPage.h
     ui/pages/instance/LogPage.cpp

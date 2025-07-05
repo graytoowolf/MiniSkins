@@ -22,12 +22,14 @@
 #include <functional>
 #include "minecraft/MinecraftInstance.h"
 #include "minecraft/PackProfile.h"
+#include "minecraft/mod/ModJsonManager.h"
 #include "ui/pages/BasePage.h"
 #include "Application.h"
+#include "ModDownloadPageUIFactory.h"
 
 namespace Ui
 {
-class ModDownloadPage;
+    class ModDownloadPage;
 }
 
 class ModDownloadPage : public QMainWindow, public BasePage
@@ -35,25 +37,8 @@ class ModDownloadPage : public QMainWindow, public BasePage
     Q_OBJECT
 
 public:
-    struct ModDownloadInfo
-    {
-        QString name;
-        QString author;
-        QString description;
-        QString downloads;
-        QString updateTime;
-    
-        QString category; // 添加分类字段
-        QString logoUrl;  // 添加logo URL字段
-        QString logoFileName;
-        int modId; // 添加模组ID字段
-        int fileID;
-
-        // 获取默认图标的辅助方法
-        QIcon getDefaultIcon() const {
-            return APPLICATION->getThemedIcon("screenshot-placeholder");
-        }
-    };
+    using ModDownloadInfo = ModDownloadPageUIFactory::ModDownloadInfo;
+    using ModInstallStatus = ModDownloadPageUIFactory::ModInstallStatus;
 
     struct DownloadItem
     {
@@ -61,6 +46,7 @@ public:
         QString fileName;
         int modId;
         int fileID;
+        QString fileFingerprint;
         QList<int> requiredDependencies; // 必须依赖的模组ID列表
     };
 
@@ -101,6 +87,7 @@ private:
     QString m_gameVersion;                      // 游戏版本
     QString m_modLoader;                        // 模组加载器类型
     QNetworkAccessManager *m_network = nullptr; // 网络管理器
+    ModJsonManager m_modJsonManager;            // ModJsonManager实例
 
     void downloadLogo(const ModDownloadInfo &modInfo, QLabel *iconLabel, MetaEntryPtr entry);
     static QMap<QString, QIcon> logoCache;
@@ -120,10 +107,7 @@ private:
     void clearModList();
 
     // 检查模组是否已安装
-    bool isModInstalled(int modId);
-
-    // 将模组信息添加到mod.json文件
-    void addModToJson(const ModDownloadInfo &modInfo);
+    ModInstallStatus getModInstallStatus(int modId, int fileId);
 
     // 创建模组项目小部件
     QWidget *createModItemWidget(const ModDownloadInfo &mod);

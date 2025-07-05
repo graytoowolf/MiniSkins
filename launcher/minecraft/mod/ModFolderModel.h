@@ -23,6 +23,7 @@
 #include <QAbstractListModel>
 
 #include "Mod.h"
+#include "ModJsonManager.h"
 
 #include "ModFolderLoadTask.h"
 #include "LocalModParseTask.h"
@@ -144,4 +145,5 @@ protected:
     QMap<int, LocalModParseTask::ResultPtr> activeTickets;
     int nextResolutionTicket = 0;
     QList<Mod> mods;
+    ModJsonManager m_jsonManager;
 };

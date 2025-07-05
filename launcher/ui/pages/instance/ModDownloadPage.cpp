@@ -1,5 +1,7 @@
 #include "ModDownloadPage.h"
 #include "ui_ModDownloadPage.h"
+#include "ModDownloadPageStyles.h"
+#include "ModDownloadPageUIFactory.h"
 #include <QTimer>
 #include <QScrollBar>
 #include <QMessageBox>
@@ -8,11 +10,13 @@
 #include <QJsonArray>
 #include <QIcon>
 #include <QDir>
+#include <QUrl>
 #include "net/NetJob.h"
 #include "net/Download.h"
 #include "minecraft/mod/Mod.h"
+#include "minecraft/mod/ModFolderModel.h"
+#include "minecraft/mod/ModJsonManager.h"
 #include <memory>
-#include "minecraft/mod/Mod.h"
 
 using fingerprint::ModInfo;
 
@@ -46,6 +50,10 @@ ModDownloadPage::ModDownloadPage(MinecraftInstance *inst, QWidget *parent) : QMa
     ui->setupUi(this);
     m_profile = m_inst->getPackProfile();
 
+    // 初始化ModJsonManager
+    QString modJsonPath = m_inst->modlist();
+    m_modJsonManager.initialize(modJsonPath);
+
     // 初始化UI
     initUI();
 
@@ -70,6 +78,10 @@ bool ModDownloadPage::apply()
 
 void ModDownloadPage::cleanup()
 {
+    // 保存并清除ModJsonManager
+    m_modJsonManager.save();
+    m_modJsonManager.clear();
+
     // 1. 停止所有正在进行的网络请求
     if (m_network)
     {
@@ -317,6 +329,21 @@ void ModDownloadPage::loadMoreMods()
             mod.description = modObj["summary"].toString();
             mod.modId = modObj["id"].toInt();
 
+            // 解析fileID - 从latestFilesIndexes中匹配gameVersion和modLoader
+            QJsonArray latestFilesIndexes = modObj["latestFilesIndexes"].toArray();
+            mod.fileID = 0; // 默认值
+            for (const QJsonValue &fileValue : latestFilesIndexes) {
+                QJsonObject fileObj = fileValue.toObject();
+                QString fileGameVersion = fileObj["gameVersion"].toString();
+                int fileModLoader = fileObj["modLoader"].toInt();
+
+                // 完全匹配gameVersion和modLoader
+                if (fileGameVersion == m_gameVersion && fileModLoader == getModLoaderTypeApiId()) {
+                    mod.fileID = fileObj["fileId"].toInt();
+                    break; // 取第一个完全匹配的
+                }
+            }
+
             // 处理作者信息
             QJsonArray authors = modObj["authors"].toArray();
             QStringList authorNames;
@@ -382,6 +409,9 @@ void ModDownloadPage::loadMoreMods()
             }
             mod.logoFileName = logoFileName;
 
+            // 获取模组安装状态
+            mod.installStatus = getModInstallStatus(mod.modId, mod.fileID);
+
             // 创建并添加模组项目
             QWidget *modWidget = createModItemWidget(mod);
             ui->scrollLayout->addWidget(modWidget);
@@ -426,50 +456,14 @@ void ModDownloadPage::loadMoreMods()
 
 QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownloadInfo &modInfo)
 {
-    QWidget *modItemWidget = new QWidget();
-    modItemWidget->setObjectName("modItemWidget");
-    modItemWidget->setMinimumSize(600, 90); // 增加高度以适应新的样式
-    modItemWidget->setMaximumSize(16777215, 110);
+    // 使用UIFactory创建主容器
+    QWidget *modItemWidget = ModDownloadPageUIFactory::createModItemWidget();
+    QHBoxLayout *modItemLayout = ModDownloadPageUIFactory::createMainLayout(modItemWidget);
 
-    // 添加卡片样式 - 背景色、边框和圆角
-    modItemWidget->setStyleSheet(
-        "QWidget#modItemWidget {"
-        "    background-color: palette(base);"
-        "    border: 1px solid palette(mid);"
-        "    border-radius: 8px;"
-        "    margin: 2px;"
-        "}"
-        "QWidget#modItemWidget:hover {"
-        "    border: 2px solid palette(highlight);"
-        "    background-color: palette(alternate-base);"
-        "}");
-
-    QHBoxLayout *modItemLayout = new QHBoxLayout(modItemWidget);
-    modItemLayout->setContentsMargins(12, 10, 12, 10); // 增加内边距
-    modItemLayout->setSpacing(15);                     // 增加元素间距
-
-    // 图标框架
-    QFrame *iconFrame = new QFrame();
-    iconFrame->setObjectName("iconFrame");
-    iconFrame->setMinimumSize(68, 68); // 稍微增大图标框架
-    iconFrame->setMaximumSize(68, 68);
-    iconFrame->setFrameShape(QFrame::NoFrame);
-    iconFrame->setStyleSheet(
-                                 "QFrame#iconFrame {"
-                                 "    border: 2px solid palette(light);"
-                                 "    border-radius: 10px;"
-                                 "    margin: 2px;"
-                                 "}"
-                                 "QFrame#iconFrame:hover {"
-                                 "    border: 2px solid palette(highlight);"
-                                 "}");
-
-    QVBoxLayout *iconLayout = new QVBoxLayout(iconFrame);
-    iconLayout->setContentsMargins(0, 0, 0, 0);
-
-    QLabel *iconLabel = new QLabel();
-    iconLabel->setObjectName("iconLabel");
-    iconLabel->setAlignment(Qt::AlignCenter);
+    // 使用UIFactory创建图标框架
+    QFrame *iconFrame = ModDownloadPageUIFactory::createIconFrame();
+    QVBoxLayout *iconLayout = ModDownloadPageUIFactory::createIconLayout(iconFrame);
+    QLabel *iconLabel = ModDownloadPageUIFactory::createIconLabel();
 
     // 如果有logo URL，则下载并显示logo，否则显示字母
     if (!modInfo.logoUrl.isEmpty())
@@ -523,117 +517,34 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownload
 
     iconLayout->addWidget(iconLabel);
 
-    // 内容布局
-    QVBoxLayout *contentLayout = new QVBoxLayout();
-    contentLayout->setSpacing(4); // 增加间距
+    // 使用UIFactory创建内容布局
+    QVBoxLayout *contentLayout = ModDownloadPageUIFactory::createContentLayout();
+    QHBoxLayout *titleLayout = ModDownloadPageUIFactory::createTitleLayout();
 
-    // 标题布局
-    QHBoxLayout *titleLayout = new QHBoxLayout();
-
-    QLabel *titleLabel = new QLabel(modInfo.name);
-    titleLabel->setObjectName("titleLabel");
-    titleLabel->setStyleSheet(
-        "QLabel#titleLabel {"
-        "    font-size: 14px;"
-        "    font-weight: bold;"
-        "    color: palette(window-text);"
-        "    background-color: transparent;"
-        "    margin-bottom: 2px;"
-        "}");
-
-    QLabel *authorLabel = new QLabel(QString("Author: %1").arg(modInfo.author));
-    authorLabel->setObjectName("authorLabel");
-    authorLabel->setStyleSheet(
-        "QLabel#authorLabel {"
-        "    font-size: 11px;"
-        "    color: palette(mid);"
-        "    background-color: transparent;"
-        "    font-style: italic;"
-        "}");
+    QLabel *titleLabel = ModDownloadPageUIFactory::createTitleLabel(modInfo.name);
+    QLabel *authorLabel = ModDownloadPageUIFactory::createAuthorLabel(QString("Author: %1").arg(modInfo.author));
 
     titleLayout->addWidget(titleLabel);
     titleLayout->addWidget(authorLabel);
     titleLayout->addStretch();
 
-    // 描述标签 - 允许换行
-    QLabel *descriptionLabel = new QLabel();
-    descriptionLabel->setObjectName("descriptionLabel");
-    descriptionLabel->setWordWrap(false);                             // 禁止换行
-    descriptionLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // 垂直居中可选
-    descriptionLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    descriptionLabel->setTextInteractionFlags(Qt::TextSelectableByMouse); // 可选：允许选中
-    descriptionLabel->setToolTip(modInfo.description);                    // 鼠标悬停显示完整文本
-    descriptionLabel->setStyleSheet(
-        "QLabel#descriptionLabel {"
-        "    font-size: 12px;"
-        "    color: palette(window-text);"
-        "    background-color: transparent;"
-        "    margin: 4px 2px;"
-        "    padding: 4px 2px;"
-        "    min-height: 16px;"
-        "}");
-    // 使用fontMetrics().elidedText()设置省略文本
-    QString elidedText = descriptionLabel->fontMetrics().elidedText(modInfo.description, Qt::ElideRight, 400);
-    descriptionLabel->setText(elidedText);
+    // 使用UIFactory创建描述标签
+    QLabel *descriptionLabel = ModDownloadPageUIFactory::createDescriptionLabel(modInfo.description);
 
-    // 统计信息布局
-    QHBoxLayout *statsLayout = new QHBoxLayout();
-    statsLayout->setSpacing(8);
+    // 使用UIFactory创建统计信息布局
+    QHBoxLayout *statsLayout = ModDownloadPageUIFactory::createStatsLayout();
 
-    QLabel *downloadLabel = new QLabel(QString("⬇ %1").arg(modInfo.downloads));
-    downloadLabel->setStyleSheet(
-        "font-size: 11px;"
-        "color: palette(window-text);"
-        "background-color: palette(light);"
-        "border-radius: 3px;"
-        "padding: 2px 6px;"
-        "margin: 1px;");
-
-    QLabel *timeLabel = new QLabel(QString("🕒 %1").arg(modInfo.updateTime));
-    timeLabel->setStyleSheet(
-        "font-size: 11px;"
-        "color: palette(window-text);"
-        "background-color: palette(light);"
-        "border-radius: 3px;"
-        "padding: 2px 6px;"
-        "margin: 1px;");
-
-    QLabel *categoryLabel = new QLabel(QString("🏷️ %1").arg(modInfo.category));
-    categoryLabel->setStyleSheet(
-        "font-size: 11px;"
-        "color: palette(window-text);"
-        "background-color: palette(light);"
-        "border-radius: 3px;"
-        "padding: 2px 6px;"
-        "margin: 1px;");
+    QLabel *downloadLabel = ModDownloadPageUIFactory::createStatsLabel(QString("⬇ %1").arg(modInfo.downloads));
+    QLabel *timeLabel = ModDownloadPageUIFactory::createStatsLabel(QString("🕒 %1").arg(modInfo.updateTime));
+    QLabel *categoryLabel = ModDownloadPageUIFactory::createStatsLabel(QString("🏷️ %1").arg(modInfo.category));
 
     statsLayout->addWidget(downloadLabel);
     statsLayout->addWidget(timeLabel);
     statsLayout->addWidget(categoryLabel);
     statsLayout->addStretch();
 
-    // 创建进度条（初始隐藏）
-    QProgressBar *progressBar = new QProgressBar();
-    progressBar->setMinimum(0);
-    progressBar->setMaximum(100);
-    progressBar->setValue(0);
-    progressBar->setTextVisible(true);
-    progressBar->setFormat("%p%");
-    progressBar->setFixedHeight(16);
-    progressBar->setStyleSheet(
-        "QProgressBar {"
-        "    background-color: palette(base);"
-        "    border: 1px solid palette(mid);"
-        "    border-radius: 8px;"
-        "    text-align: center;"
-        "    font-size: 11px;"
-        "    color: palette(window-text);"
-        "}"
-        "QProgressBar::chunk {"
-        "    background-color: palette(highlight);"
-        "    border-radius: 6px;"
-        "    margin: 1px;"
-        "}");
+    // 使用UIFactory创建进度条
+    QProgressBar *progressBar = ModDownloadPageUIFactory::createProgressBar();
     progressBar->hide();
 
     contentLayout->addLayout(titleLayout);
@@ -641,61 +552,74 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownload
     contentLayout->addLayout(statsLayout);
     contentLayout->addWidget(progressBar);
 
-    // 按钮布局
-    QVBoxLayout *buttonLayout = new QVBoxLayout();
+    // 使用UIFactory创建按钮布局
+    QVBoxLayout *buttonLayout = ModDownloadPageUIFactory::createButtonLayout();
+    QPushButton *installButton = ModDownloadPageUIFactory::createInstallButton(tr("Install"));
 
-    QPushButton *installButton = new QPushButton(tr("Install"));
-    installButton->setObjectName("installButton");
-    installButton->setMinimumSize(90, 32); // 增加按钮尺寸
-    installButton->setFixedWidth(90);      // 固定宽度
-
-    // 设置按钮基础样式
-    installButton->setStyleSheet(
-        "QPushButton#installButton {"
-        "    background-color: palette(highlight);"
-        "    color: palette(highlighted-text);"
-        "    border: 1px solid palette(highlight);"
-        "    border-radius: 6px;"
-        "    font-weight: bold;"
-        "    font-size: 12px;"
-        "    padding: 4px 8px;"
-        "}"
-        "QPushButton#installButton:hover {"
-        "    background-color: palette(light);"
-        "    color: palette(dark);"
-        "    border: 2px solid palette(highlight);"
-        "}"
-        "QPushButton#installButton:pressed {"
-        "    background-color: palette(dark);"
-        "    color: palette(bright-text);"
-        "}"
-        "QPushButton#installButton:disabled {"
-        "    background-color: palette(mid);"
-        "    color: palette(dark);"
-        "    border: 1px solid palette(mid);"
-        "}");
+    // 根据mod安装状态设置按钮初始状态
+    switch (modInfo.installStatus)
+    {
+    case ModDownloadPageUIFactory::MOD_INSTALLED:
+        installButton->setText(tr("已安装"));
+        installButton->setEnabled(false);
+        break;
+    case ModDownloadPageUIFactory::MOD_NEEDS_UPDATE:
+        installButton->setText(tr("更新"));
+        installButton->setEnabled(true);
+        break;
+    case ModDownloadPageUIFactory::MOD_NOT_INSTALLED:
+    default:
+        installButton->setText(tr("Install"));
+        installButton->setEnabled(true);
+        break;
+    }
 
     // 连接按钮信号
-    connect(installButton, &QPushButton::clicked, this, [this, modInfo, progressBar, statsLayout]()
+    connect(installButton, &QPushButton::clicked, this, [this, modInfo, progressBar, statsLayout, installButton]()
             {
+        // 获取当前mod安装状态
+        ModInstallStatus status = getModInstallStatus(modInfo.modId, modInfo.fileID);
+
+        if (status == ModDownloadPageUIFactory::MOD_INSTALLED) {
+            qDebug()<<"mod已经存在:"<<modInfo.modId;
+            return;
+        }
+
+        // 如果是更新状态，先删除原文件和JSON记录
+        if (status == ModDownloadPageUIFactory::MOD_NEEDS_UPDATE) {
+            QString modsRoot = m_inst->modsRoot();
+            QString oldModName = m_modJsonManager.getModNameByProjectId(modInfo.modId);
+            QString modFilePath = QDir(modsRoot).absoluteFilePath(oldModName);
+            qDebug()<<"Updating mod, removing old file:"<<modFilePath;
+
+            // 删除旧文件
+            if (QFile::exists(modFilePath)) {
+                QFile::remove(modFilePath);
+            }
+
+            // 从JSON记录中移除旧模组信息
+            if (!oldModName.isEmpty()) {
+                m_modJsonManager.removeMod(oldModName);
+                m_modJsonManager.save();
+            }
+        }
+
         // 清空下载队列
         m_downloadQueue.clear();
         processedDependencies.clear();
-        if (isModInstalled(modInfo.modId)){
-            qDebug()<<"mod已经存在:"<<modInfo.modId;
-            QMessageBox::information(this, tr("Mod Already Installed"),
-                                   tr("The mod '%1' is already installed.").arg(modInfo.name));
-            return ;
-        }
 
         // 构建下载队列（包含依赖）
-        buildDownloadQueue(modInfo.modId, [this, progressBar, statsLayout]() {
+        buildDownloadQueue(modInfo.modId, [this, progressBar, statsLayout, installButton]() {
             // 队列构建完成，开始处理下载
             if (m_downloadQueue.isEmpty()) {
                 QMessageBox::warning(this, tr("Download Error"),
                                      tr("Unable to get mod download information, please try again later."));
                 return;
             }
+
+            // 下载完成后设置按钮为已安装状态
+            installButton->setText(tr("已安装"));
+            installButton->setEnabled(false);
 
             // 开始处理下载队列
             processDownloadQueue(progressBar, statsLayout);
@@ -712,18 +636,58 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownload
     return modItemWidget;
 }
 
-bool ModDownloadPage::isModInstalled(int modId)
+ModDownloadPage::ModInstallStatus ModDownloadPage::getModInstallStatus(int modId, int fileId)
 {
-    // 直接调用Mod类的静态函数
-    QString modJsonPath = m_inst->modlist();
     QString modsRoot = m_inst->modsRoot();
 
-    return Mod::isModInstalled(modJsonPath, modId, modsRoot);
+    // 检查JSON中是否存在该projectID的记录
+    QString modName = m_modJsonManager.getModNameByProjectId(modId);
+    if (modName.isEmpty())
+    {
+        // JSON中没有记录，说明未安装
+        return ModDownloadPageUIFactory::MOD_NOT_INSTALLED;
+    }
+
+    // JSON中有记录，检查文件是否存在
+    bool fileExists = m_modJsonManager.isModFileExistsByProjectId(modId, modsRoot);
+    if (!fileExists)
+    {
+        // JSON中有记录但文件不存在，说明未安装（可能文件被手动删除）
+        return ModDownloadPageUIFactory::MOD_NOT_INSTALLED;
+    }
+
+    // 文件存在，检查fileID是否匹配
+    int existingFileId = m_modJsonManager.getModFileIdByProjectId(modId);
+    if (existingFileId == fileId)
+    {
+        // modID相同、文件存在、fileID相同，说明已安装
+        return ModDownloadPageUIFactory::MOD_INSTALLED;
+    }
+    else
+    {
+        // modID相同、文件存在、fileID不同，说明需要更新
+        return ModDownloadPageUIFactory::MOD_NEEDS_UPDATE;
+    }
 }
 
 void ModDownloadPage::fetchModDownloadInfo(int modId, std::function<void(const DownloadItem &)> callback)
 {
-    QString url = QString("%1/mods/%2/files").arg(CURSEFORGE_API_V1_BASE).arg(modId);
+    QString url = QString("%1/mods/%2/files?pageSize=1")
+                      .arg(CURSEFORGE_API_V1_BASE)
+                      .arg(modId);
+
+    // 添加游戏版本参数（如果有）
+    if (!m_gameVersion.isEmpty())
+    {
+        url += QString("&gameVersion=%1").arg(QUrl::toPercentEncoding(m_gameVersion).constData());
+    }
+
+    // 添加模组加载器类型参数（如果有）
+    int modLoaderType = getModLoaderTypeApiId();
+    if (modLoaderType > 0)
+    {
+        url += QString("&modLoaderType=%1").arg(modLoaderType);
+    }
 
     NetJob *netJob = new NetJob(QString("CurseForge::ModDownloadInfo(%1)").arg(modId), APPLICATION->network());
     std::shared_ptr<QByteArray> response = std::make_shared<QByteArray>();
@@ -731,7 +695,7 @@ void ModDownloadPage::fetchModDownloadInfo(int modId, std::function<void(const D
     download->setExtraHeader("x-api-key", APPLICATION->curseAPIKey());
     netJob->addNetAction(download);
 
-    connect(netJob, &NetJob::succeeded, this, [this, response, modId, callback]()
+    connect(netJob, &NetJob::succeeded, this, [response, modId, callback]()
             {
         QJsonParseError parse_error;
         QJsonDocument doc = QJsonDocument::fromJson(*response, &parse_error);
@@ -744,50 +708,33 @@ void ModDownloadPage::fetchModDownloadInfo(int modId, std::function<void(const D
         QJsonObject rootObj = doc.object();
         QJsonArray filesArray = rootObj["data"].toArray();
 
-        // 查找匹配当前游戏版本和加载器的文件
-        for (const QJsonValue &fileValue : filesArray) {
-            QJsonObject fileObj = fileValue.toObject();
-            QJsonArray gameVersions = fileObj["gameVersions"].toArray();
+        // API已经通过参数筛选返回匹配的文件，直接使用第一个文件
+        if (!filesArray.isEmpty()) {
+            QJsonObject fileObj = filesArray.first().toObject();
 
-            bool matchesVersion = false;
-            bool matchesLoader = false;
+            DownloadItem item;
+            item.downloadUrl = fileObj["downloadUrl"].toString();
+            item.fileName = fileObj["fileName"].toString();
+            item.fileID = fileObj["id"].toInt();
+            item.fileFingerprint = QString::number(fileObj["fileFingerprint"].toVariant().toULongLong());
+            item.modId = modId;
 
-            for (const QJsonValue &version : gameVersions) {
-                QString versionStr = version.toString();
 
-                if (versionStr == m_gameVersion) {
-                    matchesVersion = true;
-                }
-
-                if (versionStr.contains(m_modLoader, Qt::CaseInsensitive)) {
-                    matchesLoader = true;
+            // 获取依赖信息
+            QJsonArray dependencies = fileObj["dependencies"].toArray();
+            for (const QJsonValue &depValue : dependencies) {
+                QJsonObject depObj = depValue.toObject();
+                int relationType = depObj["relationType"].toInt();
+                if (relationType == 3) { // 3 = RequiredDependency
+                    int depModId = depObj["modId"].toInt();
+                    item.requiredDependencies.append(depModId);
                 }
             }
-
-            if (matchesVersion && matchesLoader) {
-                DownloadItem item;
-                item.downloadUrl = fileObj["downloadUrl"].toString();
-                item.fileName = fileObj["fileName"].toString();
-                item.fileID = fileObj["id"].toInt();
-                item.modId = modId;
-
-                // 获取依赖信息
-                QJsonArray dependencies = fileObj["dependencies"].toArray();
-                for (const QJsonValue &depValue : dependencies) {
-                    QJsonObject depObj = depValue.toObject();
-                    int relationType = depObj["relationType"].toInt();
-                    if (relationType == 3) { // 3 = RequiredDependency
-                        int depModId = depObj["modId"].toInt();
-                        item.requiredDependencies.append(depModId);
-                    }
-                }
-                callback(item);
-                return;
-            }
-        }
-
-        // 没有找到匹配的文件
-        callback(DownloadItem()); });
+            callback(item);
+        } else {
+            // 没有找到匹配的文件
+            callback(DownloadItem());
+        } });
 
     connect(netJob, &NetJob::failed, this, [callback](QString reason)
             {
@@ -814,8 +761,9 @@ void ModDownloadPage::buildDownloadQueue(int modId, std::function<void()> onComp
             return;
         }
 
-        // 检查是否已安装
-        if (!isModInstalled(item.modId)) {
+        // 检查是否需要下载（未安装或需要更新）
+        ModInstallStatus status = getModInstallStatus(item.modId, item.fileID);
+        if (status == ModDownloadPageUIFactory::MOD_NOT_INSTALLED || status == ModDownloadPageUIFactory::MOD_NEEDS_UPDATE) {
             m_downloadQueue.append(item);
         }
 
@@ -874,19 +822,26 @@ void ModDownloadPage::downloadNextInQueue(QProgressBar *progressBar, QHBoxLayout
         }
 
         // 批量写入所有下载完成的模组信息
-        if (!m_completedMods.isEmpty()) {
+        if (!m_completedMods.isEmpty())
+        {
             QList<ModInfo> modInfoList;
             QString jsonPath = m_inst->modlist();
 
-            for (const auto &modInfo : m_completedMods) {
+            for (const auto &modInfo : m_completedMods)
+            {
                 ModInfo jsonInfo;
                 jsonInfo.projectId = modInfo.modId;
                 jsonInfo.fileId = modInfo.fileID;
                 jsonInfo.name = modInfo.name;
+                jsonInfo.fileFingerprint = modInfo.fileFingerprint;
                 modInfoList.append(jsonInfo);
             }
 
-            Mod::addModsToJson(jsonPath, modInfoList, false);
+            // 使用ModJsonManager批量添加模组
+            for (const auto &modInfo : modInfoList)
+            {
+                m_modJsonManager.addMod(modInfo, true);
+            }
             m_completedMods.clear();
         }
 
@@ -936,6 +891,7 @@ void ModDownloadPage::downloadSingleItem(const DownloadItem &item, QProgressBar 
         modInfo.modId = item.modId;
         modInfo.name = item.fileName;
         modInfo.fileID = item.fileID;
+        modInfo.fileFingerprint = item.fileFingerprint;
         m_completedMods.append(modInfo);
 
         job->deleteLater();
@@ -1001,21 +957,6 @@ void ModDownloadPage::clearModList()
         }
         delete child;
     }
-}
-
-void ModDownloadPage::addModToJson(const ModDownloadInfo &modInfo)
-{
-    // 直接调用Mod类的静态函数
-    QString jsonPath = m_inst->modlist();
-
-    ModInfo modJsonInfo;
-    modJsonInfo.projectId = modInfo.modId;
-    modJsonInfo.fileId = modInfo.fileID;
-    modJsonInfo.name = modInfo.name;
-
-    QList<ModInfo> modInfoList;
-    modInfoList.append(modJsonInfo);
-    Mod::addModsToJson(jsonPath, modInfoList, true);
 }
 
 void ModDownloadPage::onSearch()

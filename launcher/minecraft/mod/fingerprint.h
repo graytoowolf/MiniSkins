@@ -4,6 +4,9 @@
 #include <vector>
 #include <QString>
 
+// 前向声明
+class ModJsonManager;
+
 namespace fingerprint
 {
   typedef std::vector<unsigned char> Buffer;
@@ -31,8 +34,8 @@ namespace fingerprint
   };
   
   // 处理单个模组文件信息
-  ModInfo processModInfo(const ModInfo &modInfo);
+  ModInfo processModInfo(const ModInfo &modInfo, ModJsonManager *jsonManager = nullptr);
   
   // 批量处理模组文件信息
-  QList<ModInfo> processModInfoList(const QList<ModInfo> &modInfoList);
+  QList<ModInfo> processModInfoList(const QList<ModInfo> &modInfoList, ModJsonManager *jsonManager = nullptr);
 }
