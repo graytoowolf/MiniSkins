@@ -133,6 +133,7 @@ signals:
 private:
     void resolveMod(Mod &m);
     bool setModStatus(int index, ModStatusAction action);
+    QString findJsonPathByNavigation();
 
 protected:
     QFileSystemWatcher *m_watcher;

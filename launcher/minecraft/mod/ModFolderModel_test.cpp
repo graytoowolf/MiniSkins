@@ -12,6 +12,11 @@ class ModFolderModelTest : public QObject
 
 private
 slots:
+    void initTestCase()
+    {
+        // 彻底禁用 fingerprint 功能
+        qputenv("DISABLE_FINGERPRINT", "1");
+    }
     // test for GH-1178 - install a folder with files to a mod list
     void test_1178()
     {

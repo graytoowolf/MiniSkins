@@ -39,8 +39,24 @@ ModFolderModel::ModFolderModel(const QString &dir) : QAbstractListModel(), m_dir
     connect(m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(directoryChanged(QString)));
 
     // 初始化ModJsonManager
-    QString jsonPath = QDir::cleanPath(m_dir.absoluteFilePath("../../mod.json"));
-    m_jsonManager.initialize(jsonPath);
+    QString jsonPath = findJsonPathByNavigation();
+    if (!jsonPath.isEmpty()) {
+        m_jsonManager.initialize(jsonPath);
+    }
+
+}
+
+QString ModFolderModel::findJsonPathByNavigation()
+{
+    QDir currentDir = m_dir;
+    QString jsonPath;
+
+    // 尝试向上导航两级
+    if (currentDir.cdUp() && currentDir.cdUp()) {
+        jsonPath = currentDir.absoluteFilePath("mod.json");
+    }
+    // 回退到其他位置
+    return jsonPath;
 }
 
 void ModFolderModel::startWatching()

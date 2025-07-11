@@ -128,6 +128,10 @@ namespace fingerprint
 
   ModInfo processModInfo(const ModInfo &modInfo, ModJsonManager *jsonManager)
   {
+    if (qEnvironmentVariableIsSet("DISABLE_FINGERPRINT"))
+    {
+        return {};
+    }
     ModInfo result = modInfo;
 
     // 获取文件指纹
@@ -252,7 +256,7 @@ namespace fingerprint
     {
       ModInfo modInfo = modInfoList[i];
       modInfo.fileFingerprint = getJarFingerprint(modInfo.filePath);
-      
+
       // 如果提供了 jsonManager，先检查指纹是否已存在
       if (jsonManager && jsonManager->isInitialized() && !modInfo.fileFingerprint.isEmpty())
       {
@@ -266,7 +270,7 @@ namespace fingerprint
           modInfo.isValid = true;
         }
       }
-      
+
       processedList.append(modInfo);
 
       // 只有未从缓存获取到信息的才需要API请求
