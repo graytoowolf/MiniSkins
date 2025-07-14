@@ -103,7 +103,7 @@ jobs:
            -DCMAKE_BUILD_TYPE=Release ^
            -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json ^
            -DCMAKE_INSTALL_PREFIX:PATH=D:/MiniSkins/install  ^
-           -DLauncher_UPDATER_BASE=https://mmc.miniskins.top/ ^
+           -DLauncher_UPDATER_BASE=https://mmc.mcpeau.com/ ^
            -DLauncher_VERSION_BUILD=%GITHUB_RUN_NUMBER% ^
            -DLauncher_BUILD_PLATFORM=win32 ^
            -G "MinGW Makefiles" ^
@@ -169,7 +169,7 @@ jobs:
           copy mc.py D:/MiniSkins/
           cd D:/MiniSkins/
           chcp 65001
-          python mc.py id=$env:GITHUB_RUN_NUMBER url='https://mmc.miniskins.top'
+          python mc.py id=$env:GITHUB_RUN_NUMBER url='https://mmc.mcpeau.com'
 
       - name: Upload qiniu
         run: |

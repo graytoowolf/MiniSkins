@@ -35,18 +35,18 @@ def create_zip_archive(source_dir, zip_path, folder_name="MiniSkins"):
         # 创建临时目录用于复制和重命名
         temp_dir = zip_path.parent / "temp_for_zip"
         target_dir = temp_dir / folder_name
-        
+
         # 如果临时目录已存在，先删除
         if temp_dir.exists():
             shutil.rmtree(temp_dir)
-        
+
         # 创建临时目录
         temp_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # 复制整个install目录到临时目录并重命名为MiniSkins
         shutil.copytree(source_dir, target_dir)
         print(f"已复制目录：{source_dir} -> {target_dir}")
-        
+
         # 创建压缩包，压缩整个MiniSkins文件夹
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zipf:
             for file_path in target_dir.rglob('*'):
@@ -55,11 +55,11 @@ def create_zip_archive(source_dir, zip_path, folder_name="MiniSkins"):
                     relative_path = file_path.relative_to(temp_dir)
                     zipf.write(file_path, relative_path)
                     print(f"已添加到压缩包: {relative_path}")
-        
+
         # 清理临时目录
         shutil.rmtree(temp_dir)
         print(f"已清理临时目录：{temp_dir}")
-        
+
         print(f"已成功创建压缩包：{zip_path}")
         return True
     except Exception as e:
@@ -95,7 +95,7 @@ def main():
     version_id = params["id"]
 
     # 获取URL前缀，如果提供的话
-    url_prefix = params.get("url", "https://mmc.miniskins.top")
+    url_prefix = params.get("url", "https://mmc.mcpeau.com")
 
     # 如果输出目录不存在则创建
     qiniu_dir = Path(os.getcwd()) / "qiniu"

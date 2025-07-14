@@ -618,7 +618,7 @@ void TranslationsModel::downloadIndex()
     d->m_index_job = new NetJob("Translations Index", APPLICATION->network());
     MetaEntryPtr entry = APPLICATION->metacache()->resolveEntry("translations", "index_v2.json");
     entry->setStale(true);
-    d->m_index_task = Net::Download::makeCached(QUrl(BuildConfig.TRANSLATIONS_BASE_URL + "index_v2.json"), entry);
+    d->m_index_task = Net::Download::makeCached(QUrl(BuildConfig.UPDATER_BASE + "translations/index_v2.json"), entry);
     d->m_index_job->addNetAction(d->m_index_task);
     connect(d->m_index_job.get(), &NetJob::failed, this, &TranslationsModel::indexFailed);
     connect(d->m_index_job.get(), &NetJob::succeeded, this, &TranslationsModel::indexReceived);
@@ -662,7 +662,7 @@ void TranslationsModel::downloadTranslation(QString key)
     MetaEntryPtr entry = APPLICATION->metacache()->resolveEntry("translations", "mmc_" + key + ".qm");
     entry->setStale(true);
 
-    auto dl = Net::Download::makeCached(QUrl(BuildConfig.TRANSLATIONS_BASE_URL + lang->file_name), entry);
+    auto dl = Net::Download::makeCached(QUrl(BuildConfig.UPDATER_BASE + "translations/" + lang->file_name), entry);
     auto rawHash = QByteArray::fromHex(lang->file_sha1.toLatin1());
     dl->addValidator(new Net::ChecksumValidator(QCryptographicHash::Sha1, rawHash));
     dl->m_total_progress = lang->file_size;

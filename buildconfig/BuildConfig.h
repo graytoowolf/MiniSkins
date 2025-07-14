@@ -44,7 +44,6 @@ public:
     /// User-Agent to use for uncached requests.
     QString USER_AGENT_UNCACHED;
 
-
     /// URL for notifications
     QString NOTIFICATION_URL;
 
@@ -108,11 +107,8 @@ public:
     QString TEXTURE_BASE = "http://textures.minecraft.net";
     QString IMGUR_BASE_URL = "https://api.imgur.com/3/";
     QString FMLLIBS_BASE_URL = "https://files.multimc.org/fmllibs/";
-    QString TRANSLATIONS_BASE_URL = "https://mmc.miniskins.top/translations/";
 
     QString AUTHLIB_INJECTOR_URL = "https://authlib-injector.yushi.moe/artifact/latest.json";
-
-    QString SOURCE_URL = "https://mmc.miniskins.top/source.json";
 
     QString MODPACKSCH_API_BASE_URL = "https://api.feed-the-beast.com/v1/modpacks/";
 

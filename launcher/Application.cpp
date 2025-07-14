@@ -858,7 +858,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
     // 获取源
     {
         auto *netJob = new NetJob("Acquire download source", network());
-        netJob->addNetAction(Net::Download::makeByteArray(QUrl(BuildConfig.SOURCE_URL), &response));
+        netJob->addNetAction(Net::Download::makeByteArray(QUrl(BuildConfig.UPDATER_BASE + "source.json"), &response));
         m_filesNetJob = netJob;
         m_filesNetJob->start();
         QObject::connect(netJob, &NetJob::succeeded, this, &Application::sourceFinished);
