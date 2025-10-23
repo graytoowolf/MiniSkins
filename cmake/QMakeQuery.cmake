@@ -14,6 +14,7 @@ function(QUERY_QMAKE)
 
     execute_process(COMMAND "${QMAKE_EXECUTABLE}" "-query" "${OPT_QUERY}" RESULT_VARIABLE return_code OUTPUT_VARIABLE output )
     if(NOT return_code)
+        string(STRIP "${output}" output)
         file(TO_CMAKE_PATH "${output}" output)
         set(${OPT_RESULT} ${output} PARENT_SCOPE)
         message(STATUS "QUERY_QMAKE(${OPT_VARIABLE}): SUCCEEDED - ${output}")
