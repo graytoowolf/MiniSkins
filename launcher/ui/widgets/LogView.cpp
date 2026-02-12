@@ -1,6 +1,7 @@
 #include "LogView.h"
 #include <QTextBlock>
 #include <QScrollBar>
+#include <QCoreApplication>
 
 LogView::LogView(QWidget* parent) : QPlainTextEdit(parent)
 {
@@ -63,13 +64,52 @@ void LogView::modelDestroyed(QObject* model)
 
 void LogView::repopulate()
 {
+    setUpdatesEnabled(false);
     auto doc = document();
     doc->clear();
     if(!m_model)
     {
+        setUpdatesEnabled(true);
         return;
     }
-    rowsInserted(QModelIndex(), 0, m_model->rowCount() - 1);
+    int totalRows = m_model->rowCount();
+    const int batchSize = 500;
+    int processed = 0;
+    
+    while(processed < totalRows)
+    {
+        int batchEnd = qMin(processed + batchSize, totalRows);
+        QTextCursor cursor(doc);
+        cursor.movePosition(QTextCursor::End);
+        
+        for(int i = processed; i < batchEnd; i++)
+        {
+            auto idx = m_model->index(i, 0);
+            auto text = m_model->data(idx, Qt::DisplayRole).toString();
+            QTextCharFormat format(*m_defaultFormat);
+            auto font = m_model->data(idx, Qt::FontRole);
+            if(font.isValid())
+            {
+                format.setFont(font.value<QFont>());
+            }
+            auto fg = m_model->data(idx, Qt::TextColorRole);
+            if(fg.isValid())
+            {
+                format.setForeground(fg.value<QColor>());
+            }
+            auto bg = m_model->data(idx, Qt::BackgroundRole);
+            if(bg.isValid())
+            {
+                format.setBackground(bg.value<QColor>());
+            }
+            cursor.insertText(text, format);
+            cursor.insertBlock();
+        }
+        processed = batchEnd;
+        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    }
+    setUpdatesEnabled(true);
+    scrollToBottom();
 }
 
 void LogView::rowsAboutToBeInserted(const QModelIndex& parent, int first, int last)
