@@ -225,7 +225,7 @@ void LauncherPage::applySettings()
             break;
         }
     }
-    if (ui->downloadcomboBox && ui->downloadcomboBox->currentIndex() < ui->downloadcomboBox->count())
+    if (ui->downloadcomboBox && ui->downloadcomboBox->currentIndex() >= 0 && ui->downloadcomboBox->currentIndex() < ui->downloadcomboBox->count() && !sources.isEmpty())
     {
         const DownloadSource &secondSource = sources[ui->downloadcomboBox->currentIndex()];
         s->set("Downloadsource", secondSource.getType());
@@ -310,9 +310,9 @@ void LauncherPage::applySettings()
         s->set("IconsDir", ui->iconsDirTextBox->text());
     }
 
-    auto sortMode = (InstSortMode)ui->sortingModeGroup->checkedId();
     if (ui->sortLastLaunchedBtn)
     {
+        auto sortMode = (InstSortMode)ui->sortingModeGroup->checkedId();
         switch (sortMode)
         {
         case Sort_LastLaunch:
@@ -324,6 +324,7 @@ void LauncherPage::applySettings()
     }
     else if (ui->sortByNameBtn)
     {
+        auto sortMode = (InstSortMode)ui->sortingModeGroup->checkedId();
         switch (sortMode)
         {
         case Sort_Name:
@@ -335,6 +336,7 @@ void LauncherPage::applySettings()
     }
     else if (ui->sortingModeGroup)
     {
+        auto sortMode = (InstSortMode)ui->sortingModeGroup->checkedId();
         switch (sortMode)
         {
         case Sort_LastLaunch:

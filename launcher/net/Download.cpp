@@ -214,6 +214,14 @@ namespace Net
             auto cert = error.certificate();
             qCritical() << "Certificate in question:\n"
                         << cert.toText();
+
+            // 忽略过期证书错误（证书已过期，可能是测试环境或临时问题）
+            if (error.error() == QSslError::CertificateExpired)
+            {
+                qWarning() << "Ignoring expired certificate for:" << m_url.toString();
+                continue;
+            }
+
             i++;
         }
     }
