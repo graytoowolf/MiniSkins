@@ -20,6 +20,7 @@
 #include <QMessageBox>
 #include <QDir>
 #include <QTextCharFormat>
+#include <QTimer>
 
 #include "updater/UpdateChecker.h"
 
@@ -53,15 +54,21 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
 
     defaultFormat = new QTextCharFormat(ui->fontPreview->currentCharFormat());
 
-    sources = APPLICATION->getDownloadSources();
-
     m_languageModel = APPLICATION->translations();
-    loadSettings();
+
+    // 延迟加载设置，等待异步数据加载完成
+    QTimer::singleShot(0, this, [this]() {
+        this->sources = APPLICATION->getDownloadSources();
+        this->loadSettings();
+    });
 
     // Updater
     if (!BuildConfig.UPDATER_ENABLED)
     {
-        ui->updateSettingsBox->setHidden(true);
+        if (ui->updateSettingsBox)
+        {
+            ui->updateSettingsBox->setHidden(true);
+        }
     }
 
     connect(ui->fontSizeBox, SIGNAL(valueChanged(int)), SLOT(refreshFontPreview()));
@@ -71,7 +78,10 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
     QFile file(QDir::current().absolutePath() + "/dontmovemacdata");
     if (!file.exists())
     {
-        ui->migrateDataFolderMacBtn->setVisible(false);
+        if (ui->migrateDataFolderMacBtn)
+        {
+            ui->migrateDataFolderMacBtn->setVisible(false);
+        }
     }
 }
 
@@ -89,6 +99,11 @@ bool LauncherPage::apply()
 
 void LauncherPage::on_instDirBrowseBtn_clicked()
 {
+    if (!ui->instDirTextBox)
+    {
+        return;
+    }
+
     QString raw_dir = QFileDialog::getExistingDirectory(this, tr("Instance Folder"), ui->instDirTextBox->text());
 
     // do not allow current dir - it's dirty. Do not allow dirs that don't exist
@@ -121,6 +136,11 @@ void LauncherPage::on_instDirBrowseBtn_clicked()
 
 void LauncherPage::on_iconsDirBrowseBtn_clicked()
 {
+    if (!ui->iconsDirTextBox)
+    {
+        return;
+    }
+
     QString raw_dir = QFileDialog::getExistingDirectory(this, tr("Icons Folder"), ui->iconsDirTextBox->text());
 
     // do not allow current dir - it's dirty. Do not allow dirs that don't exist
@@ -130,8 +150,14 @@ void LauncherPage::on_iconsDirBrowseBtn_clicked()
         ui->iconsDirTextBox->setText(cooked_dir);
     }
 }
+
 void LauncherPage::on_modsDirBrowseBtn_clicked()
 {
+    if (!ui->modsDirTextBox)
+    {
+        return;
+    }
+
     QString raw_dir = QFileDialog::getExistingDirectory(this, tr("Mods Folder"), ui->modsDirTextBox->text());
 
     // do not allow current dir - it's dirty. Do not allow dirs that don't exist
@@ -159,50 +185,61 @@ void LauncherPage::applySettings()
     }
 
     // Updates
-    s->set("AutoUpdate", ui->autoUpdateCheckBox->isChecked());
+    if (ui->autoUpdateCheckBox)
+    {
+        s->set("AutoUpdate", ui->autoUpdateCheckBox->isChecked());
+    }
     auto original = s->get("IconTheme").toString();
     // FIXME: make generic
-    switch (ui->themeComboBox->currentIndex())
+    if (ui->themeComboBox)
     {
-    case 1:
-        s->set("IconTheme", "pe_dark");
-        break;
-    case 2:
-        s->set("IconTheme", "pe_light");
-        break;
-    case 3:
-        s->set("IconTheme", "pe_blue");
-        break;
-    case 4:
-        s->set("IconTheme", "pe_colored");
-        break;
-    case 5:
-        s->set("IconTheme", "OSX");
-        break;
-    case 6:
-        s->set("IconTheme", "iOS");
-        break;
-    case 7:
-        s->set("IconTheme", "flat");
-        break;
-    case 8:
-        s->set("IconTheme", "custom");
-        break;
-    case 0:
-    default:
-        s->set("IconTheme", "miniskins");
-        break;
+        switch (ui->themeComboBox->currentIndex())
+        {
+        case 1:
+            s->set("IconTheme", "pe_dark");
+            break;
+        case 2:
+            s->set("IconTheme", "pe_light");
+            break;
+        case 3:
+            s->set("IconTheme", "pe_blue");
+            break;
+        case 4:
+            s->set("IconTheme", "pe_colored");
+            break;
+        case 5:
+            s->set("IconTheme", "OSX");
+            break;
+        case 6:
+            s->set("IconTheme", "iOS");
+            break;
+        case 7:
+            s->set("IconTheme", "flat");
+            break;
+        case 8:
+            s->set("IconTheme", "custom");
+            break;
+        case 0:
+        default:
+            s->set("IconTheme", "miniskins");
+            break;
+        }
     }
-    const DownloadSource &secondSource = sources[ui->downloadcomboBox->currentIndex()];
-    s->set("Downloadsource", secondSource.getType());
-    s->set("Downloadsourceurl", secondSource.getUrl());
-    s->set("Downloadsourceproxy", secondSource.isProxy());
-
-    switch (ui->threadcomboBox->currentIndex())
+    if (ui->downloadcomboBox && ui->downloadcomboBox->currentIndex() < ui->downloadcomboBox->count())
     {
-    case 0:
-        s->set("Threads", "4");
-        break;
+        const DownloadSource &secondSource = sources[ui->downloadcomboBox->currentIndex()];
+        s->set("Downloadsource", secondSource.getType());
+        s->set("Downloadsourceurl", secondSource.getUrl());
+        s->set("Downloadsourceproxy", secondSource.isProxy());
+    }
+
+    if (ui->threadcomboBox)
+    {
+        switch (ui->threadcomboBox->currentIndex())
+        {
+        case 0:
+            s->set("Threads", "4");
+            break;
     case 1:
         s->set("Threads", "6");
         break;
@@ -216,6 +253,98 @@ void LauncherPage::applySettings()
     default:
         s->set("Threads", "8");
         break;
+    }
+    }
+
+    if (ui->themeComboBoxColors)
+    {
+        auto originalAppTheme = s->get("ApplicationTheme").toString();
+        auto newAppTheme = ui->themeComboBoxColors->currentData().toString();
+        if (originalAppTheme != newAppTheme)
+        {
+            s->set("ApplicationTheme", newAppTheme);
+            APPLICATION->setApplicationTheme(newAppTheme, false);
+        }
+    }
+
+    // Console settings
+    if (ui->showConsoleCheck)
+    {
+        s->set("ShowConsole", ui->showConsoleCheck->isChecked());
+    }
+    if (ui->autoCloseConsoleCheck)
+    {
+        s->set("AutoCloseConsole", ui->autoCloseConsoleCheck->isChecked());
+    }
+    if (ui->showConsoleErrorCheck)
+    {
+        s->set("ShowConsoleOnError", ui->showConsoleErrorCheck->isChecked());
+    }
+    if (ui->consoleFont && ui->fontSizeBox)
+    {
+        QString consoleFontFamily = ui->consoleFont->currentFont().family();
+        s->set("ConsoleFont", consoleFontFamily);
+        s->set("ConsoleFontSize", ui->fontSizeBox->value());
+    }
+    if (ui->lineLimitSpinBox)
+    {
+        s->set("ConsoleMaxLines", ui->lineLimitSpinBox->value());
+    }
+    if (ui->checkStopLogging)
+    {
+        s->set("ConsoleOverflowStop", ui->checkStopLogging->checkState() != Qt::Unchecked);
+    }
+
+    // Folders
+    // TODO: Offer to move instances to new instance folder.
+    if (ui->instDirTextBox)
+    {
+        s->set("InstanceDir", ui->instDirTextBox->text());
+    }
+    if (ui->modsDirTextBox)
+    {
+        s->set("CentralModsDir", ui->modsDirTextBox->text());
+    }
+    if (ui->iconsDirTextBox)
+    {
+        s->set("IconsDir", ui->iconsDirTextBox->text());
+    }
+
+    auto sortMode = (InstSortMode)ui->sortingModeGroup->checkedId();
+    if (ui->sortLastLaunchedBtn)
+    {
+        switch (sortMode)
+        {
+        case Sort_LastLaunch:
+        case Sort_Name:
+        default:
+            ui->sortLastLaunchedBtn->setChecked(true);
+            break;
+        }
+    }
+    else if (ui->sortByNameBtn)
+    {
+        switch (sortMode)
+        {
+        case Sort_Name:
+        case Sort_LastLaunch:
+        default:
+            ui->sortByNameBtn->setChecked(true);
+            break;
+        }
+    }
+    else if (ui->sortingModeGroup)
+    {
+        switch (sortMode)
+        {
+        case Sort_LastLaunch:
+            ui->sortingModeGroup->button(1)->setChecked(true);
+            break;
+        case Sort_Name:
+        default:
+            ui->sortingModeGroup->button(0)->setChecked(true);
+            break;
+        }
     }
 
     if (original != s->get("IconTheme"))
@@ -309,17 +438,20 @@ void LauncherPage::loadSettings()
     int selectedIndex = -1;
     for (const DownloadSource &source : sources)
     {
-        ui->downloadcomboBox->addItem(source.getName());
-        if (source.getType() == download)
+        if (ui->downloadcomboBox)
         {
-            selectedIndex = i;
+            ui->downloadcomboBox->addItem(source.getName());
+            if (source.getType() == download)
+            {
+                selectedIndex = i;
+            }
         }
         i++;
     }
 
-    if (selectedIndex != -1)
+    if (selectedIndex != -1 && ui->downloadcomboBox)
     {
-        ui->downloadcomboBox->setCurrentIndex(selectedIndex); // 在循环结束后一次性设置
+        ui->downloadcomboBox->setCurrentIndex(selectedIndex);
     }
 
     auto thread = s->get("Threads").toString();
@@ -352,50 +484,87 @@ void LauncherPage::loadSettings()
         auto currentTheme = s->get("ApplicationTheme").toString();
         auto themes = APPLICATION->getValidApplicationThemes();
         int idx = 0;
-        for (auto &theme : themes)
+        if (ui->themeComboBoxColors)
         {
-            ui->themeComboBoxColors->addItem(theme->name(), theme->id());
-            if (currentTheme == theme->id())
+            ui->themeComboBoxColors->clear();
+            for (auto &theme : themes)
             {
-                ui->themeComboBoxColors->setCurrentIndex(idx);
+                ui->themeComboBoxColors->addItem(theme->name(), theme->id());
+                if (currentTheme == theme->id())
+                {
+                    ui->themeComboBoxColors->setCurrentIndex(idx);
+                }
+                idx++;
             }
-            idx++;
         }
     }
 
     // Console settings
-    ui->showConsoleCheck->setChecked(s->get("ShowConsole").toBool());
-    ui->autoCloseConsoleCheck->setChecked(s->get("AutoCloseConsole").toBool());
-    ui->showConsoleErrorCheck->setChecked(s->get("ShowConsoleOnError").toBool());
-    QString fontFamily = APPLICATION->settings()->get("ConsoleFont").toString();
-    QFont consoleFont(fontFamily);
-    ui->consoleFont->setCurrentFont(consoleFont);
-
-    bool conversionOk = true;
-    int fontSize = APPLICATION->settings()->get("ConsoleFontSize").toInt(&conversionOk);
-    if (!conversionOk)
+    if (ui->showConsoleCheck)
     {
-        fontSize = 11;
+        ui->showConsoleCheck->setChecked(s->get("ShowConsole").toBool());
     }
-    ui->fontSizeBox->setValue(fontSize);
+    if (ui->autoCloseConsoleCheck)
+    {
+        ui->autoCloseConsoleCheck->setChecked(s->get("AutoCloseConsole").toBool());
+    }
+    if (ui->showConsoleErrorCheck)
+    {
+        ui->showConsoleErrorCheck->setChecked(s->get("ShowConsoleOnError").toBool());
+    }
+    if (ui->consoleFont && ui->fontSizeBox)
+    {
+        QString fontFamily = APPLICATION->settings()->get("ConsoleFont").toString();
+        QFont consoleFont(fontFamily);
+        ui->consoleFont->setCurrentFont(consoleFont);
+
+        bool conversionOk = true;
+        int fontSize = APPLICATION->settings()->get("ConsoleFontSize").toInt(&conversionOk);
+        if (!conversionOk)
+        {
+            fontSize = 11;
+        }
+        ui->fontSizeBox->setValue(fontSize);
+    }
     refreshFontPreview();
-    ui->lineLimitSpinBox->setValue(s->get("ConsoleMaxLines").toInt());
-    ui->checkStopLogging->setChecked(s->get("ConsoleOverflowStop").toBool());
+    if (ui->lineLimitSpinBox)
+    {
+        ui->lineLimitSpinBox->setValue(s->get("ConsoleMaxLines").toInt());
+    }
+    if (ui->checkStopLogging)
+    {
+        ui->checkStopLogging->setChecked(s->get("ConsoleOverflowStop").toBool());
+    }
 
     // Folders
-    ui->instDirTextBox->setText(s->get("InstanceDir").toString());
-    ui->modsDirTextBox->setText(s->get("CentralModsDir").toString());
-    ui->iconsDirTextBox->setText(s->get("IconsDir").toString());
+    if (ui->instDirTextBox)
+    {
+        ui->instDirTextBox->setText(s->get("InstanceDir").toString());
+    }
+    if (ui->modsDirTextBox)
+    {
+        ui->modsDirTextBox->setText(s->get("CentralModsDir").toString());
+    }
+    if (ui->iconsDirTextBox)
+    {
+        ui->iconsDirTextBox->setText(s->get("IconsDir").toString());
+    }
 
     QString sortMode = s->get("InstSortMode").toString();
 
     if (sortMode == "LastLaunch")
     {
-        ui->sortLastLaunchedBtn->setChecked(true);
+        if (ui->sortLastLaunchedBtn)
+        {
+            ui->sortLastLaunchedBtn->setChecked(true);
+        }
     }
     else
     {
-        ui->sortByNameBtn->setChecked(true);
+        if (ui->sortByNameBtn)
+        {
+            ui->sortByNameBtn->setChecked(true);
+        }
     }
 }
 
