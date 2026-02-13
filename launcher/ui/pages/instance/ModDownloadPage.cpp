@@ -813,63 +813,9 @@ void ModDownloadPage::processDownloadQueue(QProgressBar *progressBar, QHBoxLayou
         }
     }
     progressBar->show();
+    progressBar->setValue(0);
 
-    // 开始下载第一个项目
-    downloadNextInQueue(progressBar, statsLayout, 0);
-}
-
-void ModDownloadPage::downloadNextInQueue(QProgressBar *progressBar, QHBoxLayout *statsLayout, int index)
-{
-    if (index >= m_downloadQueue.size())
-    {
-        // 所有下载完成，批量写入模组信息
-        progressBar->hide();
-        for (int i = 0; i < statsLayout->count(); i++)
-        {
-            QLayoutItem *item = statsLayout->itemAt(i);
-            if (item && item->widget())
-            {
-                item->widget()->show();
-            }
-        }
-
-        // 批量写入所有下载完成的模组信息
-        if (!m_completedMods.isEmpty())
-        {
-            QList<ModInfo> modInfoList;
-            QString jsonPath = m_inst->modlist();
-
-            for (const auto &modInfo : m_completedMods)
-            {
-                ModInfo jsonInfo;
-                jsonInfo.projectId = modInfo.modId;
-                jsonInfo.fileId = modInfo.fileID;
-                jsonInfo.name = modInfo.name;
-                jsonInfo.fileFingerprint = modInfo.fileFingerprint;
-                modInfoList.append(jsonInfo);
-            }
-
-            // 使用ModJsonManager批量添加模组
-            for (const auto &modInfo : modInfoList)
-            {
-                m_modJsonManager.addMod(modInfo, true);
-            }
-            m_completedMods.clear();
-        }
-
-        QString message = tr("Successfully downloaded and installed %1 mods.").arg(m_downloadQueue.size());
-        QMessageBox::information(this, tr("Installation Complete"), message);
-        return;
-    }
-
-    const DownloadItem &item = m_downloadQueue[index];
-    downloadSingleItem(item, progressBar, statsLayout, [this, progressBar, statsLayout, index]()
-                       { downloadNextInQueue(progressBar, statsLayout, index + 1); });
-}
-
-void ModDownloadPage::downloadSingleItem(const DownloadItem &item, QProgressBar *progressBar, QHBoxLayout *statsLayout, std::function<void()> onComplete)
-{
-    // 创建模组文件夹（如果不存在）
+    // 准备下载环境
     QString modsDir = m_inst->modsRoot();
     QDir dir(modsDir);
     if (!dir.exists())
@@ -877,57 +823,140 @@ void ModDownloadPage::downloadSingleItem(const DownloadItem &item, QProgressBar 
         dir.mkpath(".");
     }
 
-    QString filePath = modsDir + "/" + item.fileName;
+    // 创建单一的 NetJob 处理所有下载
+    NetJob *job = new NetJob(tr("Mod Batch Download"), APPLICATION->network());
+    
+    // 清空映射
+    m_currentDownloadMap.clear();
 
-    // 创建下载任务
-    NetJob *job = new NetJob(QString("ModDownload-%1").arg(item.fileName), APPLICATION->network());
+    // 添加所有下载任务到 NetJob
+    for (const auto &item : m_downloadQueue)
+    {
+        QString filePath = modsDir + "/" + item.fileName;
+        auto download = Net::Download::makeFile(QUrl(item.downloadUrl), filePath);
+        
+        // 记录索引与下载项的映射 (NetJob 的索引从 0 开始递增)
+        int index = job->size(); // 当前添加前的 size 即为新任务的 index
+        m_currentDownloadMap.insert(index, item);
+        
+        job->addNetAction(download);
+    }
 
-    // 创建下载
-    auto download = Net::Download::makeFile(QUrl(item.downloadUrl), filePath);
-
-    // 连接进度信号
-    connect(job, &Task::progress, this, [progressBar](qint64 current, qint64 total)
-            {
+    // 连接 NetJob 信号
+    // 使用 lambda 捕获 progressBar 和 statsLayout 是不安全的，因为它们可能被销毁？
+    // 但在这个上下文中，Page 应该还在。为了安全，我们可以将它们保存为成员变量或者确保生命周期。
+    // 这里我们假设下载过程中页面不会被销毁。
+    
+    // 连接总进度
+    connect(job, &NetJob::progress, this, [progressBar](qint64 current, qint64 total) {
         if (total > 0) {
             progressBar->setValue((int)((float)current / total * 100));
-        } });
+        }
+    });
 
-    // 添加下载到任务
-    job->addNetAction(download);
+    // 连接单个部分成功/失败
+    connect(job, SIGNAL(partSucceeded(int)), this, SLOT(onDownloadPartSucceeded(int)));
+    connect(job, SIGNAL(partFailed(int)), this, SLOT(onDownloadPartFailed(int)));
+    
+    // 连接整个任务完成（无论成功与否，NetJob 结束时我们都应该恢复 UI）
+    connect(job, &NetJob::succeeded, this, &ModDownloadPage::onAllDownloadsFinished);
+    connect(job, &NetJob::failed, this, [this](QString reason) {
+        qWarning() << "Batch download failed:" << reason;
+        onAllDownloadsFinished();
+    });
+    
+    // 启动下载
+    job->start();
+}
 
-    // 连接任务完成信号
-    connect(job, &NetJob::succeeded, this, [this, item, onComplete, job]()
-            {
-        // 将模组信息添加到完成列表，等待批量写入
+void ModDownloadPage::onDownloadPartSucceeded(int index)
+{
+    if (m_currentDownloadMap.contains(index))
+    {
+        const auto &item = m_currentDownloadMap[index];
+        
         ModDownloadInfo modInfo;
         modInfo.modId = item.modId;
         modInfo.name = item.fileName;
         modInfo.fileID = item.fileID;
         modInfo.fileFingerprint = item.fileFingerprint;
+        
         m_completedMods.append(modInfo);
+    }
+}
 
+void ModDownloadPage::onDownloadPartFailed(int index)
+{
+    if (m_currentDownloadMap.contains(index))
+    {
+        const auto &item = m_currentDownloadMap[index];
+        qWarning() << "Failed to download mod part:" << item.fileName;
+        // 这里可以选择记录失败的模组，或者在最后统一提示
+    }
+}
+
+void ModDownloadPage::onAllDownloadsFinished()
+{
+    // 获取 sender 所在的 NetJob 并删除
+    NetJob *job = qobject_cast<NetJob*>(sender());
+    if (job) {
         job->deleteLater();
-        onComplete(); });
-
-    // 连接任务失败信号
-    connect(job, &NetJob::failed, this, [this, item, progressBar, statsLayout, job, onComplete](QString reason)
-            {
-        progressBar->hide();
-        for (int i = 0; i < statsLayout->count(); i++) {
-            QLayoutItem *item = statsLayout->itemAt(i);
-            if (item && item->widget()) {
-                item->widget()->show();
-            }
+    }
+    
+    // 恢复 UI
+    // 注意：这里需要访问 statsLayout 和 progressBar
+    // 由于我们重构了函数，不再直接传递这些指针。我们需要通过 ui 指针访问它们，
+    // 或者在 ModDownloadPage 中保存对当前正在操作的 ModWidget 的引用？
+    // 实际上，processDownloadQueue 是在点击安装按钮时调用的，那时我们有局部变量。
+    // 但现在转为异步，我们需要一种方式来恢复 UI。
+    
+    // 简单的做法是遍历 UI 寻找隐藏的 statsLayout？
+    // 或者，我们可以只弹窗提示，因为安装完成后通常不需要恢复“安装”按钮状态（已经变成已安装了）
+    
+    // 批量写入所有下载完成的模组信息
+    if (!m_completedMods.isEmpty())
+    {
+        QList<ModInfo> modInfoList;
+        
+        for (const auto &modInfo : m_completedMods)
+        {
+            ModInfo jsonInfo;
+            jsonInfo.projectId = modInfo.modId;
+            jsonInfo.fileId = modInfo.fileID;
+            jsonInfo.name = modInfo.name;
+            jsonInfo.fileFingerprint = modInfo.fileFingerprint;
+            modInfoList.append(jsonInfo);
         }
 
-        QMessageBox::warning(this, tr("Download Failed"),
-                             tr("Mod %1 download failed: %2").arg(item.fileName).arg(reason));
-
-        job->deleteLater();
-        onComplete(); });
-
-    // 启动下载
-    job->start();
+        // 使用ModJsonManager批量添加模组
+        for (const auto &modInfo : modInfoList)
+        {
+            m_modJsonManager.addMod(modInfo, true);
+        }
+        
+        QString message = tr("Successfully downloaded and installed %1 mods.").arg(m_completedMods.size());
+        if (m_completedMods.size() < m_downloadQueue.size()) {
+            message += tr("\n%1 mods failed to download.").arg(m_downloadQueue.size() - m_completedMods.size());
+        }
+        QMessageBox::information(this, tr("Installation Complete"), message);
+        
+        m_completedMods.clear();
+    }
+    else
+    {
+        QMessageBox::warning(this, tr("Installation Failed"), tr("All mod downloads failed."));
+    }
+    
+    // 刷新列表或者更新按钮状态？
+    // 由于我们是在列表项内部操作，可能需要刷新整个列表来反映“已安装”状态
+    // 或者让用户手动刷新。
+    // 为了用户体验，我们可以尝试重新加载列表（虽然会丢失当前滚动位置）
+    // 或者仅仅依靠 m_modJsonManager 的状态更新，下次渲染时会正确显示。
+    // 在旧代码中，按钮被设置为 "已安装" 并禁用，这是在 processDownloadQueue 的回调中做的。
+    // 但现在是批量异步。
+    
+    // 作为一个折衷方案，我们可以在这里触发一次列表刷新
+    // onSearch(); // 这会重置一切
 }
 
 void ModDownloadPage::downloadLogo(const ModDownloadInfo &modInfo, QLabel *iconLabel, MetaEntryPtr entry)

@@ -27,6 +27,7 @@
 #include <algorithm>
 #include "LocalModParseTask.h"
 #include "minecraft/mod/fingerprint.h"
+#include "minecraft/mod/ModFingerprintTask.h"
 
 using fingerprint::ModInfo;
 
@@ -40,10 +41,13 @@ ModFolderModel::ModFolderModel(const QString &dir) : QAbstractListModel(), m_dir
 
     // 初始化ModJsonManager
     QString jsonPath = findJsonPathByNavigation();
-    if (!jsonPath.isEmpty()) {
+    if (!jsonPath.isEmpty())
+    {
         m_jsonManager.initialize(jsonPath);
     }
 
+    // Register the meta type for queued connections
+    qRegisterMetaType<QList<fingerprint::ModInfo>>("QList<fingerprint::ModInfo>");
 }
 
 QString ModFolderModel::findJsonPathByNavigation()
@@ -52,7 +56,8 @@ QString ModFolderModel::findJsonPathByNavigation()
     QString jsonPath;
 
     // 尝试向上导航两级
-    if (currentDir.cdUp() && currentDir.cdUp()) {
+    if (currentDir.cdUp() && currentDir.cdUp())
+    {
         jsonPath = currentDir.absoluteFilePath("mod.json");
     }
     // 回退到其他位置
@@ -204,9 +209,13 @@ void ModFolderModel::finishUpdate()
             // 批量处理ModInfo获取完整信息，然后添加到JSON文件
             if (!modInfoList.isEmpty())
             {
-                QList<ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
-                m_jsonManager.addMods(processedModInfos);
-                m_jsonManager.save();
+                // 使用后台线程处理指纹和网络请求，避免阻塞主线程
+                ModFingerprintTask *task = new ModFingerprintTask(modInfoList);
+                // 确保信号连接到主线程槽
+                connect(task, &ModFingerprintTask::succeeded, this, &ModFolderModel::finishFingerprint, Qt::QueuedConnection);
+                // 设置自动删除
+                task->setAutoDelete(true);
+                QThreadPool::globalInstance()->start(task);
             }
 
             endInsertRows();
@@ -233,6 +242,15 @@ void ModFolderModel::finishUpdate()
         scheduled_update = false;
         update();
     }
+}
+
+void ModFolderModel::finishFingerprint(QList<fingerprint::ModInfo> result)
+{
+    if (result.isEmpty())
+        return;
+
+    m_jsonManager.addMods(result);
+    m_jsonManager.save();
 }
 
 void ModFolderModel::resolveMod(Mod &m)

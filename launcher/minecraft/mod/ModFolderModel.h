@@ -125,6 +125,7 @@ public slots:
 private slots:
     void directoryChanged(QString path);
     void finishUpdate();
+    void finishFingerprint(QList<fingerprint::ModInfo> result);
     void finishModParse(int token);
 
 signals:

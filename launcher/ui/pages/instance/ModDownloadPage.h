@@ -115,12 +115,19 @@ private:
     // 新的下载队列机制
     QList<DownloadItem> m_downloadQueue;
     QList<ModDownloadInfo> m_completedMods; // 存储下载完成的模组信息，用于批量写入
+    
+    // 批量下载管理
+    QMap<int, DownloadItem> m_currentDownloadMap; // 映射 NetJob 索引到下载项
+    
     void fetchModDownloadInfo(int modId, std::function<void(const DownloadItem &)> callback);
     void buildDownloadQueue(int modId, std::function<void()> onComplete, bool isDependency = false);
     void processDownloadQueue(QProgressBar *progressBar, QHBoxLayout *statsLayout);
-    void downloadSingleItem(const DownloadItem &item, QProgressBar *progressBar, QHBoxLayout *statsLayout, std::function<void()> onComplete);
-    void downloadNextInQueue(QProgressBar *progressBar, QHBoxLayout *statsLayout, int index);
-    void fetchModName(int modId, std::function<void(const QString &)> callback);
+    
+    // NetJob 信号处理
+    void onDownloadPartSucceeded(int index);
+    void onDownloadPartFailed(int index);
+    void onDownloadProgress(qint64 current, qint64 total);
+    void onAllDownloadsFinished();
 
     // 跟踪已处理的依赖，避免重复下载
     static QSet<int> processedDependencies;
