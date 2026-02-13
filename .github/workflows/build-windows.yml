@@ -245,40 +245,34 @@ jobs:
 
   build-mac:
     name: build-mac
-    runs-on: macos-13
+    # 如果 macos-13 依然报 configuration not supported，请尝试改为 macos-14
+    runs-on: macos-14
 
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
 
-      - name: Cache Dependencies
-        uses: actions/cache@main
-        with:
-          path: /Users/runner/Library/Caches/Homebrew
-          key: ${{ runner.os }}-deps-cache
-
       - name: Install Dependencies
         run: |
-          brew cleanup
           brew install qt@5
+          # 这一步非常重要，确保 CMake 能找到 Qt 工具链
+          echo "$(brew --prefix qt@5)/bin" >> $GITHUB_PATH
 
       - name: Build
         run: |
           mkdir build
           cd build
-          cmake \
+          QT_PATH=$(brew --prefix qt@5)
+          cmake .. \
           -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-          -DCMAKE_C_COMPILER=/usr/bin/clang \
-          -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
           -DCMAKE_BUILD_TYPE=Release \
           -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json \
-          -DCMAKE_INSTALL_PREFIX:PATH=/Users/runner/work/MiniSkins/build/dist \
-          -DCMAKE_PREFIX_PATH="$(brew --prefix qt@5);$(brew --prefix qt@5)/lib/cmake/Qt5Core;$(brew --prefix qt@5)/lib/cmake/Qt5Widgets;$(brew --prefix qt@5)/lib/cmake/Qt5Concurrent;$(brew --prefix qt@5)/lib/cmake/Qt5Network;$(brew --prefix qt@5)/lib/cmake/Qt5Test;$(brew --prefix qt@5)/lib/cmake/Qt5Xml" \
-          -DQt5_DIR="$(brew --prefix qt@5)" \
+          -DCMAKE_INSTALL_PREFIX:PATH="${{ github.workspace }}/build/dist" \
+          -DCMAKE_PREFIX_PATH="$QT_PATH" \
+          -DQt5_DIR="$QT_PATH/lib/cmake/Qt5" \
           -DLauncher_BUILD_PLATFORM=osx64-5.15.2 \
-          -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
-          $GITHUB_WORKSPACE
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13
 
       - name: Compile
         run: |
@@ -290,16 +284,17 @@ jobs:
         run: |
           cd build
           make test
-          cmake -E remove_directory "/Users/runner/work/MiniSkins/build/dist"
+          cmake -E remove_directory "${{ github.workspace }}/build/dist"
 
       - name: Install
         run: |
           cd build
           make install
-          chmod +x /Users/runner/work/MiniSkins/build/dist/MiniSkins.app/Contents/MacOS/MiniSkins
+          # 动态匹配安装路径，增强兼容性
+          chmod +x "${{ github.workspace }}/build/dist/MiniSkins.app/Contents/MacOS/MiniSkins"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
           name: mmc-cracked-osx64
-          path: /Users/runner/work/MiniSkins/build/dist
+          path: ${{ github.workspace }}/build/dist
