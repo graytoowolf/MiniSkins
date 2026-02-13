@@ -59,9 +59,8 @@ ModDownloadPage::ModDownloadPage(MinecraftInstance *inst, QWidget *parent) : QMa
 
     // 获取游戏信息
     getGameInfoByIteration();
-
-    // 加载第一页数据
-    QTimer::singleShot(500, this, &ModDownloadPage::loadInitialMods);
+    m_lastGameVersion = m_gameVersion;
+    m_lastModLoader = m_modLoader;
 }
 
 ModDownloadPage::~ModDownloadPage()
@@ -150,24 +149,39 @@ void ModDownloadPage::getGameInfoByIteration()
         return;
     }
 
-    // 遍历所有组件
-    int componentCount = m_profile->rowCount();
-
-    for (int i = 0; i < componentCount; ++i)
+    if (m_profile->rowCount() == 0)
     {
-        Component *component = m_profile->getComponent(i);
-        if (!component)
-            continue;
+        m_profile->reload(Net::Mode::Offline);
+    }
 
-        QString componentId = component->getName();
-        QString componentVersion = component->getVersion();
-        if (componentId.contains("minecraft", Qt::CaseInsensitive))
+    m_gameVersion.clear();
+    m_modLoader.clear();
+
+    auto *mc = m_profile->getComponent("net.minecraft");
+    if (mc && mc->isEnabled())
+    {
+        m_gameVersion = mc->getVersion();
+    }
+
+    struct LoaderCandidate
+    {
+        const char *uid;
+    };
+
+    static const LoaderCandidate candidates[] = {
+        {"net.neoforged"},
+        {"net.minecraftforge"},
+        {"org.quiltmc.quilt-loader"},
+        {"net.fabricmc.fabric-loader"},
+    };
+
+    for (auto &c : candidates)
+    {
+        auto *comp = m_profile->getComponent(c.uid);
+        if (comp && comp->isEnabled())
         {
-            m_gameVersion = componentVersion;
-        }
-        else
-        {
-            m_modLoader = componentId;
+            m_modLoader = comp->getID();
+            break;
         }
     }
 }
@@ -193,24 +207,61 @@ int ModDownloadPage::getModLoaderTypeApiId()
 {
     if (!m_modLoader.isEmpty())
     {
-        if (m_modLoader.startsWith("forge", Qt::CaseInsensitive))
+        auto id = m_modLoader.toLower();
+
+        if (id == "net.minecraftforge" || id.startsWith("net.minecraftforge"))
         {
             return 1; // Forge
         }
-        else if (m_modLoader.startsWith("fabric", Qt::CaseInsensitive))
+        else if (id == "net.fabricmc.fabric-loader" || id.contains("fabric-loader"))
         {
             return 4; // Fabric
         }
-        else if (m_modLoader.startsWith("neoforge", Qt::CaseInsensitive))
+        else if (id == "net.neoforged" || id.startsWith("net.neoforged"))
         {
             return 6; // NeoForge
         }
-        else if (m_modLoader.startsWith("quilt", Qt::CaseInsensitive))
+        else if (id == "org.quiltmc.quilt-loader" || id.contains("quilt-loader"))
         {
             return 5; // Quilt
         }
     }
     return 0;
+}
+
+bool ModDownloadPage::shouldDisplay() const
+{
+    if (!m_profile)
+        return false;
+
+    if (m_profile->rowCount() == 0)
+        return false;
+
+    auto hasLoader = [&](const char *uid)
+    {
+        auto *comp = m_profile->getComponent(uid);
+        return comp && comp->isEnabled();
+    };
+
+    return hasLoader("net.neoforged") || hasLoader("net.minecraftforge") || hasLoader("org.quiltmc.quilt-loader") ||
+           hasLoader("net.fabricmc.fabric-loader");
+}
+
+void ModDownloadPage::openedImpl()
+{
+    if (!m_initialLoadTriggered)
+    {
+        m_initialLoadTriggered = true;
+        QTimer::singleShot(0, this, &ModDownloadPage::loadInitialMods);
+    }
+
+    getGameInfoByIteration();
+    if (m_gameVersion != m_lastGameVersion || m_modLoader != m_lastModLoader)
+    {
+        m_lastGameVersion = m_gameVersion;
+        m_lastModLoader = m_modLoader;
+        onSearch();
+    }
 }
 
 void ModDownloadPage::loadMoreMods()
@@ -825,7 +876,7 @@ void ModDownloadPage::processDownloadQueue(QProgressBar *progressBar, QHBoxLayou
 
     // 创建单一的 NetJob 处理所有下载
     NetJob *job = new NetJob(tr("Mod Batch Download"), APPLICATION->network());
-    
+
     // 清空映射
     m_currentDownloadMap.clear();
 
@@ -834,11 +885,14 @@ void ModDownloadPage::processDownloadQueue(QProgressBar *progressBar, QHBoxLayou
     {
         QString filePath = modsDir + "/" + item.fileName;
         auto download = Net::Download::makeFile(QUrl(item.downloadUrl), filePath);
-        
+
         // 记录索引与下载项的映射 (NetJob 的索引从 0 开始递增)
         int index = job->size(); // 当前添加前的 size 即为新任务的 index
         m_currentDownloadMap.insert(index, item);
-        
+
+        connect(download.get(), &NetAction::succeeded, this, &ModDownloadPage::onDownloadPartSucceeded);
+        connect(download.get(), &NetAction::failed, this, &ModDownloadPage::onDownloadPartFailed);
+
         job->addNetAction(download);
     }
 
@@ -846,25 +900,21 @@ void ModDownloadPage::processDownloadQueue(QProgressBar *progressBar, QHBoxLayou
     // 使用 lambda 捕获 progressBar 和 statsLayout 是不安全的，因为它们可能被销毁？
     // 但在这个上下文中，Page 应该还在。为了安全，我们可以将它们保存为成员变量或者确保生命周期。
     // 这里我们假设下载过程中页面不会被销毁。
-    
+
     // 连接总进度
-    connect(job, &NetJob::progress, this, [progressBar](qint64 current, qint64 total) {
+    connect(job, &NetJob::progress, this, [progressBar](qint64 current, qint64 total)
+            {
         if (total > 0) {
             progressBar->setValue((int)((float)current / total * 100));
-        }
-    });
+        } });
 
-    // 连接单个部分成功/失败
-    connect(job, SIGNAL(partSucceeded(int)), this, SLOT(onDownloadPartSucceeded(int)));
-    connect(job, SIGNAL(partFailed(int)), this, SLOT(onDownloadPartFailed(int)));
-    
     // 连接整个任务完成（无论成功与否，NetJob 结束时我们都应该恢复 UI）
     connect(job, &NetJob::succeeded, this, &ModDownloadPage::onAllDownloadsFinished);
-    connect(job, &NetJob::failed, this, [this](QString reason) {
+    connect(job, &NetJob::failed, this, [this](QString reason)
+            {
         qWarning() << "Batch download failed:" << reason;
-        onAllDownloadsFinished();
-    });
-    
+        onAllDownloadsFinished(); });
+
     // 启动下载
     job->start();
 }
@@ -874,13 +924,13 @@ void ModDownloadPage::onDownloadPartSucceeded(int index)
     if (m_currentDownloadMap.contains(index))
     {
         const auto &item = m_currentDownloadMap[index];
-        
+
         ModDownloadInfo modInfo;
         modInfo.modId = item.modId;
         modInfo.name = item.fileName;
         modInfo.fileID = item.fileID;
         modInfo.fileFingerprint = item.fileFingerprint;
-        
+
         m_completedMods.append(modInfo);
     }
 }
@@ -898,65 +948,59 @@ void ModDownloadPage::onDownloadPartFailed(int index)
 void ModDownloadPage::onAllDownloadsFinished()
 {
     // 获取 sender 所在的 NetJob 并删除
-    NetJob *job = qobject_cast<NetJob*>(sender());
-    if (job) {
+    NetJob *job = qobject_cast<NetJob *>(sender());
+    const QStringList failedFiles = job ? job->getFailedFiles() : QStringList();
+    QSet<QString> failedUrlSet;
+    for (const auto &s : failedFiles)
+    {
+        failedUrlSet.insert(s);
+    }
+    if (job)
+    {
         job->deleteLater();
     }
-    
+
     // 恢复 UI
     // 注意：这里需要访问 statsLayout 和 progressBar
     // 由于我们重构了函数，不再直接传递这些指针。我们需要通过 ui 指针访问它们，
     // 或者在 ModDownloadPage 中保存对当前正在操作的 ModWidget 的引用？
     // 实际上，processDownloadQueue 是在点击安装按钮时调用的，那时我们有局部变量。
     // 但现在转为异步，我们需要一种方式来恢复 UI。
-    
+
     // 简单的做法是遍历 UI 寻找隐藏的 statsLayout？
     // 或者，我们可以只弹窗提示，因为安装完成后通常不需要恢复“安装”按钮状态（已经变成已安装了）
-    
-    // 批量写入所有下载完成的模组信息
-    if (!m_completedMods.isEmpty())
-    {
-        QList<ModInfo> modInfoList;
-        
-        for (const auto &modInfo : m_completedMods)
-        {
-            ModInfo jsonInfo;
-            jsonInfo.projectId = modInfo.modId;
-            jsonInfo.fileId = modInfo.fileID;
-            jsonInfo.name = modInfo.name;
-            jsonInfo.fileFingerprint = modInfo.fileFingerprint;
-            modInfoList.append(jsonInfo);
-        }
 
-        // 使用ModJsonManager批量添加模组
-        for (const auto &modInfo : modInfoList)
+    int succeededCount = 0;
+    for (const auto &item : m_downloadQueue)
+    {
+        const auto urlKey = QUrl(item.downloadUrl).toString();
+        if (failedUrlSet.contains(urlKey))
+            continue;
+        succeededCount++;
+
+        ModInfo jsonInfo;
+        jsonInfo.projectId = item.modId;
+        jsonInfo.fileId = item.fileID;
+        jsonInfo.name = item.fileName;
+        jsonInfo.fileFingerprint = item.fileFingerprint;
+        m_modJsonManager.addMod(jsonInfo, true);
+    }
+
+    if (succeededCount > 0)
+    {
+        QString message = tr("Successfully downloaded and installed %1 mods.").arg(succeededCount);
+        if (succeededCount < m_downloadQueue.size())
         {
-            m_modJsonManager.addMod(modInfo, true);
-        }
-        
-        QString message = tr("Successfully downloaded and installed %1 mods.").arg(m_completedMods.size());
-        if (m_completedMods.size() < m_downloadQueue.size()) {
-            message += tr("\n%1 mods failed to download.").arg(m_downloadQueue.size() - m_completedMods.size());
+            message += tr("\n%1 mods failed to download.").arg(m_downloadQueue.size() - succeededCount);
         }
         QMessageBox::information(this, tr("Installation Complete"), message);
-        
-        m_completedMods.clear();
     }
     else
     {
         QMessageBox::warning(this, tr("Installation Failed"), tr("All mod downloads failed."));
     }
-    
-    // 刷新列表或者更新按钮状态？
-    // 由于我们是在列表项内部操作，可能需要刷新整个列表来反映“已安装”状态
-    // 或者让用户手动刷新。
-    // 为了用户体验，我们可以尝试重新加载列表（虽然会丢失当前滚动位置）
-    // 或者仅仅依靠 m_modJsonManager 的状态更新，下次渲染时会正确显示。
-    // 在旧代码中，按钮被设置为 "已安装" 并禁用，这是在 processDownloadQueue 的回调中做的。
-    // 但现在是批量异步。
-    
-    // 作为一个折衷方案，我们可以在这里触发一次列表刷新
-    // onSearch(); // 这会重置一切
+
+    m_completedMods.clear();
 }
 
 void ModDownloadPage::downloadLogo(const ModDownloadInfo &modInfo, QLabel *iconLabel, MetaEntryPtr entry)

@@ -70,6 +70,8 @@ public:
     {
         return "Mod-Downloads";
     }
+    bool shouldDisplay() const override;
+    void openedImpl() override;
 
 private slots:
     void onSearch();          // 搜索按钮点击事件
@@ -84,8 +86,11 @@ private:
     int m_currentPage;
     bool m_isLoading;
     bool m_hasMoreMods;
-    QString m_gameVersion;                      // 游戏版本
-    QString m_modLoader;                        // 模组加载器类型
+    bool m_initialLoadTriggered = false;
+    QString m_gameVersion; // 游戏版本
+    QString m_modLoader;   // 模组加载器类型
+    QString m_lastGameVersion;
+    QString m_lastModLoader;
     QNetworkAccessManager *m_network = nullptr; // 网络管理器
     ModJsonManager m_modJsonManager;            // ModJsonManager实例
 
@@ -115,14 +120,14 @@ private:
     // 新的下载队列机制
     QList<DownloadItem> m_downloadQueue;
     QList<ModDownloadInfo> m_completedMods; // 存储下载完成的模组信息，用于批量写入
-    
+
     // 批量下载管理
     QMap<int, DownloadItem> m_currentDownloadMap; // 映射 NetJob 索引到下载项
-    
+
     void fetchModDownloadInfo(int modId, std::function<void(const DownloadItem &)> callback);
     void buildDownloadQueue(int modId, std::function<void()> onComplete, bool isDependency = false);
     void processDownloadQueue(QProgressBar *progressBar, QHBoxLayout *statsLayout);
-    
+
     // NetJob 信号处理
     void onDownloadPartSucceeded(int index);
     void onDownloadPartFailed(int index);

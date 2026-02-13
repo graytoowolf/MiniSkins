@@ -47,6 +47,7 @@ public:
         return "Instance-Version";
     }
     virtual bool shouldDisplay() const override;
+    void closedImpl() override;
 
 private slots:
     void on_actionChange_version_triggered();

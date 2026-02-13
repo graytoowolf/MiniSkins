@@ -99,6 +99,14 @@ bool VersionPage::shouldDisplay() const
     return true;
 }
 
+void VersionPage::closedImpl()
+{
+    if (m_container)
+    {
+        m_container->refreshContainer();
+    }
+}
+
 QMenu *VersionPage::createPopupMenu()
 {
     QMenu *filteredMenu = QMainWindow::createPopupMenu();
