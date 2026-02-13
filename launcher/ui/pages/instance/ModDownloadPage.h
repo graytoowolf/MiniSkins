@@ -116,7 +116,7 @@ private:
     QList<DownloadItem> m_downloadQueue;
     QList<ModDownloadInfo> m_completedMods; // 存储下载完成的模组信息，用于批量写入
     void fetchModDownloadInfo(int modId, std::function<void(const DownloadItem &)> callback);
-    void buildDownloadQueue(int modId, std::function<void()> onComplete);
+    void buildDownloadQueue(int modId, std::function<void()> onComplete, bool isDependency = false);
     void processDownloadQueue(QProgressBar *progressBar, QHBoxLayout *statsLayout);
     void downloadSingleItem(const DownloadItem &item, QProgressBar *progressBar, QHBoxLayout *statsLayout, std::function<void()> onComplete);
     void downloadNextInQueue(QProgressBar *progressBar, QHBoxLayout *statsLayout, int index);

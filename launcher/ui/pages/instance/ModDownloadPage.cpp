@@ -259,8 +259,7 @@ void ModDownloadPage::loadMoreMods()
                          "pageSize=20&"
                          "searchFilter=%3&"
                          "sortField=%4&"
-                         "sortOrder=%5&"
-                         "categoryId=0")
+                         "sortOrder=%5&")
                          .arg(CURSEFORGE_API_V1_BASE)
                          .arg(m_currentPage * 20)
                          .arg(searchText)
@@ -744,7 +743,7 @@ void ModDownloadPage::fetchModDownloadInfo(int modId, std::function<void(const D
     netJob->start();
 }
 
-void ModDownloadPage::buildDownloadQueue(int modId, std::function<void()> onComplete)
+void ModDownloadPage::buildDownloadQueue(int modId, std::function<void()> onComplete, bool isDependency)
 {
     if (processedDependencies.contains(modId))
     {
@@ -754,7 +753,7 @@ void ModDownloadPage::buildDownloadQueue(int modId, std::function<void()> onComp
 
     processedDependencies.insert(modId);
 
-    fetchModDownloadInfo(modId, [this, onComplete](const DownloadItem &item)
+    fetchModDownloadInfo(modId, [this, onComplete, isDependency](const DownloadItem &item)
                          {
         if (item.downloadUrl.isEmpty()) {
             onComplete();
@@ -763,7 +762,20 @@ void ModDownloadPage::buildDownloadQueue(int modId, std::function<void()> onComp
 
         // 检查是否需要下载（未安装或需要更新）
         ModInstallStatus status = getModInstallStatus(item.modId, item.fileID);
-        if (status == ModDownloadPageUIFactory::MOD_NOT_INSTALLED || status == ModDownloadPageUIFactory::MOD_NEEDS_UPDATE) {
+
+        bool shouldDownload = false;
+        if (status == ModDownloadPageUIFactory::MOD_NOT_INSTALLED) {
+            shouldDownload = true;
+        } else if (status == ModDownloadPageUIFactory::MOD_NEEDS_UPDATE) {
+            // 如果是依赖项且已经安装了（哪怕是旧版本），则不再下载，避免覆盖或重复
+            if (!isDependency) {
+                shouldDownload = true;
+            } else {
+                qDebug() << "Skipping update for dependency mod:" << item.fileName;
+            }
+        }
+
+        if (shouldDownload) {
             m_downloadQueue.append(item);
         }
 
@@ -778,7 +790,7 @@ void ModDownloadPage::buildDownloadQueue(int modId, std::function<void()> onComp
                     if (*pendingDepsPtr == 0) {
                         onComplete();
                     }
-                });
+                }, true);
             }
         } });
 }
