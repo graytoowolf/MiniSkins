@@ -610,11 +610,11 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownload
     switch (modInfo.installStatus)
     {
     case ModDownloadPageUIFactory::MOD_INSTALLED:
-        installButton->setText(tr("已安装"));
+        installButton->setText(tr("Installed"));
         installButton->setEnabled(false);
         break;
     case ModDownloadPageUIFactory::MOD_NEEDS_UPDATE:
-        installButton->setText(tr("更新"));
+        installButton->setText(tr("Update"));
         installButton->setEnabled(true);
         break;
     case ModDownloadPageUIFactory::MOD_NOT_INSTALLED:
@@ -667,8 +667,8 @@ QWidget *ModDownloadPage::createModItemWidget(const ModDownloadPage::ModDownload
                 return;
             }
 
-            // 下载完成后设置按钮为已安装状态
-            installButton->setText(tr("已安装"));
+            // Download complete, set button to installed state
+            installButton->setText(tr("Installed"));
             installButton->setEnabled(false);
 
             // 开始处理下载队列
