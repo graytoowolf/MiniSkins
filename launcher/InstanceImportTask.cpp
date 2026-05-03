@@ -400,7 +400,7 @@ void InstanceImportTask::processCurseForge()
     {
         m_instName.truncate(index);
     }
-    instance.setmodpacks(m_addonId, m_fileId, "curseforge");
+    instance.setModpackInfo(m_addonId, m_fileId, "curseforge");
     instance.setName(QString("%1_v%2").arg(m_instName).arg(cleanVersion));
     m_modIdResolver = new CurseForge::FileResolvingTask(APPLICATION->network(), pack, m_stagingPath, m_updateContext);
     connect(m_modIdResolver.get(), &CurseForge::FileResolvingTask::succeeded, [&]()

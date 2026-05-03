@@ -39,6 +39,7 @@ class InstanceView;
 class KonamiCode;
 class InstanceTask;
 class NewInstanceDialog;
+class ProgressDialog;
 
 class MainWindow : public QMainWindow
 {
@@ -234,6 +235,7 @@ private:
     QString m_iconKey;
     QString m_name;
 
-    // managed by the application object
+    ProgressDialog *m_updateCheckDialog = nullptr;
+
     Task *m_versionLoadTask = nullptr;
 };

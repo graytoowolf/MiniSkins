@@ -1097,7 +1097,7 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
 
         QJsonObject modObj;
         modObj["projectID"] = modInfo.projectId;
-        modObj["fileID"] = 0;
+        modObj["fileID"] = modInfo.fileId;
         modObj["name"] = modInfo.name;
         modObj["fileName"] = QFileInfo(modInfo.filePath).fileName();
         modObj["required"] = true;

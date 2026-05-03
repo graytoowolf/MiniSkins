@@ -281,6 +281,8 @@ void ModDownloadPage::loadMoreMods()
 
     // 构建CurseForge API请求
     QString searchText = ui->searchEdit->text().trimmed();
+    //搜索文本需要二次编码
+    searchText = QString::fromUtf8(searchText.toUtf8().toPercentEncoding().toPercentEncoding());
     QString sortBy = ui->sortCombo->currentText();
 
     // 确定排序字段和顺序

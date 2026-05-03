@@ -847,6 +847,8 @@ SET(LAUNCHER_SOURCES
     ui/dialogs/CreateShortcutDialog.h
     ui/dialogs/ModrinthExportDialog.cpp
     ui/dialogs/ModrinthExportDialog.h
+    ui/dialogs/ModpackUpdateVersionSelectDialog.cpp
+    ui/dialogs/ModpackUpdateVersionSelectDialog.h
 
     # GUI - widgets
     ui/widgets/Common.cpp

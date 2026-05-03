@@ -194,8 +194,8 @@ void ListModel::searchWithTerm(const QString& term, int sort, SortOrder sortOrde
     if(currentSearchTerm == term && currentSearchTerm.isNull() == term.isNull() && currentSort == sort) {
         return;
     }
-    currentSearchTerm = term.toUtf8().toPercentEncoding();
-    currentSearchTerm = currentSearchTerm.toUtf8().toPercentEncoding();
+    //搜索文本需要二次编码
+    currentSearchTerm = QString::fromUtf8(term.toUtf8().toPercentEncoding().toPercentEncoding());
     currentSort = sort;
     currentSortOrder = sortOrder;
     if(jobPtr) {

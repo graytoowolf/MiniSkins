@@ -126,24 +126,24 @@ void BaseInstance::setManagedPack(const QString &type, const QString &id, const 
     settings()->set("ManagedPackVersionName", version);
 }
 
-void BaseInstance::setmodpacks(const QString &addonId, const QString &fileId, const QString &platform)
+void BaseInstance::setModpackInfo(const QString &addonId, const QString &fileId, const QString &platform)
 {
     settings()->set("modpacksaddonId", addonId);
     settings()->set("modpacksfileId", fileId);
     settings()->set("modpacksplatform", platform);
 }
 
-QString BaseInstance::getmodpacksplatform()
+QString BaseInstance::modpackPlatform()
 {
     return settings()->get("modpacksplatform").toString();
 }
 
-QString BaseInstance::getmodpacksaddonId()
+QString BaseInstance::modpackAddonId()
 {
     return settings()->get("modpacksaddonId").toString();
 }
 
-QString BaseInstance::getmodpacksfileId()
+QString BaseInstance::modpackFileId()
 {
     return settings()->get("modpacksfileId").toString();
 }

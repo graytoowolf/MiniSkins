@@ -40,6 +40,8 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
+#include "ui/dialogs/ModpackUpdateVersionSelectDialog.h"
+#include "ui/dialogs/ProgressDialog.h"
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidgetAction>
@@ -1487,11 +1489,11 @@ void MainWindow::on_CheckInstanceupdates_triggered()
         return;
     }
 
-    m_addonId = m_selectedInstance->getmodpacksaddonId();
-    m_fileId = m_selectedInstance->getmodpacksfileId();
+    m_addonId = m_selectedInstance->modpackAddonId();
+    m_fileId = m_selectedInstance->modpackFileId();
     m_id = m_selectedInstance->id();
     m_name = m_selectedInstance->name();
-    m_platform = m_selectedInstance->getmodpacksplatform();
+    m_platform = m_selectedInstance->modpackPlatform();
     m_iconKey = m_selectedInstance->iconKey();
 
     if (m_platform != "curseforge")
@@ -1504,6 +1506,16 @@ void MainWindow::on_CheckInstanceupdates_triggered()
         QMessageBox::information(this, tr("Update Check"), tr("Please manually re-download the modpacks."));
         return;
     }
+    m_updateCheckDialog = new ProgressDialog(this);
+    m_updateCheckDialog->setSkipButton(true, tr("Cancel"));
+    connect(m_updateCheckDialog, &ProgressDialog::rejected, this, [this]() {
+        if (m_netReply) {
+            m_netReply->abort();
+            m_netReply->deleteLater();
+            m_netReply = nullptr;
+        }
+    });
+    m_updateCheckDialog->show();
     QNetworkRequest request(QUrl(QString("https://api.curseforge.com/v1/mods/%1/files").arg(m_addonId)));
     request.setRawHeader("x-api-key", APPLICATION->curseAPIKey().toUtf8());
     m_netReply = APPLICATION->network()->get(request);
@@ -1511,6 +1523,10 @@ void MainWindow::on_CheckInstanceupdates_triggered()
 }
 void MainWindow::processReply()
 {
+    if (m_updateCheckDialog) {
+        m_updateCheckDialog->deleteLater();
+        m_updateCheckDialog = nullptr;
+    }
     if (m_netReply->error() != QNetworkReply::NoError)
     {
         QMessageBox::warning(this, tr("Network Error"),
@@ -1576,8 +1592,23 @@ void MainWindow::processReply()
         currentMcVersion = mcInstance->getPackProfile()->getComponentVersion("net.minecraft");
     }
 
+    QDateTime currentFileDate;
+    for (const QJsonValue &val : dataArray)
+    {
+        QJsonObject fileObj = val.toObject();
+        QString fileId = QString::number(fileObj.value("id").toInt());
+        if (fileId == m_fileId)
+        {
+            QString fileDateStr = fileObj.value("fileDate").toString();
+            if (!fileDateStr.isEmpty())
+            {
+                currentFileDate = QDateTime::fromString(fileDateStr, Qt::ISODate);
+            }
+            break;
+        }
+    }
+
     QList<QJsonObject> matchingFiles;
-    QList<QJsonObject> otherFiles;
     for (const QJsonValue &val : dataArray)
     {
         QJsonObject fileObj = val.toObject();
@@ -1585,6 +1616,19 @@ void MainWindow::processReply()
         if (fileId == m_fileId)
         {
             continue;
+        }
+
+        if (currentFileDate.isValid())
+        {
+            QString fileDateStr = fileObj.value("fileDate").toString();
+            if (!fileDateStr.isEmpty())
+            {
+                QDateTime fileDate = QDateTime::fromString(fileDateStr, Qt::ISODate);
+                if (fileDate.isValid() && fileDate <= currentFileDate)
+                {
+                    continue;
+                }
+            }
         }
 
         QJsonArray gameVersions = fileObj.value("sortableGameVersions").toArray();
@@ -1611,10 +1655,6 @@ void MainWindow::processReply()
         {
             matchingFiles.append(fileObj);
         }
-        else
-        {
-            otherFiles.append(fileObj);
-        }
     }
 
     if (matchingFiles.isEmpty())
@@ -1625,45 +1665,23 @@ void MainWindow::processReply()
         return;
     }
 
-    QJsonObject selectedFile;
-    if (matchingFiles.size() == 1)
+    QMessageBox::StandardButton reply = QMessageBox::question(this, tr("Update Available"),
+                                                              tr("A new update is available for this modpack. Would you like to update now?"),
+                                                              QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes)
     {
-        selectedFile = matchingFiles.first();
+        return;
     }
-    else
+
+    ModpackUpdateVersionSelectDialog dialog(matchingFiles, m_addonId, this);
+    if (dialog.exec() != QDialog::Accepted)
     {
-        QStringList items;
-        for (const QJsonObject &fileObj : matchingFiles)
-        {
-            QString displayName = fileObj.value("displayName").toString();
-            QJsonArray gameVersions = fileObj.value("sortableGameVersions").toArray();
-            QStringList versions;
-            for (const QJsonValue &gv : gameVersions)
-            {
-                versions.append(gv.toObject().value("gameVersion").toString());
-            }
-            QString releaseType = fileObj.value("releaseType").toInt() == 1 ? "Release" : 
-                                  fileObj.value("releaseType").toInt() == 2 ? "Beta" : "Alpha";
-            QString item = QString("%1 [%2] - %3").arg(displayName, versions.join(", "), releaseType);
-            items.append(item);
-        }
-        bool ok;
-        QString selectedItem = QInputDialog::getItem(this, tr("Select Version"),
-                                                     tr("Multiple compatible versions found. Please select a version:"),
-                                                     items, 0, false, &ok);
-        if (!ok || selectedItem.isEmpty())
-        {
-            return;
-        }
-        int index = items.indexOf(selectedItem);
-        if (index >= 0 && index < matchingFiles.size())
-        {
-            selectedFile = matchingFiles[index];
-        }
-        else
-        {
-            return;
-        }
+        return;
+    }
+    QJsonObject selectedFile = dialog.selectedFile();
+    if (selectedFile.isEmpty())
+    {
+        return;
     }
 
     QString fileId = QString::number(selectedFile.value("id").toInt());
@@ -1679,26 +1697,20 @@ void MainWindow::processReply()
         return;
     }
 
-    QMessageBox::StandardButton reply = QMessageBox::question(this, tr("Update Available"),
-                                                              tr("A new update is available. The latest version is: %1. Would you like to update now?").arg(displayName),
-                                                              QMessageBox::Yes | QMessageBox::No);
-    if (reply == QMessageBox::Yes)
-    {
-        qDebug() << "User chose to update.";
-        ModpackUpdateContext updateContext;
-        updateContext.addonId = m_addonId;
-        updateContext.fileId = m_fileId;
-        updateContext.instanceId = m_id;
-        updateContext.platform = m_platform;
-        updateContext.downloadUrl = downloadUrl;
+    qDebug() << "User chose to update.";
+    ModpackUpdateContext updateContext;
+    updateContext.addonId = m_addonId;
+    updateContext.fileId = fileId;
+    updateContext.instanceId = m_id;
+    updateContext.platform = m_platform;
+    updateContext.downloadUrl = downloadUrl;
 
-        APPLICATION->setUpdating(true);
-        APPLICATION->setUpdateTargetInstanceId(m_id);
-        auto importTask = new InstanceImportTask(downloadUrl, updateContext);
-        importTask->setName(m_name);
-        importTask->setIcon(m_iconKey);
-        instanceFromInstanceTask(importTask);
-    }
+    APPLICATION->setUpdating(true);
+    APPLICATION->setUpdateTargetInstanceId(m_id);
+    auto importTask = new InstanceImportTask(downloadUrl, updateContext);
+    importTask->setName(m_name);
+    importTask->setIcon(m_iconKey);
+    instanceFromInstanceTask(importTask);
 }
 
 void MainWindow::finalizeInstance(InstancePtr inst)

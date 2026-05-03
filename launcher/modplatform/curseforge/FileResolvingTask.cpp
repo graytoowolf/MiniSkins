@@ -137,8 +137,6 @@ void CurseForge::FileResolvingTask::prepareDownloads()
     if (m_updateContext.isValid())
     {
         QString m_modpacksfile = FS::PathCombine(m_instDir, m_updateContext.instanceId);
-        QString m_mod = FS::PathCombine(m_modpacksfile, "mod.json");
-        result = compareManifests(m_mod);
 
         m_basePath = "minecraft";
         QString minecraftPath = FS::PathCombine(m_modpacksfile, m_basePath);
@@ -146,6 +144,9 @@ void CurseForge::FileResolvingTask::prepareDownloads()
         {
             m_basePath = ".minecraft";
         }
+
+        QString m_mod = FS::PathCombine(m_modpacksfile, "mod.json");
+        result = compareManifests(m_mod);
 
         if (!result.filesToDelete.isEmpty())
         {
