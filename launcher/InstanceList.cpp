@@ -370,7 +370,7 @@ InstanceList::InstListError InstanceList::loadList()
         bool isadded = false;
         if (existingIds.contains(id))
         {
-            if (APPLICATION->isUpdating() && id == APPLICATION->getID())
+            if (APPLICATION->isUpdating() && id == APPLICATION->getUpdateTargetInstanceId())
             {
                 isadded = true;
             }
@@ -896,7 +896,7 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
     {
         if (APPLICATION->isUpdating())
         {
-            instID = APPLICATION->getID();
+            instID = APPLICATION->getUpdateTargetInstanceId();
             // 复制文件的通用函数
             auto copyFileWithReplace = [](const QString &source, const QString &target) -> bool
             {
@@ -958,6 +958,13 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
 
             // 清理源目录
             FS::deletePath(path);
+
+            // 清理备份目录
+            QString backupDir = FS::PathCombine(m_instDir, instID, ".update_backup");
+            if (QDir(backupDir).exists())
+            {
+                FS::deletePath(backupDir);
+            }
         }
         else
         {
@@ -1027,7 +1034,7 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
         }
     }
 
-    APPLICATION->setData("", "", "", "", "");
+    APPLICATION->setUpdateTargetInstanceId("");
     APPLICATION->setUpdating(false);
     saveGroupList();
     return true;

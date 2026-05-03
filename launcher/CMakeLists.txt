@@ -16,6 +16,7 @@ set(CORE_SOURCES
     InstanceList.cpp
     InstanceTask.h
     InstanceTask.cpp
+    ModpackUpdateContext.h
     LoggedProcess.h
     LoggedProcess.cpp
     MessageLevel.cpp

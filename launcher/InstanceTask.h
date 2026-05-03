@@ -2,6 +2,7 @@
 
 #include "tasks/Task.h"
 #include "settings/SettingsObject.h"
+#include "ModpackUpdateContext.h"
 
 class InstanceTask : public Task
 {
@@ -43,10 +44,24 @@ public:
         return m_instGroup;
     }
 
+    void setUpdateContext(const ModpackUpdateContext &context)
+    {
+        m_updateContext = context;
+    }
+    ModpackUpdateContext updateContext() const
+    {
+        return m_updateContext;
+    }
+    bool isUpdate() const
+    {
+        return m_updateContext.isValid();
+    }
+
 protected: /* data */
     SettingsObjectPtr m_globalSettings;
     QString m_instName;
     QString m_instIcon;
     QString m_instGroup;
     QString m_stagingPath;
+    ModpackUpdateContext m_updateContext;
 };

@@ -15,6 +15,7 @@
 #include "DownloadSource.h"
 #include "net/NetJob.h"
 #include <BaseInstance.h>
+#include "ModpackUpdateContext.h"
 
 #include "minecraft/launch/QuickPlayTarget.h"
 
@@ -82,14 +83,9 @@ public:
 
     void setApplicationTheme(const QString &name, bool initial);
 
-    void setData(const QString &addonId, const QString &fileId, const QString &ID, const QString &splatform, const QString &downloadUrl);
-
     void setUpdating(bool updating);
-
-    QString getAddonId() const;
-    QString getFileId() const;
-    QString getID() const;
-    QString getSplatform() const;
+    void setUpdateTargetInstanceId(const QString &instanceId);
+    QString getUpdateTargetInstanceId() const;
     bool isUpdating() const;
 
     shared_qobject_ptr<UpdateChecker> updateChecker()
@@ -312,11 +308,7 @@ public:
     QString m_serverToJoin;
     QString m_worldToJoin;
     QString m_profileToUse;
-    QString addonId;
-    QString fileId;
-    QString ID;
-    QString splatform;
-    QString downloadUrl;
+    QString m_updateTargetInstanceId;
     bool updating = false;
     bool m_offline = false;
     QString m_offlineName;

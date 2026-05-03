@@ -1812,24 +1812,9 @@ bool Application::getconfigfile()
     return file.isFile();
 }
 
-QString Application::getAddonId() const
+QString Application::getUpdateTargetInstanceId() const
 {
-    return addonId;
-}
-
-QString Application::getFileId() const
-{
-    return fileId;
-}
-
-QString Application::getID() const
-{
-    return ID;
-}
-
-QString Application::getSplatform() const
-{
-    return splatform;
+    return m_updateTargetInstanceId;
 }
 
 bool Application::isUpdating() const
@@ -1837,18 +1822,14 @@ bool Application::isUpdating() const
     return updating;
 }
 
-void Application::setData(const QString &addonId, const QString &fileId,
-                          const QString &ID, const QString &splatform, const QString &downloadUrl)
-{
-    this->addonId = addonId;
-    this->fileId = fileId;
-    this->ID = ID;
-    this->splatform = splatform;
-}
-
 void Application::setUpdating(bool updating)
 {
     this->updating = updating;
+}
+
+void Application::setUpdateTargetInstanceId(const QString &instanceId)
+{
+    m_updateTargetInstanceId = instanceId;
 }
 
 void Application::loadModList()

@@ -8,8 +8,8 @@ namespace
 const char *metabase = "https://api.curseforge.com/v1/mods";
 }
 
-CurseForge::FileResolvingTask::FileResolvingTask(shared_qobject_ptr<QNetworkAccessManager> network, CurseForge::Manifest &toProcess, const QString &path)
-    : m_network(network), m_toProcess(toProcess), m_path(path)
+CurseForge::FileResolvingTask::FileResolvingTask(shared_qobject_ptr<QNetworkAccessManager> network, CurseForge::Manifest &toProcess, const QString &path, const ModpackUpdateContext &updateContext)
+    : m_network(network), m_toProcess(toProcess), m_path(path), m_updateContext(updateContext)
 {
 }
 
@@ -57,39 +57,40 @@ void CurseForge::FileResolvingTask::modInfoFinished(QNetworkReply *reply)
 
 void CurseForge::FileResolvingTask::downloadFinished(QNetworkReply *reply)
 {
-    bool failed = false;
     QByteArray response = reply->readAll();
     reply->deleteLater();
     auto rootObj = QJsonDocument::fromJson(response).object();
     auto dataArray = rootObj.value("data").toArray();
 
-    for (const auto &dataValue : dataArray)
+    try
     {
-        auto modObj = dataValue.toObject();
-        int m_id = Json::requireInteger(modObj, "id");
-        for (auto &m_file : m_toProcess.files)
+        for (const auto &dataValue : dataArray)
         {
-            if (m_file.fileId == m_id)
+            auto modObj = dataValue.toObject();
+            int m_id = Json::requireInteger(modObj, "id");
+            for (auto &m_file : m_toProcess.files)
             {
-                m_file.fileName = Json::requireString(modObj, "fileName");
-                QString rawUrl = Json::requireString(modObj, "downloadUrl");
-                m_file.url = QUrl(rawUrl, QUrl::TolerantMode);
-                if (!m_file.url.isValid())
+                if (m_file.fileId == m_id)
                 {
-                    throw JSONValidationError(QString("Invalid URL: %1").arg(rawUrl));
+                    m_file.fileName = Json::requireString(modObj, "fileName");
+                    QString rawUrl = Json::requireString(modObj, "downloadUrl");
+                    m_file.url = QUrl(rawUrl, QUrl::TolerantMode);
+                    if (!m_file.url.isValid())
+                    {
+                        logWarning(tr("Invalid URL for mod %1: %2").arg(m_file.fileName, rawUrl));
+                        continue;
+                    }
                 }
             }
         }
     }
+    catch (const JSONValidationError &e)
+    {
+        emitFailed(tr("Failed to parse mod file data: %1").arg(e.cause()));
+        return;
+    }
 
-    if (!failed)
-    {
-        emitSucceeded();
-    }
-    else
-    {
-        emitFailed(tr("Some mod ID resolving tasks failed."));
-    }
+    emitSucceeded();
 }
 
 void CurseForge::FileResolvingTask::processModData(const QJsonArray &dataArray)
@@ -130,28 +131,40 @@ void CurseForge::FileResolvingTask::prepareDownloads()
     results.resize(m_toProcess.files.size());
     QString InstanceDir = APPLICATION->settings()->get("InstanceDir").toString();
     QString m_instDir = QDir(InstanceDir).canonicalPath();
-    QString m_modpacksid = APPLICATION->getID();
-    QString m_modpacksfile = FS::PathCombine(m_instDir, m_modpacksid);
 
     CurseForge::ComparisonResult result;
 
-    // 只有在更新模式下才执行MOD对比相关操作
-    if (APPLICATION->isUpdating())
+    if (m_updateContext.isValid())
     {
+        QString m_modpacksfile = FS::PathCombine(m_instDir, m_updateContext.instanceId);
         QString m_mod = FS::PathCombine(m_modpacksfile, "mod.json");
         result = compareManifests(m_mod);
 
-        QString basePath = "minecraft";
-        QString minecraftPath = FS::PathCombine(m_modpacksfile, basePath);
+        m_basePath = "minecraft";
+        QString minecraftPath = FS::PathCombine(m_modpacksfile, m_basePath);
         if (!QDir(minecraftPath).exists())
         {
-            basePath = ".minecraft";
+            m_basePath = ".minecraft";
         }
 
-        for (const QString &fileName : result.filesToDelete)
+        if (!result.filesToDelete.isEmpty())
         {
-            QString m_name = FS::PathCombine(m_modpacksfile, basePath, "mods", fileName);
-            QFile::remove(m_name);
+            m_backupDir = FS::PathCombine(m_modpacksfile, ".update_backup");
+            QDir().mkpath(m_backupDir);
+
+            QStringList filesToBackup;
+            for (const QString &fileName : result.filesToDelete)
+            {
+                QString srcPath = FS::PathCombine(m_modpacksfile, m_basePath, "mods", fileName);
+                filesToBackup.append(srcPath);
+            }
+
+            if (!backupFiles(filesToBackup, m_backupDir))
+            {
+                qWarning() << "Failed to backup files, aborting update to prevent data loss";
+                emitFailed(tr("Failed to backup old mod files. Update aborted to prevent data loss."));
+                return;
+            }
         }
     }
     else
@@ -305,4 +318,84 @@ CurseForge::ComparisonResult CurseForge::FileResolvingTask::compareManifests(con
     }
 
     return result;
+}
+
+bool CurseForge::FileResolvingTask::backupFiles(const QStringList &filePaths, const QString &backupDir)
+{
+    for (const QString &filePath : filePaths)
+    {
+        if (!QFile::exists(filePath))
+        {
+            continue;
+        }
+        QFileInfo fileInfo(filePath);
+        QString backupPath = FS::PathCombine(backupDir, fileInfo.fileName());
+        if (!QFile::rename(filePath, backupPath))
+        {
+            qWarning() << "Failed to backup file:" << filePath << "to" << backupPath;
+            rollbackFiles(backupDir, fileInfo.absolutePath());
+            return false;
+        }
+    }
+    return true;
+}
+
+void CurseForge::FileResolvingTask::rollbackFiles(const QString &backupDir, const QString &targetBasePath)
+{
+    QDir backupDirectory(backupDir);
+    if (!backupDirectory.exists())
+    {
+        return;
+    }
+    QStringList backupFiles = backupDirectory.entryList(QDir::Files | QDir::NoDotAndDotDot);
+    for (const QString &fileName : backupFiles)
+    {
+        QString backupPath = FS::PathCombine(backupDir, fileName);
+        QString targetPath = FS::PathCombine(targetBasePath, fileName);
+        if (QFile::exists(targetPath))
+        {
+            QFile::remove(targetPath);
+        }
+        if (!QFile::rename(backupPath, targetPath))
+        {
+            qWarning() << "Failed to restore file:" << backupPath << "to" << targetPath;
+        }
+    }
+    QDir().rmdir(backupDir);
+}
+
+void CurseForge::FileResolvingTask::performRollback()
+{
+    if (!m_backupDir.isEmpty() && QDir(m_backupDir).exists())
+    {
+        QString InstanceDir = APPLICATION->settings()->get("InstanceDir").toString();
+        QString instDir = QDir(InstanceDir).canonicalPath();
+        QString modpacksfile = FS::PathCombine(instDir, m_updateContext.instanceId);
+        QString modsPath = FS::PathCombine(modpacksfile, m_basePath, "mods");
+        rollbackFiles(m_backupDir, modsPath);
+    }
+}
+
+void CurseForge::FileResolvingTask::performCleanup()
+{
+    if (!m_backupDir.isEmpty())
+    {
+        cleanupBackup(m_backupDir);
+    }
+}
+
+void CurseForge::FileResolvingTask::cleanupBackup(const QString &backupDir)
+{
+    QDir backupDirectory(backupDir);
+    if (!backupDirectory.exists())
+    {
+        return;
+    }
+    QStringList backupFiles = backupDirectory.entryList(QDir::Files | QDir::NoDotAndDotDot);
+    for (const QString &fileName : backupFiles)
+    {
+        QString backupPath = FS::PathCombine(backupDir, fileName);
+        QFile::remove(backupPath);
+    }
+    QDir().rmdir(backupDir);
 }

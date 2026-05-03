@@ -54,6 +54,8 @@
 #include <java/JavaInstallList.h>
 #include <launch/LaunchTask.h>
 #include <minecraft/auth/AccountList.h>
+#include <minecraft/MinecraftInstance.h>
+#include <minecraft/PackProfile.h>
 #include <SkinUtils.h>
 #include <BuildConfig.h>
 #include <net/NetJob.h>
@@ -1479,6 +1481,12 @@ void MainWindow::on_CheckInstanceupdates_triggered()
     if (!m_selectedInstance)
         return;
 
+    if (m_netReply)
+    {
+        QMessageBox::information(this, tr("Update Check"), tr("An update check is already in progress."));
+        return;
+    }
+
     m_addonId = m_selectedInstance->getmodpacksaddonId();
     m_fileId = m_selectedInstance->getmodpacksfileId();
     m_id = m_selectedInstance->id();
@@ -1486,7 +1494,7 @@ void MainWindow::on_CheckInstanceupdates_triggered()
     m_platform = m_selectedInstance->getmodpacksplatform();
     m_iconKey = m_selectedInstance->iconKey();
 
-    if (!m_iconKey.startsWith("curseforge"))
+    if (m_platform != "curseforge")
     {
         QMessageBox::information(this, tr("Update Check"), tr("Automatic updates are currently only supported for the CurseForge platform."));
         return;
@@ -1496,7 +1504,6 @@ void MainWindow::on_CheckInstanceupdates_triggered()
         QMessageBox::information(this, tr("Update Check"), tr("Please manually re-download the modpacks."));
         return;
     }
-    auto modpacksupdater = APPLICATION->network();
     QNetworkRequest request(QUrl(QString("https://api.curseforge.com/v1/mods/%1/files").arg(m_addonId)));
     request.setRawHeader("x-api-key", APPLICATION->curseAPIKey().toUtf8());
     m_netReply = APPLICATION->network()->get(request);
@@ -1504,59 +1511,193 @@ void MainWindow::on_CheckInstanceupdates_triggered()
 }
 void MainWindow::processReply()
 {
+    if (m_netReply->error() != QNetworkReply::NoError)
+    {
+        QMessageBox::warning(this, tr("Network Error"),
+                             tr("Failed to check for updates: %1").arg(m_netReply->errorString()));
+        m_netReply->deleteLater();
+        m_netReply = nullptr;
+        return;
+    }
+
+    int statusCode = m_netReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (statusCode != 200)
+    {
+        QString errorMsg;
+        if (statusCode == 401 || statusCode == 403)
+        {
+            errorMsg = tr("API key is invalid or expired. Please check your CurseForge API key configuration.");
+        }
+        else if (statusCode == 404)
+        {
+            errorMsg = tr("The modpack was not found on CurseForge. It may have been removed.");
+        }
+        else if (statusCode >= 500)
+        {
+            errorMsg = tr("CurseForge server error (HTTP %1). Please try again later.").arg(statusCode);
+        }
+        else
+        {
+            errorMsg = tr("Unexpected HTTP response: %1").arg(statusCode);
+        }
+        QMessageBox::warning(this, tr("Update Check Failed"), errorMsg);
+        m_netReply->deleteLater();
+        m_netReply = nullptr;
+        return;
+    }
+
     QJsonParseError jsonError;
     QByteArray replyData = m_netReply->readAll();
+    m_netReply->deleteLater();
+    m_netReply = nullptr;
     QJsonDocument doc = QJsonDocument::fromJson(replyData, &jsonError);
 
     if (jsonError.error != QJsonParseError::NoError)
     {
-        qDebug() << "JSON Parse Error:" << jsonError.errorString();
+        QMessageBox::warning(this, tr("Parse Error"),
+                             tr("Failed to parse update information: %1").arg(jsonError.errorString()));
         return;
     }
 
     QJsonObject rootObject = doc.object();
     QJsonArray dataArray = rootObject.value("data").toArray();
 
-    // 检查dataArray是否至少有一个元素
     if (dataArray.isEmpty())
     {
-        qDebug() << "Data array is empty.";
+        QMessageBox::information(this, tr("No Update"),
+                                 tr("No update information available for this modpack."));
         return;
     }
 
-    // 获取第一个对象
-    QJsonObject firstObject = dataArray.first().toObject();
-    QString fileId = QString::number(firstObject.value("id").toInt());
-    QString downloadUrl = firstObject.value("downloadUrl").toString();
-    QString displayName = firstObject.value("displayName").toString();
-
-    // 与当前的fileId比较
-    if (fileId != m_fileId)
+    QString currentMcVersion;
+    auto mcInstance = std::dynamic_pointer_cast<MinecraftInstance>(m_selectedInstance);
+    if (mcInstance)
     {
-        // ID不一样，提示更新
-        QMessageBox::StandardButton reply = QMessageBox::question(this, tr("Update Available"),
-                                                                  tr("A new update is available. The latest version is: %1. Would you like to update now?").arg(displayName),
-                                                                  QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::Yes)
+        currentMcVersion = mcInstance->getPackProfile()->getComponentVersion("net.minecraft");
+    }
+
+    QList<QJsonObject> matchingFiles;
+    QList<QJsonObject> otherFiles;
+    for (const QJsonValue &val : dataArray)
+    {
+        QJsonObject fileObj = val.toObject();
+        QString fileId = QString::number(fileObj.value("id").toInt());
+        if (fileId == m_fileId)
         {
-            // 用户选择更新，执行更新操作
-            qDebug() << "User chose to update.";
-            // ... 执行更新逻辑 ...
-            APPLICATION->setUpdating(true);
-            APPLICATION->setData(m_addonId, m_fileId, m_id, m_platform, downloadUrl);
-            // 创建任务实例
-            auto importTask = new InstanceImportTask(downloadUrl, m_addonId, fileId);
-            importTask->setName(m_name);
-            importTask->setIcon(m_iconKey);
-            instanceFromInstanceTask(importTask);
+            continue;
         }
+
+        QJsonArray gameVersions = fileObj.value("sortableGameVersions").toArray();
+        bool matches = false;
+        if (!currentMcVersion.isEmpty())
+        {
+            for (const QJsonValue &gv : gameVersions)
+            {
+                QJsonObject gvObj = gv.toObject();
+                QString gameVersion = gvObj.value("gameVersion").toString();
+                if (gameVersion == currentMcVersion)
+                {
+                    matches = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            matches = true;
+        }
+
+        if (matches)
+        {
+            matchingFiles.append(fileObj);
+        }
+        else
+        {
+            otherFiles.append(fileObj);
+        }
+    }
+
+    if (matchingFiles.isEmpty())
+    {
+        QMessageBox::information(this, tr("No Update"),
+                                 tr("Your modpack is up to date for Minecraft %1. No compatible updates found.")
+                                     .arg(currentMcVersion));
+        return;
+    }
+
+    QJsonObject selectedFile;
+    if (matchingFiles.size() == 1)
+    {
+        selectedFile = matchingFiles.first();
     }
     else
     {
-        // ID一样，无更新
-        QMessageBox::information(this, tr("No Update"),
-                                 tr("Your modpack is up to date. No updates necessary."),
-                                 QMessageBox::Ok);
+        QStringList items;
+        for (const QJsonObject &fileObj : matchingFiles)
+        {
+            QString displayName = fileObj.value("displayName").toString();
+            QJsonArray gameVersions = fileObj.value("sortableGameVersions").toArray();
+            QStringList versions;
+            for (const QJsonValue &gv : gameVersions)
+            {
+                versions.append(gv.toObject().value("gameVersion").toString());
+            }
+            QString releaseType = fileObj.value("releaseType").toInt() == 1 ? "Release" : 
+                                  fileObj.value("releaseType").toInt() == 2 ? "Beta" : "Alpha";
+            QString item = QString("%1 [%2] - %3").arg(displayName, versions.join(", "), releaseType);
+            items.append(item);
+        }
+        bool ok;
+        QString selectedItem = QInputDialog::getItem(this, tr("Select Version"),
+                                                     tr("Multiple compatible versions found. Please select a version:"),
+                                                     items, 0, false, &ok);
+        if (!ok || selectedItem.isEmpty())
+        {
+            return;
+        }
+        int index = items.indexOf(selectedItem);
+        if (index >= 0 && index < matchingFiles.size())
+        {
+            selectedFile = matchingFiles[index];
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    QString fileId = QString::number(selectedFile.value("id").toInt());
+    QString downloadUrl = selectedFile.value("downloadUrl").toString();
+    QString displayName = selectedFile.value("displayName").toString();
+
+    if (downloadUrl.isEmpty())
+    {
+        QMessageBox::warning(this, tr("Update Not Available"),
+                             tr("A new version (%1) is available, but this modpack does not support "
+                                "automatic updates. Please download the update manually from CurseForge.")
+                                 .arg(displayName));
+        return;
+    }
+
+    QMessageBox::StandardButton reply = QMessageBox::question(this, tr("Update Available"),
+                                                              tr("A new update is available. The latest version is: %1. Would you like to update now?").arg(displayName),
+                                                              QMessageBox::Yes | QMessageBox::No);
+    if (reply == QMessageBox::Yes)
+    {
+        qDebug() << "User chose to update.";
+        ModpackUpdateContext updateContext;
+        updateContext.addonId = m_addonId;
+        updateContext.fileId = m_fileId;
+        updateContext.instanceId = m_id;
+        updateContext.platform = m_platform;
+        updateContext.downloadUrl = downloadUrl;
+
+        APPLICATION->setUpdating(true);
+        APPLICATION->setUpdateTargetInstanceId(m_id);
+        auto importTask = new InstanceImportTask(downloadUrl, updateContext);
+        importTask->setName(m_name);
+        importTask->setIcon(m_iconKey);
+        instanceFromInstanceTask(importTask);
     }
 }
 

@@ -35,11 +35,11 @@ class InstanceImportTask : public InstanceTask
 {
     Q_OBJECT
 public:
-    explicit InstanceImportTask(const QUrl sourceUrl, const QString &additionalParam1 = QString(), const QString &additionalParam2 = QString());
+    explicit InstanceImportTask(const QUrl sourceUrl, const ModpackUpdateContext &updateContext = ModpackUpdateContext());
 
 protected:
-    //! Entry point for tasks.
     virtual void executeTask() override;
+    virtual bool abort() override;
 
 private:
     void processZipPack();

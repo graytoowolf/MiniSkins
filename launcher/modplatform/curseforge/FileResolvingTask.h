@@ -3,20 +3,22 @@
 #include "tasks/Task.h"
 #include "net/NetJob.h"
 #include "PackManifest.h"
+#include "ModpackUpdateContext.h"
 
 namespace CurseForge
 {
     struct ComparisonResult
     {
-        QJsonArray filesToDownload; // 需要下载的fileID列表
-        QStringList filesToDelete;  // 需要删除的文件名列表
+        QJsonArray filesToDownload;
+        QStringList filesToDelete;
+        QStringList filesToBackup;
     };
 
     class FileResolvingTask : public Task
     {
         Q_OBJECT
     public:
-        explicit FileResolvingTask(shared_qobject_ptr<QNetworkAccessManager> network, CurseForge::Manifest &toProcess, const QString &path = QString());
+        explicit FileResolvingTask(shared_qobject_ptr<QNetworkAccessManager> network, CurseForge::Manifest &toProcess, const QString &path = QString(), const ModpackUpdateContext &updateContext = ModpackUpdateContext());
         virtual ~FileResolvingTask() {};
 
         const CurseForge::Manifest &getResults() const
@@ -24,11 +26,27 @@ namespace CurseForge
             return m_toProcess;
         }
 
+        QString backupDir() const
+        {
+            return m_backupDir;
+        }
+
+        QString basePath() const
+        {
+            return m_basePath;
+        }
+
+        void performRollback();
+        void performCleanup();
+
     protected:
         virtual void executeTask() override;
 
     private:
         CurseForge::ComparisonResult compareManifests(const QString &jsonFilePathA);
+        bool backupFiles(const QStringList &filePaths, const QString &backupDir);
+        void rollbackFiles(const QString &backupDir, const QString &targetBasePath);
+        void cleanupBackup(const QString &backupDir);
 
     protected slots:
         void netJobFinished(QNetworkReply *reply);
@@ -46,6 +64,8 @@ namespace CurseForge
         NetJob::Ptr m_dljob;
         QString m_path;
         QString m_filePath;
-        // 移除了 m_rep 成员变量，现在每个网络请求都使用独立的 QNetworkReply 对象
+        ModpackUpdateContext m_updateContext;
+        QString m_backupDir;
+        QString m_basePath;
     };
 }

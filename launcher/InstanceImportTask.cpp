@@ -40,11 +40,12 @@
 #include <algorithm>
 #include <iterator>
 
-InstanceImportTask::InstanceImportTask(const QUrl sourceUrl, const QString &addonId, const QString &fileId)
+InstanceImportTask::InstanceImportTask(const QUrl sourceUrl, const ModpackUpdateContext &updateContext)
 {
     m_sourceUrl = sourceUrl;
-    m_addonId = addonId;
-    m_fileId = fileId;
+    m_updateContext = updateContext;
+    m_addonId = updateContext.addonId;
+    m_fileId = updateContext.fileId;
 }
 
 void InstanceImportTask::executeTask()
@@ -71,6 +72,28 @@ void InstanceImportTask::executeTask()
         connect(job, &NetJob::failed, this, &InstanceImportTask::downloadFailed);
         m_filesNetJob->start();
     }
+}
+
+bool InstanceImportTask::abort()
+{
+    if (m_updateContext.isValid() && m_modIdResolver)
+    {
+        m_modIdResolver->performRollback();
+    }
+    if (m_filesNetJob)
+    {
+        m_filesNetJob->abort();
+    }
+    if (m_modIdResolver)
+    {
+        m_modIdResolver->abort();
+    }
+    if (m_extractFuture.isRunning())
+    {
+        m_extractFuture.cancel();
+    }
+    emitFailed(tr("Instance import has been aborted."));
+    return true;
 }
 
 void InstanceImportTask::downloadSucceeded()
@@ -379,7 +402,7 @@ void InstanceImportTask::processCurseForge()
     }
     instance.setmodpacks(m_addonId, m_fileId, "curseforge");
     instance.setName(QString("%1_v%2").arg(m_instName).arg(cleanVersion));
-    m_modIdResolver = new CurseForge::FileResolvingTask(APPLICATION->network(), pack, m_stagingPath);
+    m_modIdResolver = new CurseForge::FileResolvingTask(APPLICATION->network(), pack, m_stagingPath, m_updateContext);
     connect(m_modIdResolver.get(), &CurseForge::FileResolvingTask::succeeded, [&]()
             {
         auto results = m_modIdResolver->getResults();
@@ -429,16 +452,25 @@ void InstanceImportTask::processCurseForge()
                 break;
             }
         }
-        m_modIdResolver.reset();
         connect(m_filesNetJob.get(), &NetJob::succeeded, this, [&]()
         {
             m_filesNetJob.reset();
+            if (m_updateContext.isValid() && m_modIdResolver)
+            {
+                m_modIdResolver->performCleanup();
+            }
+            m_modIdResolver.reset();
             emitSucceeded();
         }
         );
         connect(m_filesNetJob.get(), &NetJob::failed, [&](QString reason)
         {
             m_filesNetJob.reset();
+            if (m_updateContext.isValid() && m_modIdResolver)
+            {
+                m_modIdResolver->performRollback();
+            }
+            m_modIdResolver.reset();
             emitFailed(reason);
         });
         connect(m_filesNetJob.get(), &NetJob::progress, [&](qint64 current, qint64 total)
@@ -454,6 +486,10 @@ void InstanceImportTask::processCurseForge()
         } });
     connect(m_modIdResolver.get(), &CurseForge::FileResolvingTask::failed, [&](QString reason)
             {
+        if (m_updateContext.isValid() && m_modIdResolver)
+        {
+            m_modIdResolver->performRollback();
+        }
         m_modIdResolver.reset();
         emitFailed(tr("Unable to resolve mod IDs:\n") + reason); });
     connect(m_modIdResolver.get(), &CurseForge::FileResolvingTask::progress, [&](qint64 current, qint64 total)
