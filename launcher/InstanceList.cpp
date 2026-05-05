@@ -1055,17 +1055,23 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
         return;
     }
 
-    // 获取所有.jar文件并创建ModInfo列表
-    QFileInfoList jarFiles = modsDir.entryInfoList({"*.jar"}, QDir::Files);
+    // 获取所有.jar文件和.jar.disabled文件并创建ModInfo列表
+    // 同时扫描disabled文件以检测整合包中的可选mod
+    QFileInfoList jarFiles = modsDir.entryInfoList({"*.jar", "*.jar.disabled"}, QDir::Files);
     if (jarFiles.isEmpty())
     {
         return;
     }
 
     QList<fingerprint::ModInfo> modInfoList;
+    QSet<QString> disabledFiles; // 记录哪些文件是disabled状态
     for (const QFileInfo &fileInfo : jarFiles)
     {
         modInfoList.append(fingerprint::ModInfo(fileInfo.absoluteFilePath()));
+        if (fileInfo.fileName().endsWith(".disabled"))
+        {
+            disabledFiles.insert(fileInfo.absoluteFilePath());
+        }
     }
 
     // 计算指纹
@@ -1100,14 +1106,33 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
         modObj["fileID"] = modInfo.fileId;
         modObj["name"] = modInfo.name;
         modObj["fileName"] = QFileInfo(modInfo.filePath).fileName();
-        modObj["required"] = true;
-
+        
+        // 检查文件是否已经是disabled状态（整合包中的可选mod）
+        bool isAlreadyDisabled = disabledFiles.contains(modInfo.filePath);
+        
+        // 检查是否在黑名单中（且不在白名单保护中）
         bool isBlacklisted = blacklist.contains(modInfo.projectId);
         if (isBlacklisted && !whitelistedModIds.contains(modInfo.projectId))
         {
-            modsToDisable.append(modInfo.filePath);
+            if (!isAlreadyDisabled)
+            {
+                modsToDisable.append(modInfo.filePath);
+            }
             modObj["required"] = false;
-            modObj["fileName"] = modObj["fileName"].toString() + ".disabled";
+            // 如果文件还不是disabled状态，更新fileName
+            if (!isAlreadyDisabled)
+            {
+                modObj["fileName"] = modObj["fileName"].toString() + ".disabled";
+            }
+        }
+        else if (isAlreadyDisabled)
+        {
+            // 整合包中已标记为可选的mod，保持required=false
+            modObj["required"] = false;
+        }
+        else
+        {
+            modObj["required"] = true;
         }
 
         modsJsonArray.append(modObj);
@@ -1162,6 +1187,28 @@ void InstanceList::processWhitelistedMods(InstancePtr instance, const QMap<int, 
             if (whitelist.contains(modInfo.projectId))
             {
                 whitelistedModIds.insert(modInfo.projectId);
+            }
+        }
+    }
+
+    // 从mods.json文件中读取已存在的mod记录（包括required=false的可选mod）
+    // 这样可以避免重复下载整合包中已存在的可选mod
+    QString modsJsonPath = minecraftInstance->modlist();
+    QFile modsJsonFile(modsJsonPath);
+    if (modsJsonFile.exists() && modsJsonFile.open(QIODevice::ReadOnly))
+    {
+        QJsonDocument modsDoc = QJsonDocument::fromJson(modsJsonFile.readAll());
+        modsJsonFile.close();
+        
+        QJsonArray modsArray = modsDoc.array();
+        for (const QJsonValue &modValue : modsArray)
+        {
+            QJsonObject modObj = modValue.toObject();
+            int projectId = modObj["projectID"].toInt();
+            if (projectId > 0)
+            {
+                // 无论是required=true还是required=false，都视为已存在
+                existingModIds.insert(projectId);
             }
         }
     }
