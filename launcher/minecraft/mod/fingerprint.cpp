@@ -219,7 +219,9 @@ namespace fingerprint
               {
                 QJsonObject fileObj = match["file"].toObject();
                 result.fileId = fileObj["id"].toInt();
-                result.name = fileObj["fileName"].toString();
+                result.name = fileObj.contains("displayName") && !fileObj["displayName"].toString().isEmpty()
+                                  ? fileObj["displayName"].toString()
+                                  : fileObj["fileName"].toString();
 
                 // 从响应中获取文件指纹（如果存在）
                 if (fileObj.contains("fileFingerprint"))
@@ -359,7 +361,9 @@ namespace fingerprint
                     // 更新对应的ModInfo
                     results[index].projectId = match["id"].toInt();
                     results[index].fileId = fileObj["id"].toInt();
-                    results[index].name = fileObj["fileName"].toString();
+                    results[index].name = fileObj.contains("displayName") && !fileObj["displayName"].toString().isEmpty()
+                                              ? fileObj["displayName"].toString()
+                                              : fileObj["fileName"].toString();
                     results[index].fileFingerprint = QString::number(responseFingerprint);
                     results[index].isValid = true;
                   }

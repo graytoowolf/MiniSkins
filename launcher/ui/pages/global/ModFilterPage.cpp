@@ -2,6 +2,8 @@
 #include "ui_ModFilterPage.h"
 #include "Application.h"
 #include "minecraft/mod/fingerprint.h"
+#include "minecraft/mod/LocalModParseTask.h"
+#include "minecraft/mod/Mod.h"
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -114,7 +116,19 @@ void ModFilterPage::dropEvent(QDropEvent *event)
     {
         if (modInfo.isValid)
         {
-            modsToAdd.insert(modInfo.projectId, PROVISIONAL_MOD_NAME);
+            QString modName = PROVISIONAL_MOD_NAME;
+
+            QFileInfo fileInfo(modInfo.filePath);
+            LocalModParseTask parseTask(0, Mod::MOD_ZIPFILE, fileInfo);
+            parseTask.run();
+
+            auto result = parseTask.result();
+            if (result && result->details && !result->details->name.isEmpty())
+            {
+                modName = result->details->name;
+            }
+
+            modsToAdd.insert(modInfo.projectId, modName);
         }
     }
 

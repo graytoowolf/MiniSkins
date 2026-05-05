@@ -26,7 +26,7 @@ namespace fingerprint
     QString fileFingerprint; // 文件指纹
     int projectId;           // 项目ID
     int fileId;              // 文件ID
-    QString name;            // 文件名
+    QString name;            // 模组显示名称
     bool isValid;            // 是否有效
     
     ModInfo() : projectId(0), fileId(0), isValid(false) {}
