@@ -153,6 +153,30 @@
          </property>
         </widget>
        </item>
+       <item row="3" column="0" colspan="5">
+        <layout class="QHBoxLayout" name="aiLayout">
+         <item>
+          <widget class="QComboBox" name="aiModelCombo">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnAIAnalysis">
+           <property name="toolTip">
+            <string>Analyze crash log with AI</string>
+           </property>
+           <property name="text">
+            <string>AI Analysis</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
       </layout>
      </widget>
     </widget>
@@ -176,6 +200,8 @@
   <tabstop>text</tabstop>
   <tabstop>searchBar</tabstop>
   <tabstop>findButton</tabstop>
+  <tabstop>aiModelCombo</tabstop>
+  <tabstop>btnAIAnalysis</tabstop>
  </tabstops>
  <resources/>
  <connections/>

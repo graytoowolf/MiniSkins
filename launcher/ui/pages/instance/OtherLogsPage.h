@@ -20,6 +20,7 @@
 #include "ui/pages/BasePage.h"
 #include <Application.h>
 #include <pathmatcher/IPathMatcher.h>
+#include "ai/AIAnalyzer.h"
 
 namespace Ui
 {
@@ -27,6 +28,7 @@ namespace Ui
 }
 
 class RecursiveFileSystemWatcher;
+class AIProgressDialog;
 
 class OtherLogsPage : public QWidget, public BasePage
 {
@@ -69,8 +71,13 @@ private slots:
     void findNextActivated();
     void findPreviousActivated();
 
+    void on_btnAIAnalysis_clicked();
+    void onAIAnalysisFinished(const QString &result);
+    void onAIAnalysisError(const QString &error);
+
 private:
     void setControlsEnabled(const bool enabled);
+    void populateAIModelCombo();
 
 private:
     Ui::OtherLogsPage *ui;
@@ -78,4 +85,6 @@ private:
     QString m_currentFile;
     IPathMatcher::Ptr m_fileFilter;
     RecursiveFileSystemWatcher *m_watcher;
+    AIAnalyzer *m_aiAnalyzer;
+    AIProgressDialog *m_progressDialog;
 };

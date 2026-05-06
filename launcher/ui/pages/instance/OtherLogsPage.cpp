@@ -17,18 +17,22 @@
 #include "ui_OtherLogsPage.h"
 
 #include <QMessageBox>
+#include <QFileDialog>
+#include <QTextStream>
 
 #include "ui/GuiUtil.h"
 
 #include "RecursiveFileSystemWatcher.h"
 #include "ui/dialogs/CustomMessageBox.h"
+#include "ui/dialogs/AIAnalysisDialog.h"
+#include "ui/dialogs/AIProgressDialog.h"
 #include <GZip.h>
 #include <FileSystem.h>
 #include <QShortcut>
 
 OtherLogsPage::OtherLogsPage(QString path, IPathMatcher::Ptr fileFilter, QWidget *parent)
     : QWidget(parent), ui(new Ui::OtherLogsPage), m_path(path), m_fileFilter(fileFilter),
-      m_watcher(new RecursiveFileSystemWatcher(this))
+      m_watcher(new RecursiveFileSystemWatcher(this)), m_aiAnalyzer(new AIAnalyzer(this)), m_progressDialog(nullptr)
 {
     ui->setupUi(this);
     ui->tabWidget->tabBar()->hide();
@@ -49,6 +53,11 @@ OtherLogsPage::OtherLogsPage(QString path, IPathMatcher::Ptr fileFilter, QWidget
     connect(findPreviousShortcut, &QShortcut::activated, this, &OtherLogsPage::findPreviousActivated);
 
     connect(ui->searchBar, &QLineEdit::returnPressed, this, &OtherLogsPage::on_findButton_clicked);
+
+    connect(m_aiAnalyzer, &AIAnalyzer::analysisFinished, this, &OtherLogsPage::onAIAnalysisFinished);
+    connect(m_aiAnalyzer, &AIAnalyzer::analysisError, this, &OtherLogsPage::onAIAnalysisError);
+
+    populateAIModelCombo();
 }
 
 OtherLogsPage::~OtherLogsPage()
@@ -59,6 +68,7 @@ OtherLogsPage::~OtherLogsPage()
 void OtherLogsPage::openedImpl()
 {
     m_watcher->enable();
+    populateAIModelCombo();
 }
 void OtherLogsPage::closedImpl()
 {
@@ -122,7 +132,7 @@ void OtherLogsPage::on_btnReload_clicked()
     if (!file.open(QFile::ReadOnly))
     {
         setControlsEnabled(false);
-        ui->btnReload->setEnabled(true); // allow reload
+        ui->btnReload->setEnabled(true);
         m_currentFile = QString();
         QMessageBox::critical(this, tr("Error"), tr("Unable to open %1 for reading: %2").arg(m_currentFile, file.errorString()));
     }
@@ -287,6 +297,115 @@ void OtherLogsPage::setControlsEnabled(const bool enabled)
     ui->btnPaste->setEnabled(enabled);
     ui->text->setEnabled(enabled);
     ui->btnClean->setEnabled(enabled);
+    ui->btnAIAnalysis->setEnabled(enabled && !m_aiAnalyzer->isAnalyzing());
+}
+
+void OtherLogsPage::populateAIModelCombo()
+{
+    QString currentSelection = ui->aiModelCombo->currentData().toString();
+    ui->aiModelCombo->clear();
+
+    QList<AIAnalyzer::ModelConfig> models = AIAnalyzer::loadModels();
+    QString defaultModelId = APPLICATION->settings()->get("AIDefaultModel").toString();
+
+    for (const AIAnalyzer::ModelConfig &cfg : models)
+    {
+        ui->aiModelCombo->addItem(QString("%1 (%2)").arg(cfg.name, cfg.modelId), cfg.modelId);
+    }
+
+    int selectIdx = -1;
+    if (!currentSelection.isEmpty())
+    {
+        selectIdx = ui->aiModelCombo->findData(currentSelection);
+    }
+    if (selectIdx < 0)
+    {
+        selectIdx = ui->aiModelCombo->findData(defaultModelId);
+    }
+    if (selectIdx < 0 && !models.isEmpty())
+    {
+        selectIdx = 0;
+    }
+
+    if (selectIdx >= 0)
+    {
+        ui->aiModelCombo->setCurrentIndex(selectIdx);
+    }
+}
+
+void OtherLogsPage::on_btnAIAnalysis_clicked()
+{
+    if (ui->text->toPlainText().isEmpty())
+    {
+        QMessageBox::information(this, tr("AI Analysis"), tr("No log content to analyze."));
+        return;
+    }
+
+    QString modelId = ui->aiModelCombo->currentData().toString();
+    if (modelId.isEmpty())
+    {
+        QMessageBox::warning(this, tr("AI Analysis"), tr("Please configure AI model in Settings > AI Analysis"));
+        return;
+    }
+
+    AIAnalyzer::ModelConfig model;
+    QList<AIAnalyzer::ModelConfig> models = AIAnalyzer::loadModels();
+    bool found = false;
+    for (const AIAnalyzer::ModelConfig &cfg : models)
+    {
+        if (cfg.modelId == modelId)
+        {
+            model = cfg;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        QMessageBox::warning(this, tr("AI Analysis"), tr("Selected AI model not found. Please check Settings > AI Analysis"));
+        return;
+    }
+
+    ui->btnAIAnalysis->setEnabled(false);
+
+    if (m_progressDialog)
+    {
+        delete m_progressDialog;
+    }
+    m_progressDialog = new AIProgressDialog(this);
+    m_progressDialog->show();
+
+    m_aiAnalyzer->analyze(ui->text->toPlainText(), model);
+}
+
+void OtherLogsPage::onAIAnalysisFinished(const QString &result)
+{
+    if (m_progressDialog)
+    {
+        m_progressDialog->close();
+        m_progressDialog->deleteLater();
+        m_progressDialog = nullptr;
+    }
+
+    ui->btnAIAnalysis->setEnabled(true);
+
+    AIAnalysisDialog dialog(result, this);
+    dialog.exec();
+}
+
+void OtherLogsPage::onAIAnalysisError(const QString &error)
+{
+    if (m_progressDialog)
+    {
+        m_progressDialog->close();
+        m_progressDialog->deleteLater();
+        m_progressDialog = nullptr;
+    }
+
+    ui->btnAIAnalysis->setEnabled(true);
+
+    QMessageBox::critical(this, tr("AI Analysis Error"), error);
 }
 
 // FIXME: HACK, use LogView instead?

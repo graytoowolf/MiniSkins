@@ -16,6 +16,7 @@
 #include "ui/pages/global/AccountListPage.h"
 #include "ui/pages/global/ModFilterPage.h"
 #include "ui/pages/global/PasteEEPage.h"
+#include "ui/pages/global/AIModelPage.h"
 #include "ui/pages/global/CustomCommandsPage.h"
 
 #include "ui/themes/ITheme.h"
@@ -791,6 +792,20 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_settings->registerSetting("PasteEEAPIKey", "miniskins");
         m_settings->registerSetting("LogPlatform", "mclo.gs");
 
+        // AI Analysis
+        {
+            QJsonArray defaultModels;
+            QJsonObject defaultModel;
+            defaultModel["name"] = "GLM-4.7-Flash";
+            defaultModel["apiUrl"] = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+            defaultModel["apiKey"] = "";
+            defaultModel["modelId"] = "glm-4.7-flash";
+            defaultModels.append(defaultModel);
+            QJsonDocument defaultDoc(defaultModels);
+            m_settings->registerSetting("AIModels", QString::fromUtf8(defaultDoc.toJson(QJsonDocument::Compact)));
+        }
+        m_settings->registerSetting("AIDefaultModel", "glm-4.7-flash");
+
         // Init page provider
         {
             m_globalSettingsProvider = std::make_shared<GenericPageProvider>(tr("Settings"));
@@ -804,6 +819,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
             m_globalSettingsProvider->addPage<AccountListPage>();
             m_globalSettingsProvider->addPage<ModFilterPage>();
             m_globalSettingsProvider->addPage<PasteEEPage>();
+            m_globalSettingsProvider->addPage<AIModelPage>();
         }
         qDebug() << "<> Settings loaded.";
     }
