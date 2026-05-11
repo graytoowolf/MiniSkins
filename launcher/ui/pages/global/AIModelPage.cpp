@@ -3,23 +3,33 @@
 
 #include <QMessageBox>
 #include <QTabBar>
-#include <QDesktopServices>
 #include <QUrl>
+#include <QNetworkRequest>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QSignalBlocker>
 
 #include "settings/SettingsObject.h"
 #include "Application.h"
 
 static const QString SPINNER_CHARS = QString::fromUtf8("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏");
+const QString AIModelPage::CUSTOM_MODEL_TEXT = QT_TRANSLATE_NOOP("AIModelPage", "Custom Model...");
 
 AIModelPage::AIModelPage(QWidget *parent)
-    : QWidget(parent), ui(new Ui::AIModelPage), m_currentIndex(-1), m_testAnalyzer(nullptr),
-      m_spinnerTimer(nullptr), m_spinnerIndex(0)
+    : QWidget(parent), ui(new Ui::AIModelPage), m_currentIndex(-1), m_testReply(nullptr),
+      m_spinnerTimer(nullptr), m_spinnerIndex(0), m_networkManager(nullptr), m_modelsReply(nullptr), m_loadingUi(false)
 {
     ui->setupUi(this);
     ui->tabWidget->tabBar()->hide();
 
     m_spinnerTimer = new QTimer(this);
     connect(m_spinnerTimer, &QTimer::timeout, this, &AIModelPage::updateSpinnerAnimation);
+
+    m_networkManager = new QNetworkAccessManager(this);
+
+    ui->labelCustomModel->hide();
+    ui->editCustomModelId->hide();
 
     loadSettings();
 }
@@ -30,6 +40,11 @@ AIModelPage::~AIModelPage()
     {
         m_spinnerTimer->stop();
     }
+    if (m_testReply)
+    {
+        m_testReply->abort();
+        m_testReply->deleteLater();
+    }
     delete ui;
 }
 
@@ -37,7 +52,6 @@ void AIModelPage::loadSettings()
 {
     m_models = AIAnalyzer::loadModels();
     populateModelList();
-    populateDefaultModelCombo();
 }
 
 void AIModelPage::applySettings()
@@ -60,41 +74,58 @@ bool AIModelPage::apply()
 
 void AIModelPage::populateModelList()
 {
+    QSignalBlocker listBlocker(ui->modelListWidget);
+    m_loadingUi = true;
     ui->modelListWidget->clear();
     for (const AIAnalyzer::ModelConfig &cfg : m_models)
     {
-        ui->modelListWidget->addItem(QString("%1 (%2)").arg(cfg.name, cfg.modelId));
+        QString displayText = cfg.modelId.isEmpty() ? tr("New Model") : cfg.modelId;
+        ui->modelListWidget->addItem(displayText);
     }
 
     if (!m_models.isEmpty())
     {
+        m_currentIndex = 0;
         ui->modelListWidget->setCurrentRow(0);
+        updateDetailFields();
     }
     else
     {
         m_currentIndex = -1;
         ui->groupBoxDetails->setEnabled(false);
     }
+
+    m_loadingUi = false;
+    populateDefaultModelCombo();
 }
 
 void AIModelPage::updateDetailFields()
 {
+    QSignalBlocker modelComboBlocker(ui->comboModelId);
+    m_loadingUi = true;
     if (m_currentIndex < 0 || m_currentIndex >= m_models.size())
     {
-        ui->editName->clear();
         ui->editApiUrl->clear();
         ui->editApiKey->clear();
-        ui->editModelId->clear();
+        ui->comboModelId->clear();
+        ui->editCustomModelId->clear();
+        ui->labelCustomModel->hide();
+        ui->editCustomModelId->hide();
         ui->groupBoxDetails->setEnabled(false);
+        m_loadingUi = false;
         return;
     }
 
     ui->groupBoxDetails->setEnabled(true);
     const AIAnalyzer::ModelConfig &cfg = m_models[m_currentIndex];
-    ui->editName->setText(cfg.name);
     ui->editApiUrl->setText(cfg.apiUrl);
     ui->editApiKey->setText(cfg.apiKey);
-    ui->editModelId->setText(cfg.modelId);
+
+    QStringList models;
+    models << cfg.modelId;
+    updateModelComboBox(models);
+    setCurrentModelId(cfg.modelId);
+    m_loadingUi = false;
 }
 
 void AIModelPage::saveCurrentModelDetail()
@@ -102,20 +133,22 @@ void AIModelPage::saveCurrentModelDetail()
     if (m_currentIndex < 0 || m_currentIndex >= m_models.size())
         return;
 
-    m_models[m_currentIndex].name = ui->editName->text();
     m_models[m_currentIndex].apiUrl = ui->editApiUrl->text();
     m_models[m_currentIndex].apiKey = ui->editApiKey->text();
-    m_models[m_currentIndex].modelId = ui->editModelId->text();
+    m_models[m_currentIndex].modelId = getCurrentModelId();
 
     if (ui->modelListWidget->item(m_currentIndex))
     {
-        ui->modelListWidget->item(m_currentIndex)->setText(
-            QString("%1 (%2)").arg(m_models[m_currentIndex].name, m_models[m_currentIndex].modelId));
+        QString displayText = m_models[m_currentIndex].modelId.isEmpty() 
+            ? tr("New Model") 
+            : m_models[m_currentIndex].modelId;
+        ui->modelListWidget->item(m_currentIndex)->setText(displayText);
     }
 }
 
 void AIModelPage::populateDefaultModelCombo()
 {
+    QSignalBlocker defaultComboBlocker(ui->comboDefaultModel);
     QString currentSelection = ui->comboDefaultModel->currentData().toString();
     ui->comboDefaultModel->clear();
 
@@ -123,7 +156,10 @@ void AIModelPage::populateDefaultModelCombo()
 
     for (const AIAnalyzer::ModelConfig &cfg : m_models)
     {
-        ui->comboDefaultModel->addItem(QString("%1 (%2)").arg(cfg.name, cfg.modelId), cfg.modelId);
+        if (!cfg.modelId.isEmpty())
+        {
+            ui->comboDefaultModel->addItem(cfg.modelId, cfg.modelId);
+        }
     }
 
     int idx = ui->comboDefaultModel->findData(currentSelection);
@@ -131,7 +167,7 @@ void AIModelPage::populateDefaultModelCombo()
     {
         idx = ui->comboDefaultModel->findData(defaultModelId);
     }
-    if (idx < 0 && !m_models.isEmpty())
+    if (idx < 0 && ui->comboDefaultModel->count() > 0)
     {
         idx = 0;
     }
@@ -145,13 +181,12 @@ void AIModelPage::populateDefaultModelCombo()
 void AIModelPage::on_btnAddModel_clicked()
 {
     AIAnalyzer::ModelConfig cfg;
-    cfg.name = tr("New Model");
     cfg.apiUrl = "";
     cfg.apiKey = "";
     cfg.modelId = "";
 
     m_models.append(cfg);
-    ui->modelListWidget->addItem(QString("%1 (%2)").arg(cfg.name, cfg.modelId));
+    ui->modelListWidget->addItem(tr("New Model"));
     ui->modelListWidget->setCurrentRow(m_models.size() - 1);
     populateDefaultModelCombo();
 }
@@ -182,6 +217,9 @@ void AIModelPage::on_btnRemoveModel_clicked()
 
 void AIModelPage::on_modelListWidget_currentRowChanged(int currentRow)
 {
+    if (m_loadingUi)
+        return;
+
     saveCurrentModelDetail();
     m_currentIndex = currentRow;
     updateDetailFields();
@@ -202,18 +240,18 @@ void AIModelPage::on_btnTestConnection_clicked()
     saveCurrentModelDetail();
 
     const AIAnalyzer::ModelConfig &cfg = m_models[m_currentIndex];
-    if (cfg.apiUrl.isEmpty() || cfg.modelId.isEmpty() || cfg.apiKey.isEmpty())
+    if (cfg.apiUrl.isEmpty() || cfg.apiKey.isEmpty())
     {
         QMessageBox::warning(this, tr("Test Connection"),
-                             tr("Please fill in API URL, Model ID, and API Key before testing."));
+                             tr("Please fill in API URL and API Key before testing."));
         return;
     }
 
-    if (m_testAnalyzer)
+    if (m_testReply)
     {
-        m_testAnalyzer->cancel();
-        m_testAnalyzer->deleteLater();
-        m_testAnalyzer = nullptr;
+        m_testReply->abort();
+        m_testReply->deleteLater();
+        m_testReply = nullptr;
     }
 
     ui->btnTestConnection->setEnabled(false);
@@ -221,49 +259,81 @@ void AIModelPage::on_btnTestConnection_clicked()
     updateSpinnerAnimation();
     m_spinnerTimer->start(80);
 
-    m_testAnalyzer = new AIAnalyzer(this);
-    connect(m_testAnalyzer, &AIAnalyzer::analysisFinished, this, &AIModelPage::onTestFinished);
-    connect(m_testAnalyzer, &AIAnalyzer::analysisError, this, &AIModelPage::onTestError);
+    QString modelsUrl;
+    if (cfg.apiUrl.contains("/v4/"))
+    {
+        modelsUrl = cfg.apiUrl.left(cfg.apiUrl.indexOf("/v4/") + 4) + "/models";
+    }
+    else if (cfg.apiUrl.contains("/v1/"))
+    {
+        int v1Index = cfg.apiUrl.indexOf("/v1/");
+        modelsUrl = cfg.apiUrl.left(v1Index + 4) + "models";
+    }
+    else
+    {
+        QUrl url(cfg.apiUrl);
+        QString baseUrl = QString("%1://%2").arg(url.scheme(), url.host());
+        if (url.port() != -1)
+        {
+            baseUrl += QString(":%1").arg(url.port());
+        }
+        modelsUrl = baseUrl + "/v1/models";
+    }
 
-    m_testAnalyzer->analyze("Hello, this is a connection test.", cfg);
+    QUrl url(modelsUrl);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Authorization", QString("Bearer %1").arg(cfg.apiKey).toUtf8());
+
+    m_testReply = m_networkManager->get(request);
+    connect(m_testReply, &QNetworkReply::finished, this, &AIModelPage::onTestConnectionFinished);
 }
 
-void AIModelPage::onTestFinished(const QString &result)
+void AIModelPage::onTestConnectionFinished()
 {
+    if (!m_testReply)
+        return;
+
     m_spinnerTimer->stop();
     ui->btnTestConnection->setEnabled(true);
     ui->btnTestConnection->setText(tr("Test Connection"));
 
-    Q_UNUSED(result);
-    QMessageBox::information(this, tr("Test Connection"), tr("Connection successful! The AI model is working."));
+    QNetworkReply *reply = m_testReply;
+    m_testReply = nullptr;
+    reply->deleteLater();
 
-    if (m_testAnalyzer)
+    if (reply->error() == QNetworkReply::OperationCanceledError)
     {
-        m_testAnalyzer->deleteLater();
-        m_testAnalyzer = nullptr;
+        return;
     }
-}
 
-void AIModelPage::onTestError(const QString &error)
-{
-    m_spinnerTimer->stop();
-    ui->btnTestConnection->setEnabled(true);
-    ui->btnTestConnection->setText(tr("Test Connection"));
-
-    QMessageBox::critical(this, tr("Test Connection"), tr("Connection failed: %1").arg(error));
-
-    if (m_testAnalyzer)
+    if (reply->error() != QNetworkReply::NoError)
     {
-        m_testAnalyzer->deleteLater();
-        m_testAnalyzer = nullptr;
+        QMessageBox::critical(this, tr("Test Connection"), tr("Connection failed: %1").arg(reply->errorString()));
+        return;
     }
-}
 
-void AIModelPage::on_editName_textEdited(const QString &text)
-{
-    Q_UNUSED(text);
-    saveCurrentModelDetail();
-    populateDefaultModelCombo();
+    int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+    if (statusCode == 401 || statusCode == 403)
+    {
+        QMessageBox::critical(this, tr("Test Connection"), tr("Authentication failed: Invalid API Key."));
+        return;
+    }
+
+    if (statusCode >= 400)
+    {
+        QString reason = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
+        QString errorMsg = tr("Connection failed (HTTP %1)").arg(statusCode);
+        if (!reason.isEmpty())
+        {
+            errorMsg += " - " + reason;
+        }
+        QMessageBox::critical(this, tr("Test Connection"), errorMsg);
+        return;
+    }
+
+    QMessageBox::information(this, tr("Test Connection"), tr("Connection successful! API URL and Key are valid."));
 }
 
 void AIModelPage::on_editApiUrl_textEdited(const QString &text)
@@ -278,15 +348,250 @@ void AIModelPage::on_editApiKey_textEdited(const QString &text)
     saveCurrentModelDetail();
 }
 
-void AIModelPage::on_editModelId_textEdited(const QString &text)
+void AIModelPage::updateModelComboBox(const QStringList &models)
 {
+    QSignalBlocker blocker(ui->comboModelId);
+    QString currentModel = getCurrentModelId();
+    ui->comboModelId->clear();
+
+    for (const QString &model : models)
+    {
+        QString displayText = model.isEmpty() ? tr("Enter model ID") : model;
+        ui->comboModelId->addItem(displayText, model);
+    }
+
+    ui->comboModelId->addItem(tr(CUSTOM_MODEL_TEXT.toUtf8().constData()), CUSTOM_MODEL_TEXT);
+
+    if (!currentModel.isEmpty())
+    {
+        int idx = ui->comboModelId->findData(currentModel);
+        if (idx >= 0)
+        {
+            ui->comboModelId->setCurrentIndex(idx);
+        }
+    }
+}
+
+QString AIModelPage::getCurrentModelId()
+{
+    QString selectedData = ui->comboModelId->currentData().toString();
+
+    if (selectedData == CUSTOM_MODEL_TEXT || ui->comboModelId->currentIndex() == ui->comboModelId->count() - 1)
+    {
+        return ui->editCustomModelId->text().trimmed();
+    }
+
+    return selectedData;
+}
+
+void AIModelPage::setCurrentModelId(const QString &modelId)
+{
+    if (modelId.isEmpty())
+        return;
+
+    int idx = ui->comboModelId->findData(modelId);
+    if (idx >= 0)
+    {
+        ui->comboModelId->setCurrentIndex(idx);
+        ui->labelCustomModel->hide();
+        ui->editCustomModelId->hide();
+    }
+    else
+    {
+        ui->comboModelId->setCurrentIndex(ui->comboModelId->count() - 1);
+        ui->editCustomModelId->setText(modelId);
+        ui->labelCustomModel->show();
+        ui->editCustomModelId->show();
+    }
+}
+
+void AIModelPage::on_comboModelId_currentIndexChanged(int index)
+{
+    if (m_loadingUi)
+        return;
+
+    if (index < 0)
+        return;
+
+    QString selectedData = ui->comboModelId->itemData(index).toString();
+
+    if (selectedData == CUSTOM_MODEL_TEXT)
+    {
+        ui->labelCustomModel->show();
+        ui->editCustomModelId->show();
+        ui->editCustomModelId->setFocus();
+    }
+    else
+    {
+        ui->labelCustomModel->hide();
+        ui->editCustomModelId->hide();
+        ui->editCustomModelId->clear();
+    }
+
+    saveCurrentModelDetail();
+    populateDefaultModelCombo();
+}
+
+void AIModelPage::on_editCustomModelId_textEdited(const QString &text)
+{
+    if (m_loadingUi)
+        return;
+
     Q_UNUSED(text);
     saveCurrentModelDetail();
     populateDefaultModelCombo();
 }
 
-void AIModelPage::on_btnGetApiKey_clicked()
+void AIModelPage::on_btnFetchModels_clicked()
 {
-    QString url = "https://open.bigmodel.cn/";
-    QDesktopServices::openUrl(QUrl(url));
+    if (m_currentIndex < 0 || m_currentIndex >= m_models.size())
+        return;
+
+    QString apiUrl = ui->editApiUrl->text().trimmed();
+    QString apiKey = ui->editApiKey->text().trimmed();
+
+    if (apiUrl.isEmpty() || apiKey.isEmpty())
+    {
+        QMessageBox::warning(this, tr("Fetch Models"),
+                             tr("Please fill in API URL and API Key first."));
+        return;
+    }
+
+    if (m_modelsReply)
+    {
+        m_modelsReply->abort();
+        m_modelsReply->deleteLater();
+        m_modelsReply = nullptr;
+    }
+
+    ui->btnFetchModels->setEnabled(false);
+    ui->btnFetchModels->setText(tr("Fetching..."));
+
+    QString modelsUrl;
+    if (apiUrl.contains("/v4/"))
+    {
+        modelsUrl = apiUrl.left(apiUrl.indexOf("/v4/") + 4) + "/models";
+    }
+    else if (apiUrl.contains("/v1/"))
+    {
+        int v1Index = apiUrl.indexOf("/v1/");
+        modelsUrl = apiUrl.left(v1Index + 4) + "models";
+    }
+    else
+    {
+        QUrl url(apiUrl);
+        QString baseUrl = QString("%1://%2").arg(url.scheme(), url.host());
+        if (url.port() != -1)
+        {
+            baseUrl += QString(":%1").arg(url.port());
+        }
+        modelsUrl = baseUrl + "/v1/models";
+    }
+
+    QUrl url(modelsUrl);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Authorization", QString("Bearer %1").arg(apiKey).toUtf8());
+
+    m_modelsReply = m_networkManager->get(request);
+    connect(m_modelsReply, &QNetworkReply::finished, this, &AIModelPage::onModelsFetched);
+    connect(m_modelsReply, SIGNAL(error(QNetworkReply::NetworkError)),
+            this, SLOT(onModelsFetchError(QNetworkReply::NetworkError)));
 }
+
+void AIModelPage::onModelsFetched()
+{
+    if (!m_modelsReply)
+        return;
+
+    ui->btnFetchModels->setEnabled(true);
+    ui->btnFetchModels->setText(tr("Fetch Models"));
+
+    QNetworkReply *reply = m_modelsReply;
+    m_modelsReply = nullptr;
+    reply->deleteLater();
+
+    if (reply->error() != QNetworkReply::NoError)
+    {
+        QMessageBox::critical(this, tr("Fetch Models"),
+                              tr("Failed to fetch models: %1").arg(reply->errorString()));
+        return;
+    }
+
+    QByteArray responseData = reply->readAll();
+    QJsonParseError parseErr;
+    QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseErr);
+
+    if (parseErr.error != QJsonParseError::NoError || !doc.isObject())
+    {
+        QMessageBox::critical(this, tr("Fetch Models"),
+                              tr("Failed to parse response: %1").arg(parseErr.errorString()));
+        return;
+    }
+
+    QJsonObject root = doc.object();
+    QStringList models;
+
+    if (root.contains("data") && root["data"].isArray())
+    {
+        QJsonArray dataArray = root["data"].toArray();
+        for (const QJsonValue &val : dataArray)
+        {
+            if (val.isObject())
+            {
+                QString modelId = val.toObject()["id"].toString();
+                if (!modelId.isEmpty())
+                {
+                    models.append(modelId);
+                }
+            }
+        }
+    }
+    else if (root.contains("result") && root["result"].isObject())
+    {
+        QJsonObject result = root["result"].toObject();
+        if (result.contains("model_list") && result["model_list"].isArray())
+        {
+            QJsonArray modelList = result["model_list"].toArray();
+            for (const QJsonValue &val : modelList)
+            {
+                if (val.isObject())
+                {
+                    QString modelId = val.toObject()["model"].toString();
+                    if (!modelId.isEmpty())
+                    {
+                        models.append(modelId);
+                    }
+                }
+            }
+        }
+    }
+
+    if (models.isEmpty())
+    {
+        QMessageBox::information(this, tr("Fetch Models"),
+                                 tr("No models found. You can enter a custom model ID."));
+        models << "";
+    }
+
+    updateModelComboBox(models);
+    QMessageBox::information(this, tr("Fetch Models"),
+                             tr("Successfully fetched %1 model(s).").arg(models.size()));
+}
+
+void AIModelPage::onModelsFetchError(QNetworkReply::NetworkError error)
+{
+    Q_UNUSED(error);
+
+    if (!m_modelsReply)
+        return;
+
+    ui->btnFetchModels->setEnabled(true);
+    ui->btnFetchModels->setText(tr("Fetch Models"));
+
+    QString errorMsg = m_modelsReply->errorString();
+    QMessageBox::critical(this, tr("Fetch Models"),
+                          tr("Network error: %1").arg(errorMsg));
+}
+
+

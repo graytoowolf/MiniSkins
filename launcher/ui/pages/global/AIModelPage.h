@@ -2,6 +2,8 @@
 
 #include <QWidget>
 #include <QTimer>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 
 #include "ui/pages/BasePage.h"
 #include <Application.h>
@@ -46,26 +48,34 @@ private:
     void updateDetailFields();
     void saveCurrentModelDetail();
     void populateDefaultModelCombo();
+    void updateModelComboBox(const QStringList &models);
+    QString getCurrentModelId();
+    void setCurrentModelId(const QString &modelId);
 
 private slots:
     void on_btnAddModel_clicked();
     void on_btnRemoveModel_clicked();
     void on_modelListWidget_currentRowChanged(int currentRow);
     void on_btnTestConnection_clicked();
-    void on_btnGetApiKey_clicked();
-    void on_editName_textEdited(const QString &text);
+    void on_btnFetchModels_clicked();
     void on_editApiUrl_textEdited(const QString &text);
     void on_editApiKey_textEdited(const QString &text);
-    void on_editModelId_textEdited(const QString &text);
-    void onTestFinished(const QString &result);
-    void onTestError(const QString &error);
+    void on_comboModelId_currentIndexChanged(int index);
+    void on_editCustomModelId_textEdited(const QString &text);
+    void onTestConnectionFinished();
     void updateSpinnerAnimation();
+    void onModelsFetched();
+    void onModelsFetchError(QNetworkReply::NetworkError error);
 
 private:
     Ui::AIModelPage *ui;
     QList<AIAnalyzer::ModelConfig> m_models;
     int m_currentIndex;
-    AIAnalyzer *m_testAnalyzer;
+    QNetworkReply *m_testReply;
     QTimer *m_spinnerTimer;
     int m_spinnerIndex;
+    QNetworkAccessManager *m_networkManager;
+    QNetworkReply *m_modelsReply;
+    bool m_loadingUi;
+    static const QString CUSTOM_MODEL_TEXT;
 };

@@ -310,7 +310,7 @@ void OtherLogsPage::populateAIModelCombo()
 
     for (const AIAnalyzer::ModelConfig &cfg : models)
     {
-        ui->aiModelCombo->addItem(QString("%1 (%2)").arg(cfg.name, cfg.modelId), cfg.modelId);
+        ui->aiModelCombo->addItem(cfg.modelId, cfg.modelId);
     }
 
     int selectIdx = -1;

@@ -19,7 +19,6 @@ class AIAnalyzer : public QObject
 public:
     struct ModelConfig
     {
-        QString name;
         QString apiUrl;
         QString apiKey;
         QString modelId;
@@ -27,7 +26,6 @@ public:
         QJsonObject toJson() const
         {
             QJsonObject obj;
-            obj["name"] = name;
             obj["apiUrl"] = apiUrl;
             obj["apiKey"] = obfuscateKey(apiKey);
             obj["modelId"] = modelId;
@@ -37,10 +35,18 @@ public:
         static ModelConfig fromJson(const QJsonObject &obj)
         {
             ModelConfig cfg;
-            cfg.name = obj["name"].toString();
             cfg.apiUrl = obj["apiUrl"].toString();
             cfg.apiKey = deobfuscateKey(obj["apiKey"].toString());
             cfg.modelId = obj["modelId"].toString();
+            return cfg;
+        }
+
+        static ModelConfig createDefault()
+        {
+            ModelConfig cfg;
+            cfg.apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+            cfg.apiKey = "";
+            cfg.modelId = "glm-4.7-flash";
             return cfg;
         }
     };

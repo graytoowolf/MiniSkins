@@ -49,19 +49,20 @@ QString AIAnalyzer::deobfuscateKey(const QString &obfuscated)
 QList<AIAnalyzer::ModelConfig> AIAnalyzer::loadModels()
 {
     auto s = APPLICATION->settings();
-    QString jsonStr = s->get("AIModels").toString();
+    QString raw = s->get("AIModels").toString();
+
+    QByteArray jsonBytes = QByteArray::fromBase64(raw.toLatin1());
+    if (jsonBytes.isEmpty())
+    {
+        jsonBytes = raw.toUtf8();
+    }
 
     QJsonParseError err;
-    QJsonDocument doc = QJsonDocument::fromJson(jsonStr.toUtf8(), &err);
+    QJsonDocument doc = QJsonDocument::fromJson(jsonBytes, &err);
     if (err.error != QJsonParseError::NoError || !doc.isArray())
     {
         QList<ModelConfig> defaults;
-        ModelConfig def;
-        def.name = "GLM-4.7-Flash";
-        def.apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-        def.apiKey = "";
-        def.modelId = "glm-4.7-flash";
-        defaults.append(def);
+        defaults.append(ModelConfig::createDefault());
         return defaults;
     }
 
@@ -71,18 +72,17 @@ QList<AIAnalyzer::ModelConfig> AIAnalyzer::loadModels()
     {
         if (val.isObject())
         {
-            models.append(ModelConfig::fromJson(val.toObject()));
+            ModelConfig cfg = ModelConfig::fromJson(val.toObject());
+            if (!cfg.modelId.isEmpty())
+            {
+                models.append(cfg);
+            }
         }
     }
 
     if (models.isEmpty())
     {
-        ModelConfig def;
-        def.name = "GLM-4.7-Flash";
-        def.apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-        def.apiKey = "";
-        def.modelId = "glm-4.7-flash";
-        models.append(def);
+        models.append(ModelConfig::createDefault());
     }
 
     return models;
@@ -97,7 +97,7 @@ void AIAnalyzer::saveModels(const QList<ModelConfig> &models)
     }
     QJsonDocument doc(arr);
     auto s = APPLICATION->settings();
-    s->set("AIModels", QString::fromUtf8(doc.toJson(QJsonDocument::Compact)));
+    s->set("AIModels", QString::fromLatin1(doc.toJson(QJsonDocument::Compact).toBase64()));
 }
 
 AIAnalyzer::ModelConfig AIAnalyzer::getDefaultModel()
@@ -119,12 +119,7 @@ AIAnalyzer::ModelConfig AIAnalyzer::getDefaultModel()
         return models.first();
     }
 
-    ModelConfig def;
-    def.name = "GLM-4.7-Flash";
-    def.apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-    def.apiKey = "";
-    def.modelId = "glm-4.7-flash";
-    return def;
+    return ModelConfig::createDefault();
 }
 
 void AIAnalyzer::setDefaultModel(const QString &modelId)
@@ -552,40 +547,40 @@ void AIAnalyzer::onReplyFinished()
 QString AIAnalyzer::buildSystemPrompt() const
 {
     QString promptTemplate =
-        "You are a professional Minecraft crash log analyst, "
-        "expert in Java, Forge, Fabric, Quilt, NeoForge and common mods.\n\n"
+        "You are a Minecraft crash log helper for beginner users.\n"
+        "Analyze the crash log and explain it in a simple, short, and practical way.\n\n"
+
         "%1\n\n"
-        "When analyzing a crash log, strictly follow this structure:\n\n"
-        "## [CRASH CAUSE]\n"
-        "One sentence summarizing the root cause.\n\n"
-        "## [KEY ERRORS]\n"
-        "List the most important exception class names and messages (max 3).\n\n"
-        "## [POSSIBLE REASONS]\n"
-        "List 2~4 reasons ordered by likelihood, each briefly explained.\n\n"
-        "## [SOLUTIONS]\n"
-        "Provide concrete, actionable steps to fix the issue.\n\n"
-        "## [RELATED MODS/MODULES]\n"
-        "If specific mods or Java modules are identified, list them "
-        "with suggested actions (update/remove/downgrade).\n\n"
-        "## [NOTES]\n"
-        "Any other important information (optional).\n\n"
-        "Analysis rules:\n"
-        "- Focus on FATAL/ERROR level logs and Exception/Error stack traces\n"
-        "- Follow `Caused by:` chain to find root cause\n"
-        "- OutOfMemoryError → suggest increasing memory allocation\n"
-        "- Mod conflicts → identify the specific conflicting mod combination\n"
-        "- Be concise and professional";
+
+        "Output rules:\n"
+        "- Use the user's language.\n"
+        "- Keep the answer short.\n"
+        "- Do not explain technical details unless necessary.\n"
+        "- Do not list too many possibilities.\n"
+        "- Do not invent causes not shown in the log.\n"
+        "- Prefer clear actions over long analysis.\n\n"
+
+        "Strictly follow this structure, but translate the section titles into the user's language:\n\n"
+
+        "## Problem Cause\n"
+        "Use 1 short sentence to explain the main reason of the crash.\n\n"
+
+        "## How to Fix\n"
+        "List 1 to 3 concrete steps. Put the most likely fix first.\n\n"
+
+        "## Related Information\n"
+        "Only list important mod name, Java version, Minecraft version, loader version, or missing dependency if found.\n"
+        "Omit this section if nothing important is found.\n\n"
+
+        "Analysis focus:\n"
+        "- Look for FATAL, ERROR, Exception, and Caused by.\n"
+        "- The deepest useful Caused by is usually the real cause.\n"
+        "- If it is a mod conflict, name the mod if visible.\n"
+        "- If a dependency is missing, tell the user which mod/library is missing.\n"
+        "- If Java version is wrong, tell the user which Java version to use.\n"
+        "- If memory is not enough, suggest increasing allocated memory.";
 
     QString lang = APPLICATION->settings()->get("Language").toString();
-    QString languageInstruction;
-    if (lang.startsWith("zh"))
-    {
-        languageInstruction = "请用中文回答。";
-    }
-    else
-    {
-        languageInstruction = "Please answer in English.";
-    }
 
-    return promptTemplate.arg(languageInstruction);
+    return promptTemplate.arg(lang);
 }
