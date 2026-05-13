@@ -12,6 +12,10 @@
 #include "net/NetJob.h"
 #include "ui/dialogs/ModrinthExportDialog.h"
 #include "ModrinthHashLookupRequest.h"
+#include <QFuture>
+#include <QFutureWatcher>
+#include <QTemporaryDir>
+#include <atomic>
 
 namespace Modrinth
 {
@@ -38,7 +42,6 @@ struct ExportSettings
     QString exportPath;
 };
 
-// Using the existing Modrinth::File struct from the importer doesn't actually make much sense here (doesn't support multiple hashes, hash is a byte array rather than a string, no file size, etc)
 struct ExportFile
 {
     QString path;
@@ -57,19 +60,24 @@ public:
     explicit InstanceExportTask(InstancePtr instance, ExportSettings settings);
 
 protected:
-    //! Entry point for tasks.
     virtual void executeTask() override;
+    virtual bool abort() override;
 
 private slots:
     void lookupSucceeded();
     void lookupFailed(const QString &reason);
     void lookupProgress(qint64 current, qint64 total);
+    void compressFinished();
 
 private:
     InstancePtr m_instance;
     ExportSettings m_settings;
     std::shared_ptr<QList<HashLookupResponseData>> m_response;
     NetJob::Ptr m_netJob;
+    QTemporaryDir m_tmpDir;
+    QFuture<bool> m_compressFuture;
+    QFutureWatcher<bool> m_compressFutureWatcher;
+    std::atomic<bool> m_aborted;
 };
 
 }

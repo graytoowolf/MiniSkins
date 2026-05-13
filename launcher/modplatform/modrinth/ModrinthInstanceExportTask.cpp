@@ -17,11 +17,12 @@
 #include "JlCompress.h"
 #include "FileSystem.h"
 #include "ModrinthHashLookupRequest.h"
+#include <QtConcurrentRun>
 
 namespace Modrinth
 {
 
-InstanceExportTask::InstanceExportTask(InstancePtr instance, ExportSettings settings) : m_instance(instance), m_settings(settings) {}
+InstanceExportTask::InstanceExportTask(InstancePtr instance, ExportSettings settings) : m_instance(instance), m_settings(settings), m_aborted(false) {}
 
 void InstanceExportTask::executeTask()
 {
@@ -221,43 +222,77 @@ void InstanceExportTask::lookupSucceeded()
 
     setStatus(tr("Copying files to modpack..."));
 
-    QTemporaryDir tmp;
-    if (tmp.isValid()) {
-        Json::write(indexJson, tmp.path() + "/modrinth.index.json");
+    if (!m_tmpDir.isValid()) {
+        emitFailed(tr("Failed to create temporary directory"));
+        return;
+    }
 
-        QDir tmpDir(tmp.path());
-        QDir gameDir(m_instance->gameRoot());
+    Json::write(indexJson, m_tmpDir.path() + "/modrinth.index.json");
 
-        if (!failedFiles.isEmpty()) {
-            for (const auto &file : failedFiles) {
-                QString src = file.absoluteFilePath();
-                tmpDir.mkpath("overrides/" + gameDir.relativeFilePath(file.absolutePath()));
-                QString dest = tmpDir.path() + "/overrides/" + gameDir.relativeFilePath(src);
-                if (!QFile::copy(file.absoluteFilePath(), dest)) {
-                    emitFailed(tr("Failed to copy file %1 to overrides").arg(src));
-                    return;
-                }
+    QDir tmpDir(m_tmpDir.path());
+    QDir gameDir(m_instance->gameRoot());
+
+    if (!failedFiles.isEmpty()) {
+        for (const auto &file : failedFiles) {
+            QString src = file.absoluteFilePath();
+            tmpDir.mkpath("overrides/" + gameDir.relativeFilePath(file.absolutePath()));
+            QString dest = tmpDir.path() + "/overrides/" + gameDir.relativeFilePath(src);
+            if (!QFile::copy(file.absoluteFilePath(), dest)) {
+                emitFailed(tr("Failed to copy file %1 to overrides").arg(src));
+                return;
             }
         }
+    }
 
-        if (m_settings.includeGameConfig) {
-            tmpDir.mkdir("overrides");
-            QFile::copy(gameDir.absoluteFilePath("options.txt"), tmpDir.absoluteFilePath("overrides/options.txt"));
-        }
+    if (m_settings.includeGameConfig) {
+        tmpDir.mkdir("overrides");
+        QFile::copy(gameDir.absoluteFilePath("options.txt"), tmpDir.absoluteFilePath("overrides/options.txt"));
+    }
 
-        if (m_settings.includeModConfigs) {
-            tmpDir.mkdir("overrides");
-            FS::copy copy(gameDir.absoluteFilePath("config"), tmpDir.absoluteFilePath("overrides/config"));
-            copy();
-        }
+    if (m_settings.includeModConfigs) {
+        tmpDir.mkdir("overrides");
+        FS::copy copy(gameDir.absoluteFilePath("config"), tmpDir.absoluteFilePath("overrides/config"));
+        copy();
+    }
 
-        setStatus(tr("Zipping modpack..."));
-        if (!JlCompress::compressDir(m_settings.exportPath, tmp.path())) {
-            emitFailed(tr("Failed to create zip file"));
-            return;
-        }
-    } else {
-        emitFailed(tr("Failed to create temporary directory"));
+    setStatus(tr("Zipping modpack..."));
+
+    QString exportPath = m_settings.exportPath;
+    QString tmpPath = m_tmpDir.path();
+    m_compressFuture = QtConcurrent::run(QThreadPool::globalInstance(), [exportPath, tmpPath]() -> bool {
+        return JlCompress::compressDir(exportPath, tmpPath);
+    });
+
+    connect(&m_compressFutureWatcher, &QFutureWatcher<bool>::finished, this, &InstanceExportTask::compressFinished);
+    m_compressFutureWatcher.setFuture(m_compressFuture);
+}
+
+bool InstanceExportTask::abort()
+{
+    m_aborted = true;
+    if (m_compressFuture.isRunning())
+    {
+        m_compressFuture.cancel();
+    }
+    if (m_netJob)
+    {
+        m_netJob->abort();
+    }
+    return true;
+}
+
+void InstanceExportTask::compressFinished()
+{
+    if (m_aborted)
+    {
+        emitAborted();
+        return;
+    }
+
+    auto result = m_compressFuture.result();
+    if (!result)
+    {
+        emitFailed(tr("Failed to create zip file"));
         return;
     }
 

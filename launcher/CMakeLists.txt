@@ -37,6 +37,8 @@ set(CORE_SOURCES
     InstanceCopyTask.cpp
     InstanceImportTask.h
     InstanceImportTask.cpp
+    ExportInstanceTask.h
+    ExportInstanceTask.cpp
 
     # Use tracking separate from memory management
     Usable.h

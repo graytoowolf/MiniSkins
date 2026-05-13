@@ -30,6 +30,8 @@
 #include "Application.h"
 #include <icons/IconList.h>
 #include <FileSystem.h>
+#include "ExportInstanceTask.h"
+#include "ProgressDialog.h"
 
 class PackIgnoreProxy : public QSortFilterProxyModel
 {
@@ -404,8 +406,13 @@ bool ExportInstanceDialog::doExport()
     SaveIcon(m_instance);
 
     auto &blocked = proxyModel->blockedPaths();
-    using std::placeholders::_1;
-    if (!JlCompress::compressDir(output, m_instance->instanceRoot(), name, std::bind(&SeparatorPrefixTree<'/'>::covers, blocked, _1)))
+    auto *task = new ExportInstanceTask(m_instance, output, name, blocked);
+
+    ProgressDialog loadDialog(this);
+    loadDialog.setSkipButton(true, tr("Abort"));
+    loadDialog.execWithTask(task);
+
+    if (!task->wasSuccessful())
     {
         QMessageBox::warning(this, tr("Error"), tr("Unable to export instance"));
         return false;
