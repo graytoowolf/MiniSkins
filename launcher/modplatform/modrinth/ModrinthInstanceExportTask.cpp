@@ -15,6 +15,7 @@
 #include "Application.h"
 #include "ui/dialogs/ModrinthExportDialog.h"
 #include "JlCompress.h"
+#include <quazip.h>
 #include "FileSystem.h"
 #include "ModrinthHashLookupRequest.h"
 #include <QtConcurrentRun>
@@ -260,6 +261,7 @@ void InstanceExportTask::lookupSucceeded()
     QString exportPath = m_settings.exportPath;
     QString tmpPath = m_tmpDir.path();
     m_compressFuture = QtConcurrent::run(QThreadPool::globalInstance(), [exportPath, tmpPath]() -> bool {
+        QuaZip::setDefaultFileNameCodec("UTF-8");
         return JlCompress::compressDir(exportPath, tmpPath);
     });
 

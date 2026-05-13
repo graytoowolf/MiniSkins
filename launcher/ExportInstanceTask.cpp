@@ -85,6 +85,7 @@ bool ExportInstanceTask::compressDir()
     }
 
     QuaZip zip(m_output);
+    zip.setFileNameCodec("UTF-8");
     QDir().mkpath(QFileInfo(m_output).absolutePath());
     if (!zip.open(QuaZip::mdCreate))
     {
