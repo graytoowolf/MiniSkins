@@ -40,15 +40,6 @@ public:
             cfg.modelId = obj["modelId"].toString();
             return cfg;
         }
-
-        static ModelConfig createDefault()
-        {
-            ModelConfig cfg;
-            cfg.apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-            cfg.apiKey = "";
-            cfg.modelId = "glm-4.7-flash";
-            return cfg;
-        }
     };
 
     explicit AIAnalyzer(QObject *parent = nullptr);

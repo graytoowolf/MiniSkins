@@ -792,19 +792,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_settings->registerSetting("PasteEEAPIKey", "miniskins");
         m_settings->registerSetting("LogPlatform", "mclo.gs");
 
-        // AI Analysis
-        {
-            QJsonArray defaultModels;
-            QJsonObject defaultModel;
-            defaultModel["name"] = "GLM-4.7-Flash";
-            defaultModel["apiUrl"] = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-            defaultModel["apiKey"] = "";
-            defaultModel["modelId"] = "glm-4.7-flash";
-            defaultModels.append(defaultModel);
-            QJsonDocument defaultDoc(defaultModels);
-            m_settings->registerSetting("AIModels", QString::fromUtf8(defaultDoc.toJson(QJsonDocument::Compact)));
-        }
-        m_settings->registerSetting("AIDefaultModel", "glm-4.7-flash");
+        m_settings->registerSetting("AIModels", "");
+        m_settings->registerSetting("AIDefaultModel", "");
 
         // Init page provider
         {

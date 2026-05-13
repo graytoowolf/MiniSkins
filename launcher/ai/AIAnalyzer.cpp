@@ -61,9 +61,7 @@ QList<AIAnalyzer::ModelConfig> AIAnalyzer::loadModels()
     QJsonDocument doc = QJsonDocument::fromJson(jsonBytes, &err);
     if (err.error != QJsonParseError::NoError || !doc.isArray())
     {
-        QList<ModelConfig> defaults;
-        defaults.append(ModelConfig::createDefault());
-        return defaults;
+        return QList<ModelConfig>();
     }
 
     QJsonArray arr = doc.array();
@@ -82,7 +80,7 @@ QList<AIAnalyzer::ModelConfig> AIAnalyzer::loadModels()
 
     if (models.isEmpty())
     {
-        models.append(ModelConfig::createDefault());
+        return models;
     }
 
     return models;
@@ -119,7 +117,7 @@ AIAnalyzer::ModelConfig AIAnalyzer::getDefaultModel()
         return models.first();
     }
 
-    return ModelConfig::createDefault();
+    return ModelConfig();
 }
 
 void AIAnalyzer::setDefaultModel(const QString &modelId)
