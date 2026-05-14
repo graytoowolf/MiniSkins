@@ -16,7 +16,7 @@ ExportInstanceTask::ExportInstanceTask(InstancePtr instance, const QString &outp
 
 void ExportInstanceTask::executeTask()
 {
-    setStatus(tr("Scanning files..."));
+    setStatus(tr("Scanning instance files..."));
 
     m_compressFuture = QtConcurrent::run(QThreadPool::globalInstance(), [this]() -> bool {
         return compressDir();
@@ -184,7 +184,7 @@ bool ExportInstanceTask::compressDir()
 
         current++;
         setProgress(current, total);
-        setStatus(tr("Compressing %1").arg(fileInfo.fileName()));
+        setStatus(tr("Packing %1").arg(fileInfo.fileName()));
     }
 
     zip.close();
