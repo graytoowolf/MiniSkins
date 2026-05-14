@@ -198,7 +198,10 @@ void AIModelPage::on_btnRemoveModel_clicked()
         return;
 
     m_models.removeAt(row);
+
+    m_loadingUi = true;
     delete ui->modelListWidget->takeItem(row);
+    m_loadingUi = false;
 
     if (m_models.isEmpty())
     {
@@ -209,7 +212,9 @@ void AIModelPage::on_btnRemoveModel_clicked()
     {
         if (row >= m_models.size())
             row = m_models.size() - 1;
+        m_currentIndex = row;
         ui->modelListWidget->setCurrentRow(row);
+        updateDetailFields();
     }
 
     populateDefaultModelCombo();
