@@ -6,7 +6,6 @@
 #include <Json.h>
 
 #include "BuildConfig.h"
-#include "HoeDown.h"
 
 UpdateDialog::UpdateDialog(bool hasUpdate, QWidget *parent) : QDialog(parent), ui(new Ui::UpdateDialog)
 {
@@ -33,101 +32,69 @@ UpdateDialog::~UpdateDialog()
 void UpdateDialog::loadChangelog()
 {
     dljob = new NetJob("Changelog", APPLICATION->network());
-    QString url;
-    url = QString("https://api.github.com/repos/graytoowolf/Launcher-Cracked/compare/%1...Bs").arg(BuildConfig.GIT_COMMIT);
-    m_changelogType = CHANGELOG_COMMITS;
+    QString url = BuildConfig.UPDATER_BASE + "update/commits.json";
     dljob->addNetAction(Net::Download::makeByteArray(QUrl(url), &changelogData));
     connect(dljob.get(), &NetJob::succeeded, this, &UpdateDialog::changelogLoaded);
     connect(dljob.get(), &NetJob::failed, this, &UpdateDialog::changelogFailed);
     dljob->start();
 }
 
-QString reprocessMarkdown(QByteArray markdown)
-{
-    HoeDown hoedown;
-    QString output = hoedown.process(markdown);
-
-    // HACK: easier than customizing hoedown
-    output.replace(QRegExp("GH-([0-9]+)"), "<a href=\"https://github.com/graytoowolf/Launcher-Cracked/issues/\\1\">GH-\\1</a>");
-    qDebug() << output;
-    return output;
-}
-
 QString reprocessCommits(QByteArray json)
 {
     try
     {
-        QString result;
         auto document = Json::requireDocument(json);
         auto rootobject = Json::requireObject(document);
-        auto status = Json::requireString(rootobject, "status");
-        auto diff_url = Json::requireString(rootobject, "html_url");
+        auto commitarray = Json::requireArray(rootobject, "commits");
 
-        auto print_commits = [&]()
+        bool foundCurrent = false;
+        QString result;
+        result += "<table cellspacing=0 cellpadding=2 style='border-width: 1px; border-style: solid'>";
+
+        for(int i = 0; i < commitarray.size(); i++)
         {
-            result += "<table cellspacing=0 cellpadding=2 style='border-width: 1px; border-style: solid'>";
-            auto commitarray = Json::requireArray(rootobject, "commits");
-            for(int i = commitarray.size() - 1; i >= 0; i--)
+            const auto & commitval = commitarray[i];
+            auto commitobj = Json::requireValueObject(commitval);
+            auto sha = Json::requireString(commitobj, "sha");
+            auto shortSha = Json::requireString(commitobj, "shortSha");
+            auto message = Json::requireString(commitobj, "message");
+            auto url = Json::requireString(commitobj, "url");
+
+            if(sha == BuildConfig.GIT_COMMIT)
             {
-                const auto & commitval = commitarray[i];
-                auto commitobj = Json::requireValueObject(commitval);
-                auto parents_info = Json::ensureArray(commitobj, "parents");
-                // NOTE: this ignores merge commits, because they have more than one parent
-                if(parents_info.size() > 1)
-                {
-                    continue;
-                }
-                auto commit_url = Json::requireString(commitobj, "html_url");
-                auto commit_info = Json::requireObject(commitobj, "commit");
-                auto commit_message = Json::requireString(commit_info, "message");
-                auto lines = commit_message.split('\n');
-                QRegularExpression regexp("(?<prefix>(GH-(?<issuenr>[0-9]+))|(NOISSUE)|(SCRATCH))? *(?<rest>.*) *");
-                auto match = regexp.match(lines.takeFirst(), 0, QRegularExpression::NormalMatch);
-                auto issuenr = match.captured("issuenr");
-                auto prefix = match.captured("prefix");
-                auto rest = match.captured("rest");
-                result += "<tr><td>";
-                if(issuenr.length())
-                {
-                    result += QString("<a href=\"https://github.com/graytoowolf/Launcher-Cracked/issues/%1\">GH-%2</a>").arg(issuenr, issuenr);
-                }
-                else if(prefix.length())
-                {
-                    result += QString("<a href=\"%1\">%2</a>").arg(commit_url, prefix);
-                }
-                else
-                {
-                    result += QString("<a href=\"%1\">NOISSUE</a>").arg(commit_url);
-                }
-                result += "</td>";
-                lines.prepend(rest);
-                result += "<td><p>" + lines.join("<br />") + "</p></td></tr>";
+                foundCurrent = true;
+                break;
             }
-            result += "</table>";
-        };
 
-        if(status == "identical")
-        {
-            return QObject::tr("<p>There are no code changes between your current version and the latest.</p>");
+            auto lines = message.split('\n');
+            result += "<tr><td>";
+            result += QString("<a href=\"%1\">%2</a>").arg(url, shortSha);
+            result += "</td>";
+            result += "<td><p>" + lines.join("<br />") + "</p></td></tr>";
         }
-        else if(status == "ahead")
+
+        result += "</table>";
+
+        if(foundCurrent)
         {
-            result += QObject::tr("<p>Following commits were added since last update:</p>");
-            print_commits();
+            result = QObject::tr("<p>Following commits were added since last update:</p>") + result;
         }
-        else if(status == "diverged")
+        else
         {
-            auto commit_ahead = Json::requireInteger(rootobject, "ahead_by");
-            auto commit_behind = Json::requireInteger(rootobject, "behind_by");
-            result += QObject::tr("<p>The update removes %1 commits and adds the following %2:</p>").arg(commit_behind).arg(commit_ahead);
-            print_commits();
+            result = QObject::tr("<p>Your version is too old, the changelog may be incomplete. Showing the latest %1 commits:</p>").arg(commitarray.size()) + result;
         }
-        result += QObject::tr("<p>You can <a href=\"%1\">look at the changes on github</a>.</p>").arg(diff_url);
+
+        auto repo = Json::ensureString(rootobject, "repo");
+        if(!repo.isEmpty())
+        {
+            result += QObject::tr("<p>You can <a href=\"%1\">look at the changes on github</a>.</p>").arg(repo);
+        }
+
         return result;
     }
     catch (const JSONValidationError &e)
     {
-        qWarning() << "Got an unparseable commit log from github:" << e.what();
+        qWarning() << "Got an unparseable commit log:" << e.what();
         qDebug() << json;
     }
     return QString();
@@ -135,16 +102,7 @@ QString reprocessCommits(QByteArray json)
 
 void UpdateDialog::changelogLoaded()
 {
-    QString result;
-    switch(m_changelogType)
-    {
-        case CHANGELOG_COMMITS:
-            result = reprocessCommits(changelogData);
-            break;
-        case CHANGELOG_MARKDOWN:
-            result = reprocessMarkdown(changelogData);
-            break;
-    }
+    QString result = reprocessCommits(changelogData);
     changelogData.clear();
     ui->changelogBrowser->setHtml(result);
 }

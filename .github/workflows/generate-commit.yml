@@ -1,0 +1,101 @@
+name: Generate Static Commit Log
+
+on:
+  push:
+    branches:
+      - Bs
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate commits.json
+        shell: bash
+        run: |
+          mkdir -p site/update
+
+          python3 - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          repo = "https://github.com/graytoowolf/MiniSkins"
+          branch = "Bs"
+          max_count = "200"
+
+          output = subprocess.check_output(
+              [
+                  "git",
+                  "log",
+                  f"-{max_count}",
+                  "--first-parent",
+                  "--pretty=format:%H%x1f%h%x1f%s%x1f%ct%x1e",
+                  branch,
+              ],
+              text=True,
+              encoding="utf-8",
+          )
+
+          commits = []
+          for record in output.split("\x1e"):
+              record = record.strip()
+              if not record:
+                  continue
+
+              sha, short_sha, subject, timestamp = record.split("\x1f", 3)
+              commits.append({
+                  "sha": sha,
+                  "shortSha": short_sha,
+                  "message": subject,
+                  "time": int(timestamp),
+                  "url": f"{repo}/commit/{sha}",
+              })
+
+          data = {
+              "repo": repo,
+              "branch": branch,
+              "count": len(commits),
+              "commits": commits,
+          }
+
+          Path("site/update/commits.json").write_text(
+              json.dumps(data, ensure_ascii=False, indent=2),
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Download qshell
+        shell: bash
+        run: |
+          set -e
+          QSHELL_VERSION="v2.19.7"
+          curl -L -o qshell.tar.gz "https://github.com/qiniu/qshell/releases/download/${QSHELL_VERSION}/qshell-${QSHELL_VERSION}-linux-amd64.tar.gz"
+          tar -xzf qshell.tar.gz
+          chmod +x qshell
+          ./qshell version
+
+      - name: Configure qshell account
+        shell: bash
+        env:
+          QINIU_ACCESS_KEY: ${{ secrets.AK }}
+          QINIU_SECRET_KEY: ${{ secrets.SK }}
+        run: |
+          ./qshell account "$QINIU_ACCESS_KEY" "$QINIU_SECRET_KEY" bs
+
+      - name: Upload update files to Qiniu Kodo
+        shell: bash
+        env:
+          QINIU_BUCKET: ${{ secrets.QINIU_Name }}
+        run: |
+          ./qshell rput --overwrite "$QINIU_BUCKET" "update/commits.json" "site/update/commits.json"
