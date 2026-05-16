@@ -403,8 +403,7 @@ void AIAnalyzer::sendRequest()
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Authorization", QString("Bearer %1").arg(m_currentModel.apiKey).toUtf8());
 
-    auto network = APPLICATION->network();
-    m_reply = network->post(request, postData);
+    m_reply = APPLICATION->network()->post(request, postData);
 
     connect(m_reply, SIGNAL(finished()), this, SLOT(onReplyFinished()));
 }
@@ -458,7 +457,47 @@ void AIAnalyzer::onReplyFinished()
 
     if (reply->error() != QNetworkReply::NoError)
     {
-        emit analysisError(reply->errorString());
+        int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        QByteArray body = reply->readAll();
+        QString errorMsg = reply->errorString();
+
+        if (reply->error() == QNetworkReply::AuthenticationRequiredError || statusCode == 401)
+        {
+            errorMsg = tr("Authentication failed (HTTP 401)");
+        }
+
+        QJsonParseError parseErr;
+        QJsonDocument errDoc = QJsonDocument::fromJson(body, &parseErr);
+        if (parseErr.error == QJsonParseError::NoError && errDoc.isObject())
+        {
+            QJsonObject errObj = errDoc.object();
+            if (errObj.contains("error") && errObj["error"].isObject())
+            {
+                QString errMsg = errObj["error"].toObject()["message"].toString();
+                if (!errMsg.isEmpty())
+                {
+                    errorMsg += "\n" + errMsg;
+                }
+            }
+            else if (errObj.contains("detail"))
+            {
+                QString detail = errObj["detail"].toString();
+                if (!detail.isEmpty())
+                {
+                    errorMsg += "\n" + detail;
+                }
+            }
+            else if (errObj.contains("message"))
+            {
+                QString msg = errObj["message"].toString();
+                if (!msg.isEmpty())
+                {
+                    errorMsg += "\n" + msg;
+                }
+            }
+        }
+
+        emit analysisError(errorMsg);
         return;
     }
 

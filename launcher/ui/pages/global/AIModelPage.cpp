@@ -18,15 +18,13 @@ const QString AIModelPage::CUSTOM_MODEL_TEXT = QT_TRANSLATE_NOOP("AIModelPage", 
 
 AIModelPage::AIModelPage(QWidget *parent)
     : QWidget(parent), ui(new Ui::AIModelPage), m_currentIndex(-1), m_testReply(nullptr),
-      m_spinnerTimer(nullptr), m_spinnerIndex(0), m_networkManager(nullptr), m_modelsReply(nullptr), m_loadingUi(false)
+      m_spinnerTimer(nullptr), m_spinnerIndex(0), m_modelsReply(nullptr), m_loadingUi(false)
 {
     ui->setupUi(this);
     ui->tabWidget->tabBar()->hide();
 
     m_spinnerTimer = new QTimer(this);
     connect(m_spinnerTimer, &QTimer::timeout, this, &AIModelPage::updateSpinnerAnimation);
-
-    m_networkManager = new QNetworkAccessManager(this);
 
     ui->labelCustomModel->hide();
     ui->editCustomModelId->hide();
@@ -290,7 +288,7 @@ void AIModelPage::on_btnTestConnection_clicked()
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Authorization", QString("Bearer %1").arg(cfg.apiKey).toUtf8());
 
-    m_testReply = m_networkManager->get(request);
+    m_testReply = APPLICATION->network()->get(request);
     connect(m_testReply, &QNetworkReply::finished, this, &AIModelPage::onTestConnectionFinished);
 }
 
@@ -498,7 +496,7 @@ void AIModelPage::on_btnFetchModels_clicked()
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Authorization", QString("Bearer %1").arg(apiKey).toUtf8());
 
-    m_modelsReply = m_networkManager->get(request);
+    m_modelsReply = APPLICATION->network()->get(request);
     connect(m_modelsReply, &QNetworkReply::finished, this, &AIModelPage::onModelsFetched);
     connect(m_modelsReply, SIGNAL(error(QNetworkReply::NetworkError)),
             this, SLOT(onModelsFetchError(QNetworkReply::NetworkError)));

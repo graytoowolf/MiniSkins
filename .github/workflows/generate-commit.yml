@@ -38,28 +38,35 @@ jobs:
               [
                   "git",
                   "log",
-                  f"-{max_count}",
-                  "--first-parent",
-                  "--pretty=format:%H%x1f%h%x1f%s%x1f%ct%x1e",
-                  branch,
+                  "-200",
+                  "--date=unix",
+                  "--pretty=format:%H%x1f%h%x1f%ct%x1f%B%x1e"
               ],
               text=True,
               encoding="utf-8",
+              errors="replace"
           )
 
           commits = []
+
           for record in output.split("\x1e"):
               record = record.strip()
               if not record:
                   continue
 
-              sha, short_sha, subject, timestamp = record.split("\x1f", 3)
+              parts = record.split("\x1f", 3)
+              if len(parts) != 4:
+                  continue
+
+              sha, short_sha, commit_time, full_message = parts
+              full_message = full_message.strip()
+
               commits.append({
                   "sha": sha,
                   "shortSha": short_sha,
-                  "message": subject,
-                  "time": int(timestamp),
-                  "url": f"{repo}/commit/{sha}",
+                  "message": full_message,
+                  "time": int(commit_time),
+                  "url": f"{repo}/commit/{sha}"
               })
 
           data = {

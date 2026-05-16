@@ -2,7 +2,6 @@
 
 #include <QWidget>
 #include <QTimer>
-#include <QNetworkAccessManager>
 #include <QNetworkReply>
 
 #include "ui/pages/BasePage.h"
@@ -74,7 +73,6 @@ private:
     QNetworkReply *m_testReply;
     QTimer *m_spinnerTimer;
     int m_spinnerIndex;
-    QNetworkAccessManager *m_networkManager;
     QNetworkReply *m_modelsReply;
     bool m_loadingUi;
     static const QString CUSTOM_MODEL_TEXT;
