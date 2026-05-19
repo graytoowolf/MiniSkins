@@ -39,6 +39,13 @@
 
 #include <algorithm>
 #include <iterator>
+#include <QIcon>
+
+namespace
+{
+    QString iconKeyForInstanceName(const QString &instanceName, const QString &stagingPath);
+    QString importPackIcon(const QString &folder, const QString &instanceIconKey);
+}
 
 InstanceImportTask::InstanceImportTask(const QUrl sourceUrl, const ModpackUpdateContext &updateContext)
 {
@@ -353,22 +360,6 @@ void InstanceImportTask::processCurseForge()
     {
         instance.setIconKey(m_instIcon);
     }
-    else
-    {
-        if (pack.name.contains("Direwolf20"))
-        {
-            instance.setIconKey("steve");
-        }
-        else if (pack.name.contains("FTB") || pack.name.contains("Feed The Beast"))
-        {
-            instance.setIconKey("ftb_logo");
-        }
-        else
-        {
-            // default to something other than the MultiMC default to distinguish these
-            instance.setIconKey("flame");
-        }
-    }
     QString jarmodsPath = FS::PathCombine(m_stagingPath, "minecraft", "jarmods");
     QFileInfo jarmodsInfo(jarmodsPath);
     if (jarmodsInfo.isDir())
@@ -401,7 +392,29 @@ void InstanceImportTask::processCurseForge()
         m_instName.truncate(index);
     }
     instance.setModpackInfo(m_addonId, m_fileId, "curseforge");
-    instance.setName(QString("%1_v%2").arg(m_instName).arg(cleanVersion));
+    const QString finalInstanceName = QString("%1_v%2").arg(m_instName).arg(cleanVersion);
+    if (m_instIcon == "default")
+    {
+        const QString importedIconKey = importPackIcon(instance.instanceRoot(), iconKeyForInstanceName(m_instName, m_stagingPath));
+        if (!importedIconKey.isEmpty())
+        {
+            instance.setIconKey(importedIconKey);
+        }
+        else if (pack.name.contains("Direwolf20"))
+        {
+            instance.setIconKey("steve");
+        }
+        else if (pack.name.contains("FTB") || pack.name.contains("Feed The Beast"))
+        {
+            instance.setIconKey("ftb_logo");
+        }
+        else
+        {
+            // default to something other than the MultiMC default to distinguish these
+            instance.setIconKey("flame");
+        }
+    }
+    instance.setName(finalInstanceName);
     m_modIdResolver = new CurseForge::FileResolvingTask(APPLICATION->network(), pack, m_stagingPath, m_updateContext);
     connect(m_modIdResolver.get(), &CurseForge::FileResolvingTask::succeeded, [&]()
             {
@@ -530,16 +543,24 @@ void InstanceImportTask::processMultiMC()
     {
         m_instIcon = instance.iconKey();
 
-        auto importIconPath = IconUtils::findBestIconIn(instance.instanceRoot(), m_instIcon);
-        if (!importIconPath.isNull() && QFile::exists(importIconPath))
+        const QString importedIconKey = importPackIcon(instance.instanceRoot(), iconKeyForInstanceName(m_instName, m_stagingPath));
+        if (!importedIconKey.isEmpty())
         {
-            // import icon
-            auto iconList = APPLICATION->icons();
-            if (iconList->iconFileExists(m_instIcon))
+            instance.setIconKey(importedIconKey);
+        }
+        else
+        {
+            auto importIconPath = IconUtils::findBestIconIn(instance.instanceRoot(), m_instIcon);
+            if (!importIconPath.isNull() && QFile::exists(importIconPath))
             {
-                iconList->deleteIcon(m_instIcon);
+                // import icon
+                auto iconList = APPLICATION->icons();
+                if (iconList->iconFileExists(m_instIcon))
+                {
+                    iconList->deleteIcon(m_instIcon);
+                }
+                iconList->installIcons({importIconPath});
             }
-            iconList->installIcons({importIconPath});
         }
     }
     emitSucceeded();
@@ -547,6 +568,77 @@ void InstanceImportTask::processMultiMC()
 
 namespace
 {
+    QString instanceDirForStagingPath(const QString &stagingPath)
+    {
+        QDir dir(stagingPath);
+        dir.cdUp();
+        if (dir.dirName() == "_LAUNCHER_TEMP")
+        {
+            dir.cdUp();
+        }
+        return dir.absolutePath();
+    }
+
+    QString iconKeyForInstanceName(const QString &instanceName, const QString &stagingPath)
+    {
+        QString baseInstanceName = instanceName;
+        baseInstanceName.remove(QRegExp("_v[^_]+$"));
+        QString iconKey = FS::DirNameFromString(baseInstanceName, instanceDirForStagingPath(stagingPath));
+        iconKey.replace('.', '-');
+        return iconKey;
+    }
+
+    QString findImportedPackIcon(const QString &folder)
+    {
+        QDir dir(folder);
+        const auto iconCandidates = dir.entryInfoList(QStringList() << "curseforge_*", QDir::Files, QDir::Name);
+        for (const auto &candidate : iconCandidates)
+        {
+            if (!candidate.suffix().isEmpty())
+            {
+                continue;
+            }
+            if (!QIcon(candidate.absoluteFilePath()).isNull())
+            {
+                return candidate.absoluteFilePath();
+            }
+        }
+
+        const QStringList gameRoots = {".minecraft", "minecraft"};
+        for (const auto &gameRoot : gameRoots)
+        {
+            const QString iconPath = FS::PathCombine(folder, gameRoot, "icon.png");
+            if (QFileInfo::exists(iconPath) && !QIcon(iconPath).isNull())
+            {
+                return iconPath;
+            }
+        }
+
+        return QString();
+    }
+
+    QString importPackIcon(const QString &folder, const QString &instanceIconKey)
+    {
+        auto importIconPath = findImportedPackIcon(folder);
+        if (importIconPath.isNull())
+        {
+            return QString();
+        }
+
+        QFileInfo importIconInfo(importIconPath);
+        const bool isNamedIcon = importIconInfo.fileName() != "icon.png";
+        const QString iconKey = isNamedIcon || instanceIconKey.isEmpty() ? importIconInfo.baseName() : instanceIconKey;
+        const QString iconFileName = isNamedIcon ? importIconInfo.fileName() : iconKey;
+        auto iconList = APPLICATION->icons();
+        if (iconList->iconFileExists(iconKey))
+        {
+            iconList->deleteIcon(iconKey);
+        }
+        QFile::remove(FS::PathCombine(iconList->getDirectory(), iconFileName));
+        iconList->installIcon(importIconPath, iconFileName);
+        return iconKey;
+    }
+
     bool mergeOverrides(const QString &fromDir, const QString &toDir)
     {
         QDir dir(fromDir);
@@ -771,6 +863,14 @@ void InstanceImportTask::processModrinth()
     if (m_instIcon != "default")
     {
         instance.setIconKey(m_instIcon);
+    }
+    else
+    {
+        const QString importedIconKey = importPackIcon(instance.instanceRoot(), iconKeyForInstanceName(m_instName, m_stagingPath));
+        if (!importedIconKey.isEmpty())
+        {
+            instance.setIconKey(importedIconKey);
+        }
     }
     instance.setName(m_instName);
     instance.saveNow();
