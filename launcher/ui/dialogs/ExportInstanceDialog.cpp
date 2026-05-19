@@ -406,7 +406,7 @@ bool ExportInstanceDialog::doExport()
     SaveIcon(m_instance);
 
     auto &blocked = proxyModel->blockedPaths();
-    auto *task = new ExportInstanceTask(m_instance, output, name, blocked);
+    auto *task = new ExportInstanceTask(m_instance, output, QString(), blocked);
 
     ProgressDialog loadDialog(this);
     loadDialog.setSkipButton(true, tr("Abort"));
