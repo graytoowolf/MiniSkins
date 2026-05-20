@@ -40,6 +40,8 @@
 #include <algorithm>
 #include <iterator>
 #include <QIcon>
+#include <QMetaObject>
+#include <QPointer>
 
 namespace
 {
@@ -178,11 +180,35 @@ void InstanceImportTask::processZipPack()
         emitFailed(tr("Archive does not contain a recognized modpack type."));
         return;
     }
+    QPointer<InstanceImportTask> task(this);
+    auto progressCallback = [task](qint64 current, qint64 total)
+    {
+        if (!task || total <= 0)
+        {
+            return;
+        }
+        QMetaObject::invokeMethod(task.data(), "extractProgressChanged", Qt::QueuedConnection, Q_ARG(qint64, current), Q_ARG(qint64, total));
+    };
+
+    auto extractSubDirWithProgress = static_cast<nonstd::optional<QStringList> (*)(QuaZip *, const QString &, const QString &, const MMCZip::ProgressCallback &)>(&MMCZip::extractSubDir);
+
     // make sure we extract just the pack
-    m_extractFuture = QtConcurrent::run(QThreadPool::globalInstance(), MMCZip::extractSubDir, m_packZip.get(), root, extractDir.absolutePath());
-    connect(&m_extractFutureWatcher, &QFutureWatcher<QStringList>::finished, this, &InstanceImportTask::extractFinished);
-    connect(&m_extractFutureWatcher, &QFutureWatcher<QStringList>::canceled, this, &InstanceImportTask::extractAborted);
+    m_extractFuture = QtConcurrent::run(QThreadPool::globalInstance(), extractSubDirWithProgress, m_packZip.get(), root, extractDir.absolutePath(), progressCallback);
+    connect(&m_extractFutureWatcher, &QFutureWatcher<nonstd::optional<QStringList>>::finished, this, &InstanceImportTask::extractFinished);
+    connect(&m_extractFutureWatcher, &QFutureWatcher<nonstd::optional<QStringList>>::canceled, this, &InstanceImportTask::extractAborted);
     m_extractFutureWatcher.setFuture(m_extractFuture);
+}
+
+void InstanceImportTask::extractProgressChanged(qint64 current, qint64 total)
+{
+    if (m_downloadRequired)
+    {
+        setProgress(50 + current * 50 / total, 100);
+    }
+    else
+    {
+        setProgress(current, total);
+    }
 }
 
 void InstanceImportTask::extractFinished()

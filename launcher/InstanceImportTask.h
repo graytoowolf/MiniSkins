@@ -52,6 +52,7 @@ private slots:
     void downloadSucceeded();
     void downloadFailed(QString reason);
     void downloadProgressChanged(qint64 current, qint64 total);
+    void extractProgressChanged(qint64 current, qint64 total);
     void extractFinished();
     void extractAborted();
 

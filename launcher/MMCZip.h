@@ -26,6 +26,7 @@
 
 namespace MMCZip
 {
+    using ProgressCallback = std::function<void(qint64 current, qint64 total)>;
 
     /**
      * Merge two zip files, using a filter function
@@ -58,6 +59,7 @@ namespace MMCZip
      * Extract a subdirectory from an archive
      */
     nonstd::optional<QStringList> extractSubDir(QuaZip *zip, const QString &subdir, const QString &target);
+    nonstd::optional<QStringList> extractSubDir(QuaZip *zip, const QString &subdir, const QString &target, const ProgressCallback &progressCallback);
 
     bool extractRelFile(QuaZip *zip, const QString &file, const QString &target);
 

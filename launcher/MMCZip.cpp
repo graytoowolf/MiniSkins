@@ -236,6 +236,12 @@ bool MMCZip::findFilesInZip(QuaZip *zip, const QString &what, QStringList &resul
 // ours
 nonstd::optional<QStringList> MMCZip::extractSubDir(QuaZip *zip, const QString &subdir, const QString &target)
 {
+    return extractSubDir(zip, subdir, target, nullptr);
+}
+
+// ours
+nonstd::optional<QStringList> MMCZip::extractSubDir(QuaZip *zip, const QString &subdir, const QString &target, const ProgressCallback &progressCallback)
+{
     QDir directory(target);
     QStringList extracted;
 
@@ -257,11 +263,22 @@ nonstd::optional<QStringList> MMCZip::extractSubDir(QuaZip *zip, const QString &
         return nonstd::nullopt;
     }
 
+    qint64 currentEntry = 0;
+    if (progressCallback)
+    {
+        progressCallback(currentEntry, numEntries);
+    }
+
     do
     {
+        currentEntry++;
         QString name = zip->getCurrentFileName();
         if (!name.startsWith(subdir))
         {
+            if (progressCallback)
+            {
+                progressCallback(currentEntry, numEntries);
+            }
             continue;
         }
         name.remove(0, subdir.size());
@@ -278,7 +295,15 @@ nonstd::optional<QStringList> MMCZip::extractSubDir(QuaZip *zip, const QString &
         }
         extracted.append(absFilePath);
         qDebug() << "Extracted file" << name;
+        if (progressCallback)
+        {
+            progressCallback(currentEntry, numEntries);
+        }
     } while (zip->goToNextFile());
+    if (progressCallback)
+    {
+        progressCallback(numEntries, numEntries);
+    }
     return extracted;
 }
 
