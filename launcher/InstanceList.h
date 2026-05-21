@@ -179,6 +179,7 @@ private:
     InstancePtr loadInstance(const InstanceId &id);
 
 private:
+    void scanAndProcessBlacklistedModsAsync(InstancePtr instance);
     void scanAndProcessBlacklistedMods(InstancePtr instance);
     void processWhitelistedMods(InstancePtr instance, const QMap<int, QString> &whitelist, const QList<fingerprint::ModInfo> &modInfoList, QSet<int> &whitelistedModIds);
 

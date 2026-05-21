@@ -183,11 +183,12 @@ void InstanceImportTask::processZipPack()
     QPointer<InstanceImportTask> task(this);
     auto progressCallback = [task](qint64 current, qint64 total)
     {
-        if (!task || total <= 0)
+        auto receiver = task.data();
+        if (!receiver || total <= 0)
         {
             return;
         }
-        QMetaObject::invokeMethod(task.data(), "extractProgressChanged", Qt::QueuedConnection, Q_ARG(qint64, current), Q_ARG(qint64, total));
+        QMetaObject::invokeMethod(receiver, "extractProgressChanged", Qt::QueuedConnection, Q_ARG(qint64, current), Q_ARG(qint64, total));
     };
 
     auto extractSubDirWithProgress = static_cast<nonstd::optional<QStringList> (*)(QuaZip *, const QString &, const QString &, const MMCZip::ProgressCallback &)>(&MMCZip::extractSubDir);

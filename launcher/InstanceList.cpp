@@ -32,6 +32,13 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <QDateTime>
+#include <QElapsedTimer>
+#include <QFutureWatcher>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QSharedPointer>
+#include <QThreadPool>
+#include <QtConcurrentRun>
 
 #include "Application.h"
 #include "InstanceList.h"
@@ -1028,7 +1035,7 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
                 // 如果有模组加载器，则处理黑白名单
                 if (hasModLoader)
                 {
-                    scanAndProcessBlacklistedMods(instance);
+                    scanAndProcessBlacklistedModsAsync(instance);
                 }
             }
         }
@@ -1040,11 +1047,15 @@ bool InstanceList::commitStagedInstance(const QString &path, const QString &inst
     return true;
 }
 
-void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
+void InstanceList::scanAndProcessBlacklistedModsAsync(InstancePtr instance)
 {
+    auto timer = QSharedPointer<QElapsedTimer>::create();
+    timer->start();
+
     auto minecraftInstance = std::dynamic_pointer_cast<MinecraftInstance>(instance);
     if (!minecraftInstance)
     {
+        qDebug() << "Blacklist mod scan skipped for non-Minecraft instance, took" << timer->elapsed() << "ms";
         return;
     }
 
@@ -1052,6 +1063,222 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
     QDir modsDir(modsPath);
     if (!modsDir.exists())
     {
+        qDebug() << "Blacklist mod scan skipped, mods folder missing:" << modsPath << "took" << timer->elapsed() << "ms";
+        return;
+    }
+
+    QFileInfoList jarFiles = modsDir.entryInfoList({"*.jar", "*.jar.disabled"}, QDir::Files);
+    if (jarFiles.isEmpty())
+    {
+        qDebug() << "Blacklist mod scan skipped, no jar files in" << modsPath << "took" << timer->elapsed() << "ms";
+        return;
+    }
+
+    QList<fingerprint::ModInfo> modInfoList;
+    QSet<QString> disabledFiles;
+    for (const QFileInfo &fileInfo : jarFiles)
+    {
+        modInfoList.append(fingerprint::ModInfo(fileInfo.absoluteFilePath()));
+        if (fileInfo.fileName().endsWith(".disabled"))
+        {
+            disabledFiles.insert(fileInfo.absoluteFilePath());
+        }
+    }
+
+    auto finishScan = [this, instance, minecraftInstance, disabledFiles, timer](const QList<fingerprint::ModInfo> &modInfoList)
+    {
+        if (modInfoList.isEmpty())
+        {
+            qDebug() << "Blacklist mod scan async finished with no mod info for" << instance->name() << "took" << timer->elapsed() << "ms";
+            return;
+        }
+
+        QMap<int, QString> blacklist = APPLICATION->getModBlacklist();
+        QMap<int, QString> whitelist = APPLICATION->getModWhitelist();
+
+        QSet<int> whitelistedModIds;
+        QStringList modsToDisable;
+        QJsonArray modsJsonArray;
+
+        if (!whitelist.isEmpty())
+        {
+            processWhitelistedMods(instance, whitelist, modInfoList, whitelistedModIds);
+        }
+
+        for (const auto &modInfo : modInfoList)
+        {
+            if (modInfo.projectId <= 0)
+                continue;
+
+            QJsonObject modObj;
+            modObj["projectID"] = modInfo.projectId;
+            modObj["fileID"] = modInfo.fileId;
+            modObj["name"] = modInfo.name;
+            modObj["fileName"] = QFileInfo(modInfo.filePath).fileName();
+
+            bool isAlreadyDisabled = disabledFiles.contains(modInfo.filePath);
+            bool isBlacklisted = blacklist.contains(modInfo.projectId);
+            if (isBlacklisted && !whitelistedModIds.contains(modInfo.projectId))
+            {
+                if (!isAlreadyDisabled)
+                {
+                    modsToDisable.append(modInfo.filePath);
+                }
+                modObj["required"] = false;
+                if (!isAlreadyDisabled)
+                {
+                    modObj["fileName"] = modObj["fileName"].toString() + ".disabled";
+                }
+            }
+            else if (isAlreadyDisabled)
+            {
+                modObj["required"] = false;
+            }
+            else
+            {
+                modObj["required"] = true;
+            }
+
+            modsJsonArray.append(modObj);
+        }
+
+        for (const QString &filePath : modsToDisable)
+        {
+            QFile file(filePath);
+            if (file.exists())
+            {
+                file.rename(filePath + ".disabled");
+            }
+        }
+
+        QFile modsJsonFile(minecraftInstance->modlist());
+        if (modsJsonFile.open(QIODevice::WriteOnly))
+        {
+            modsJsonFile.write(QJsonDocument(modsJsonArray).toJson());
+        }
+    };
+
+    auto watcher = new QFutureWatcher<QList<fingerprint::ModInfo>>(this);
+    connect(watcher, &QFutureWatcher<QList<fingerprint::ModInfo>>::finished, this, [this, watcher, instance, timer, finishScan]()
+    {
+        QList<fingerprint::ModInfo> processedList = watcher->result();
+        watcher->deleteLater();
+
+        QJsonArray fingerprintArray;
+        QMap<qlonglong, int> fingerprintToIndex;
+        for (int i = 0; i < processedList.size(); ++i)
+        {
+            if (processedList[i].fileFingerprint.isEmpty())
+                continue;
+
+            bool ok = false;
+            qlonglong fingerprintValue = processedList[i].fileFingerprint.toLongLong(&ok);
+            if (ok)
+            {
+                fingerprintArray.append(QJsonValue(fingerprintValue));
+                fingerprintToIndex[fingerprintValue] = i;
+            }
+        }
+
+        if (fingerprintArray.isEmpty())
+        {
+            finishScan(processedList);
+            return;
+        }
+
+        QJsonObject requestObj;
+        requestObj["fingerprints"] = fingerprintArray;
+        QJsonDocument doc(requestObj);
+
+        QNetworkRequest request(QUrl("https://api.curseforge.com/v1/fingerprints"));
+        request.setRawHeader("x-api-key", APPLICATION->curseAPIKey().toUtf8());
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+        auto *reply = APPLICATION->network()->post(request, doc.toJson());
+        auto *timeout = new QTimer(reply);
+        timeout->setSingleShot(true);
+        timeout->setInterval(15000);
+        auto finished = QSharedPointer<bool>::create(false);
+
+        auto handleReply = [reply, timeout, finished, processedList, fingerprintToIndex, finishScan]()
+        {
+            if (*finished)
+                return;
+
+            *finished = true;
+            timeout->stop();
+
+            QList<fingerprint::ModInfo> results = processedList;
+            if (reply->error() == QNetworkReply::NoError)
+            {
+                QJsonDocument responseDoc = QJsonDocument::fromJson(reply->readAll());
+                QJsonObject data = responseDoc.object()["data"].toObject();
+                QJsonArray matches = data["exactMatches"].toArray();
+                for (const QJsonValue &matchValue : matches)
+                {
+                    QJsonObject match = matchValue.toObject();
+                    QJsonObject fileObj = match["file"].toObject();
+                    qlonglong responseFingerprint = fileObj["fileFingerprint"].toVariant().toLongLong();
+                    if (!fingerprintToIndex.contains(responseFingerprint))
+                        continue;
+
+                    int index = fingerprintToIndex[responseFingerprint];
+                    results[index].projectId = match["id"].toInt();
+                    results[index].fileId = fileObj["id"].toInt();
+                    results[index].name = fileObj.contains("displayName") && !fileObj["displayName"].toString().isEmpty()
+                                              ? fileObj["displayName"].toString()
+                                              : fileObj["fileName"].toString();
+                    results[index].fileFingerprint = QString::number(responseFingerprint);
+                    results[index].isValid = true;
+                }
+            }
+            else
+            {
+                qWarning() << "Blacklist mod scan fingerprint request failed:" << reply->errorString();
+            }
+
+            reply->deleteLater();
+            finishScan(results);
+        };
+
+        connect(reply, &QNetworkReply::finished, this, handleReply);
+        connect(timeout, &QTimer::timeout, this, [reply, handleReply]()
+        {
+            qWarning() << "Blacklist mod scan fingerprint request timed out";
+            reply->abort();
+            handleReply();
+        });
+        timeout->start();
+    });
+
+    watcher->setFuture(QtConcurrent::run(QThreadPool::globalInstance(), [modInfoList]()
+    {
+        QList<fingerprint::ModInfo> processedList = modInfoList;
+        for (auto &modInfo : processedList)
+        {
+            modInfo.fileFingerprint = fingerprint::getJarFingerprint(modInfo.filePath);
+        }
+        return processedList;
+    }));
+}
+
+void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
+{
+    QElapsedTimer timer;
+    timer.start();
+
+    auto minecraftInstance = std::dynamic_pointer_cast<MinecraftInstance>(instance);
+    if (!minecraftInstance)
+    {
+        qDebug() << "Blacklist mod scan skipped for non-Minecraft instance, took" << timer.elapsed() << "ms";
+        return;
+    }
+
+    QString modsPath = minecraftInstance->modsRoot();
+    QDir modsDir(modsPath);
+    if (!modsDir.exists())
+    {
+        qDebug() << "Blacklist mod scan skipped, mods folder missing:" << modsPath << "took" << timer.elapsed() << "ms";
         return;
     }
 
@@ -1060,8 +1287,11 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
     QFileInfoList jarFiles = modsDir.entryInfoList({"*.jar", "*.jar.disabled"}, QDir::Files);
     if (jarFiles.isEmpty())
     {
+        qDebug() << "Blacklist mod scan skipped, no jar files in" << modsPath << "took" << timer.elapsed() << "ms";
         return;
     }
+
+    qDebug() << "Blacklist mod scan started for" << instance->name() << "with" << jarFiles.size() << "jar files";
 
     QList<fingerprint::ModInfo> modInfoList;
     QSet<QString> disabledFiles; // 记录哪些文件是disabled状态
@@ -1078,6 +1308,7 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
     modInfoList = fingerprint::processModInfoList(modInfoList);
     if (modInfoList.isEmpty())
     {
+        qDebug() << "Blacklist mod scan finished with no mod info for" << instance->name() << "took" << timer.elapsed() << "ms";
         return;
     }
 
@@ -1155,6 +1386,7 @@ void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
     {
         modsJsonFile.write(QJsonDocument(modsJsonArray).toJson());
     }
+    qDebug() << "Blacklist mod scan finished for" << instance->name() << "took" << timer.elapsed() << "ms";
 }
 
 void InstanceList::processWhitelistedMods(InstancePtr instance, const QMap<int, QString> &whitelist, const QList<fingerprint::ModInfo> &modInfoList, QSet<int> &whitelistedModIds)
