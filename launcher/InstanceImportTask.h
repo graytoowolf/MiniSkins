@@ -24,11 +24,13 @@
 #include "QObjectPtr.h"
 
 #include <nonstd/optional>
+#include <QVector>
 
 class QuaZip;
 namespace CurseForge
 {
     class FileResolvingTask;
+    struct File;
 }
 
 class InstanceImportTask : public InstanceTask
@@ -47,6 +49,7 @@ private:
     void processTechnic();
     void processCurseForge();
     void processModrinth();
+    bool writeCurseForgeManifestModList(const QVector<CurseForge::File> &files) const;
 
 private slots:
     void downloadSucceeded();

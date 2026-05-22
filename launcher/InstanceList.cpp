@@ -1519,6 +1519,7 @@ void InstanceList::processNextModInQueue()
 {
     if (m_downloadQueue.isEmpty())
     {
+        writeDownloadedWhitelistModsToModJson();
         return;
     }
 
@@ -1644,6 +1645,12 @@ void InstanceList::downloadModFile(int modId, int fileId, const QString &fileNam
     // 检查文件是否已存在
     if (QFile::exists(filePath))
     {
+        ModDownloadInfo info;
+        info.modId = modId;
+        info.fileId = fileId;
+        info.fileName = fileName;
+        info.filePath = filePath;
+        m_downloadedFiles.append(info);
         processNextModInQueue();
         return;
     }
@@ -1674,6 +1681,79 @@ void InstanceList::downloadModFile(int modId, int fileId, const QString &fileNam
         processNextModInQueue(); });
 
     job->start();
+}
+
+void InstanceList::writeDownloadedWhitelistModsToModJson()
+{
+    if (!m_currentInstance || m_downloadedFiles.isEmpty())
+    {
+        return;
+    }
+
+    QString modsJsonPath = m_currentInstance->modlist();
+    QFile modsJsonFile(modsJsonPath);
+    QJsonArray modsArray;
+
+    if (!modsJsonFile.exists())
+    {
+        return;
+    }
+
+    if (modsJsonFile.open(QIODevice::ReadOnly))
+    {
+        QJsonDocument doc = QJsonDocument::fromJson(modsJsonFile.readAll());
+        modsJsonFile.close();
+        if (doc.isArray())
+        {
+            modsArray = doc.array();
+        }
+    }
+    else
+    {
+        qWarning() << "Failed to read mod.json before writing whitelist mods:" << modsJsonPath;
+        return;
+    }
+
+    for (const auto &downloaded : m_downloadedFiles)
+    {
+        bool updated = false;
+        for (int i = 0; i < modsArray.size(); ++i)
+        {
+            QJsonObject modObj = modsArray.at(i).toObject();
+            if (modObj["projectID"].toInt() != downloaded.modId)
+            {
+                continue;
+            }
+
+            modObj["fileID"] = downloaded.fileId;
+            modObj["name"] = downloaded.fileName;
+            modObj["fileName"] = downloaded.fileName;
+            modObj["required"] = true;
+            modsArray[i] = modObj;
+            updated = true;
+            break;
+        }
+
+        if (!updated)
+        {
+            QJsonObject modObj;
+            modObj["projectID"] = downloaded.modId;
+            modObj["fileID"] = downloaded.fileId;
+            modObj["name"] = downloaded.fileName;
+            modObj["fileName"] = downloaded.fileName;
+            modObj["required"] = true;
+            modsArray.append(modObj);
+        }
+    }
+
+    if (modsJsonFile.open(QIODevice::WriteOnly))
+    {
+        modsJsonFile.write(QJsonDocument(modsArray).toJson());
+    }
+    else
+    {
+        qWarning() << "Failed to write whitelist mods to mod.json:" << modsJsonPath;
+    }
 }
 
 bool InstanceList::destroyStagingPath(const QString &keyPath)

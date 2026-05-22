@@ -191,6 +191,7 @@ private:
     void processNextModInQueue();
     void fetchModFileInfo(int modId);
     void downloadModFile(int modId, int fileId, const QString &fileName, const QString &downloadUrl);
+    void writeDownloadedWhitelistModsToModJson();
 
     // 辅助方法
     static const QMap<QString, int> &getModLoaderTypeMap();

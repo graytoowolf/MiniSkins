@@ -40,6 +40,9 @@
 #include <algorithm>
 #include <iterator>
 #include <QIcon>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMetaObject>
 #include <QPointer>
 
@@ -442,6 +445,7 @@ void InstanceImportTask::processCurseForge()
         }
     }
     instance.setName(finalInstanceName);
+    writeCurseForgeManifestModList(pack.files);
     m_modIdResolver = new CurseForge::FileResolvingTask(APPLICATION->network(), pack, m_stagingPath, m_updateContext);
     connect(m_modIdResolver.get(), &CurseForge::FileResolvingTask::succeeded, [&]()
             {
@@ -455,7 +459,7 @@ void InstanceImportTask::processCurseForge()
                 continue;
             }
             QString filename = result.fileName;
-            if (!result.required)
+            if (!result.required && !filename.endsWith(".disabled"))
             {
                 filename += ".disabled";
             }
@@ -537,6 +541,34 @@ void InstanceImportTask::processCurseForge()
     connect(m_modIdResolver.get(), &CurseForge::FileResolvingTask::status, [&](QString status)
             { setStatus(status); });
     m_modIdResolver->start();
+}
+
+bool InstanceImportTask::writeCurseForgeManifestModList(const QVector<CurseForge::File> &files) const
+{
+    QJsonArray modsArray;
+    for (const auto &file : files)
+    {
+        if (file.projectId <= 0 || file.fileId <= 0)
+        {
+            continue;
+        }
+
+        QJsonObject modObj;
+        modObj["projectID"] = file.projectId;
+        modObj["fileID"] = file.fileId;
+        modObj["required"] = file.required;
+        modsArray.append(modObj);
+    }
+
+    QFile modsJsonFile(FS::PathCombine(m_stagingPath, "mod.json"));
+    if (!modsJsonFile.open(QIODevice::WriteOnly))
+    {
+        qWarning() << "Failed to write CurseForge mod list:" << modsJsonFile.fileName();
+        return false;
+    }
+
+    modsJsonFile.write(QJsonDocument(modsArray).toJson());
+    return true;
 }
 
 void InstanceImportTask::processTechnic()
