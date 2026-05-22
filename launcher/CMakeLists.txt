@@ -352,6 +352,8 @@ set(MINECRAFT_SOURCES
     minecraft/mod/LocalModParseTask.cpp
     minecraft/mod/fingerprint.h
     minecraft/mod/fingerprint.cpp
+    minecraft/mod/ModFingerprintLookupTask.h
+    minecraft/mod/ModFingerprintLookupTask.cpp
     minecraft/mod/ModFingerprintTask.h
     minecraft/mod/ModFingerprintTask.cpp
     minecraft/mod/ResourcePackFolderModel.h

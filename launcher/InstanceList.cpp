@@ -34,8 +34,6 @@
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QFutureWatcher>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QSharedPointer>
 #include <QThreadPool>
 #include <QtConcurrentRun>
@@ -51,6 +49,7 @@
 #include "FileSystem.h"
 #include "ExponentialSeries.h"
 #include "WatchLock.h"
+#include "minecraft/mod/ModFingerprintLookupTask.h"
 #include "minecraft/mod/fingerprint.h"
 #include "net/Download.h"
 #include "net/NetJob.h"
@@ -1164,91 +1163,21 @@ void InstanceList::scanAndProcessBlacklistedModsAsync(InstancePtr instance)
         QList<fingerprint::ModInfo> processedList = watcher->result();
         watcher->deleteLater();
 
-        QJsonArray fingerprintArray;
-        QMap<qlonglong, int> fingerprintToIndex;
-        for (int i = 0; i < processedList.size(); ++i)
+        auto request = CurseForge::ModFingerprintLookupTask::make(processedList);
+        auto *job = new NetJob("Blacklist mod fingerprint lookup", APPLICATION->network());
+        job->addNetAction(request);
+        connect(job, &NetJob::succeeded, this, [job, request, finishScan]()
         {
-            if (processedList[i].fileFingerprint.isEmpty())
-                continue;
-
-            bool ok = false;
-            qlonglong fingerprintValue = processedList[i].fileFingerprint.toLongLong(&ok);
-            if (ok)
-            {
-                fingerprintArray.append(QJsonValue(fingerprintValue));
-                fingerprintToIndex[fingerprintValue] = i;
-            }
-        }
-
-        if (fingerprintArray.isEmpty())
-        {
-            finishScan(processedList);
-            return;
-        }
-
-        QJsonObject requestObj;
-        requestObj["fingerprints"] = fingerprintArray;
-        QJsonDocument doc(requestObj);
-
-        QNetworkRequest request(QUrl("https://api.curseforge.com/v1/fingerprints"));
-        request.setRawHeader("x-api-key", APPLICATION->curseAPIKey().toUtf8());
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-        auto *reply = APPLICATION->network()->post(request, doc.toJson());
-        auto *timeout = new QTimer(reply);
-        timeout->setSingleShot(true);
-        timeout->setInterval(15000);
-        auto finished = QSharedPointer<bool>::create(false);
-
-        auto handleReply = [reply, timeout, finished, processedList, fingerprintToIndex, finishScan]()
-        {
-            if (*finished)
-                return;
-
-            *finished = true;
-            timeout->stop();
-
-            QList<fingerprint::ModInfo> results = processedList;
-            if (reply->error() == QNetworkReply::NoError)
-            {
-                QJsonDocument responseDoc = QJsonDocument::fromJson(reply->readAll());
-                QJsonObject data = responseDoc.object()["data"].toObject();
-                QJsonArray matches = data["exactMatches"].toArray();
-                for (const QJsonValue &matchValue : matches)
-                {
-                    QJsonObject match = matchValue.toObject();
-                    QJsonObject fileObj = match["file"].toObject();
-                    qlonglong responseFingerprint = fileObj["fileFingerprint"].toVariant().toLongLong();
-                    if (!fingerprintToIndex.contains(responseFingerprint))
-                        continue;
-
-                    int index = fingerprintToIndex[responseFingerprint];
-                    results[index].projectId = match["id"].toInt();
-                    results[index].fileId = fileObj["id"].toInt();
-                    results[index].name = fileObj.contains("displayName") && !fileObj["displayName"].toString().isEmpty()
-                                              ? fileObj["displayName"].toString()
-                                              : fileObj["fileName"].toString();
-                    results[index].fileFingerprint = QString::number(responseFingerprint);
-                    results[index].isValid = true;
-                }
-            }
-            else
-            {
-                qWarning() << "Blacklist mod scan fingerprint request failed:" << reply->errorString();
-            }
-
-            reply->deleteLater();
-            finishScan(results);
-        };
-
-        connect(reply, &QNetworkReply::finished, this, handleReply);
-        connect(timeout, &QTimer::timeout, this, [reply, handleReply]()
-        {
-            qWarning() << "Blacklist mod scan fingerprint request timed out";
-            reply->abort();
-            handleReply();
+            finishScan(request->results());
+            job->deleteLater();
         });
-        timeout->start();
+        connect(job, &NetJob::failed, this, [job, processedList, finishScan](QString reason)
+        {
+            qWarning() << "Blacklist mod scan fingerprint request failed:" << reason;
+            finishScan(processedList);
+            job->deleteLater();
+        });
+        job->start();
     });
 
     watcher->setFuture(QtConcurrent::run(QThreadPool::globalInstance(), [modInfoList]()
@@ -1264,6 +1193,9 @@ void InstanceList::scanAndProcessBlacklistedModsAsync(InstancePtr instance)
 
 void InstanceList::scanAndProcessBlacklistedMods(InstancePtr instance)
 {
+    scanAndProcessBlacklistedModsAsync(instance);
+    return;
+
     QElapsedTimer timer;
     timer.start();
 

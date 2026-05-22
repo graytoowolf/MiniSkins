@@ -1,9 +1,11 @@
 #include "ModFilterPage.h"
 #include "ui_ModFilterPage.h"
 #include "Application.h"
+#include "minecraft/mod/ModFingerprintLookupTask.h"
 #include "minecraft/mod/fingerprint.h"
 #include "minecraft/mod/LocalModParseTask.h"
 #include "minecraft/mod/Mod.h"
+#include "net/NetJob.h"
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -110,14 +112,21 @@ void ModFilterPage::dropEvent(QDropEvent *event)
 
     // 批量处理模组信息
     QList<ModInfo> processedModInfos = fingerprint::processModInfoList(modInfoList);
-    QMap<int, QString> modsToAdd;
+    auto request = CurseForge::ModFingerprintLookupTask::make(processedModInfos);
+    auto *job = new NetJob("Mod filter fingerprint lookup", APPLICATION->network());
+    job->addNetAction(request);
 
-    for (const ModInfo &modInfo : processedModInfos)
+    connect(job, &NetJob::succeeded, this, [this, job, request]()
     {
-        if (modInfo.isValid)
+        QMap<int, QString> modsToAdd;
+        for (const ModInfo &modInfo : request->results())
         {
-            QString modName = PROVISIONAL_MOD_NAME;
+            if (!modInfo.isValid)
+            {
+                continue;
+            }
 
+            QString modName = PROVISIONAL_MOD_NAME;
             QFileInfo fileInfo(modInfo.filePath);
             LocalModParseTask parseTask(0, Mod::MOD_ZIPFILE, fileInfo);
             parseTask.run();
@@ -130,23 +139,31 @@ void ModFilterPage::dropEvent(QDropEvent *event)
 
             modsToAdd.insert(modInfo.projectId, modName);
         }
-    }
 
-    if (!modsToAdd.isEmpty())
+        if (!modsToAdd.isEmpty())
+        {
+            const bool isWhitelist = (ui->tabWidget->currentIndex() == 1);
+            if (isWhitelist)
+            {
+                APPLICATION->addModsToWhitelist(modsToAdd);
+            }
+            else
+            {
+                APPLICATION->addModsToBlacklist(modsToAdd);
+            }
+            refreshData();
+            showInfoMessage(tr("Success"),
+                            tr("Processed %1 mod(s) for %2.").arg(modsToAdd.size()).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
+        }
+
+        job->deleteLater();
+    });
+    connect(job, &NetJob::failed, this, [this, job](QString reason)
     {
-        const bool isWhitelist = (ui->tabWidget->currentIndex() == 1);
-        if (isWhitelist)
-        {
-            APPLICATION->addModsToWhitelist(modsToAdd);
-        }
-        else
-        {
-            APPLICATION->addModsToBlacklist(modsToAdd);
-        }
-        refreshData();
-        showInfoMessage(tr("Success"),
-                        tr("Processed %1 mod(s) for %2.").arg(modsToAdd.size()).arg(isWhitelist ? tr("whitelist") : tr("blacklist")));
-    }
+        showErrorMessage(tr("Error"), tr("Failed to look up mod fingerprints: %1").arg(reason));
+        job->deleteLater();
+    });
+    job->start();
 
     event->acceptProposedAction();
 }

@@ -26,8 +26,10 @@
 #include <QThreadPool>
 #include <algorithm>
 #include "LocalModParseTask.h"
+#include "minecraft/mod/ModFingerprintLookupTask.h"
 #include "minecraft/mod/fingerprint.h"
 #include "minecraft/mod/ModFingerprintTask.h"
+#include "Application.h"
 
 using fingerprint::ModInfo;
 
@@ -251,6 +253,36 @@ void ModFolderModel::finishFingerprint(QList<fingerprint::ModInfo> result)
 
     m_jsonManager.addMods(result);
     m_jsonManager.save();
+
+    if (m_fingerprintJob)
+    {
+        m_fingerprintJob->abort();
+        m_fingerprintJob.reset();
+    }
+
+    auto request = CurseForge::ModFingerprintLookupTask::make(result);
+    m_fingerprintJob = new NetJob("CurseForge fingerprint lookup", APPLICATION->network());
+    m_fingerprintJob->addNetAction(request);
+    connect(m_fingerprintJob.get(), &NetJob::succeeded, this, &ModFolderModel::finishFingerprintLookup);
+    connect(m_fingerprintJob.get(), &NetJob::failed, this, &ModFolderModel::fingerprintLookupFailed);
+    m_fingerprintJob->start();
+}
+
+void ModFolderModel::finishFingerprintLookup()
+{
+    auto request = qobject_cast<CurseForge::ModFingerprintLookupTask *>(m_fingerprintJob->first().get());
+    if (request)
+    {
+        m_jsonManager.addMods(request->results());
+        m_jsonManager.save();
+    }
+    m_fingerprintJob.reset();
+}
+
+void ModFolderModel::fingerprintLookupFailed(QString reason)
+{
+    qWarning() << "CurseForge fingerprint lookup failed:" << reason;
+    m_fingerprintJob.reset();
 }
 
 void ModFolderModel::resolveMod(Mod &m)
@@ -376,8 +408,7 @@ bool ModFolderModel::installMod(const QString &filename)
         {
             ModInfo modInfo(newpath);
             ModInfo processedModInfo = fingerprint::processModInfo(modInfo);
-            m_jsonManager.addMod(processedModInfo);
-            m_jsonManager.save();
+            finishFingerprint(QList<ModInfo>() << processedModInfo);
         }
 
         update();
@@ -405,8 +436,7 @@ bool ModFolderModel::installMod(const QString &filename)
         {
             ModInfo modInfo(newpath);
             ModInfo processedModInfo = fingerprint::processModInfo(modInfo);
-            m_jsonManager.addMod(processedModInfo);
-            m_jsonManager.save();
+            finishFingerprint(QList<ModInfo>() << processedModInfo);
         }
 
         update();

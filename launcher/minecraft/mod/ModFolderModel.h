@@ -24,6 +24,7 @@
 
 #include "Mod.h"
 #include "ModJsonManager.h"
+#include "net/NetJob.h"
 
 #include "ModFolderLoadTask.h"
 #include "LocalModParseTask.h"
@@ -126,6 +127,8 @@ private slots:
     void directoryChanged(QString path);
     void finishUpdate();
     void finishFingerprint(QList<fingerprint::ModInfo> result);
+    void finishFingerprintLookup();
+    void fingerprintLookupFailed(QString reason);
     void finishModParse(int token);
 
 signals:
@@ -148,4 +151,5 @@ protected:
     int nextResolutionTicket = 0;
     QList<Mod> mods;
     ModJsonManager m_jsonManager;
+    NetJob::Ptr m_fingerprintJob;
 };
