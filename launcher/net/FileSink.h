@@ -16,6 +16,9 @@ public: /* methods */
     JobStatus finalize(QNetworkReply & reply) override;
     bool hasLocalData() override;
 
+private: /* methods */
+    bool openOutputFile();
+
 protected: /* methods */
     virtual JobStatus initCache(QNetworkRequest &);
     virtual JobStatus finalizeCache(QNetworkReply &reply);

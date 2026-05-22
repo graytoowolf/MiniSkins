@@ -4,6 +4,7 @@
 #include <QTranslator>
 #include <QLocale>
 #include <QDir>
+#include <QFile>
 #include <QLibraryInfo>
 #include <QDebug>
 
@@ -150,11 +151,26 @@ struct TranslationsModel::Private
     bool no_language_set = false;
 };
 
+namespace {
+void cleanupTranslationIndexSaveFiles(const QDir &dir)
+{
+    const auto staleSaveFiles = dir.entryInfoList({"index_v2.json.??????"}, QDir::Files | QDir::Hidden);
+    for (const auto &file : staleSaveFiles)
+    {
+        if (!QFile::remove(file.absoluteFilePath()))
+        {
+            qWarning() << "Failed to remove stale translations index save file:" << file.absoluteFilePath();
+        }
+    }
+}
+}
+
 TranslationsModel::TranslationsModel(QString path, QObject* parent): QAbstractListModel(parent)
 {
     d.reset(new Private);
     d->m_dir.setPath(path);
     FS::ensureFolderPathExists(path);
+    cleanupTranslationIndexSaveFiles(d->m_dir);
     reloadLocalFiles();
 
     d->watcher = new QFileSystemWatcher(this);

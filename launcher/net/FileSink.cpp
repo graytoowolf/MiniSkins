@@ -23,19 +23,7 @@ JobStatus FileSink::init(QNetworkRequest& request)
     {
         return result;
     }
-    // create a new save file and open it for writing
-    if (!FS::ensureFilePathExists(m_filename))
-    {
-        qCritical() << "Could not create folder for " + m_filename;
-        return Job_Failed;
-    }
     wroteAnyData = false;
-    m_output_file.reset(new QSaveFile(m_filename));
-    if (!m_output_file->open(QIODevice::WriteOnly))
-    {
-        qCritical() << "Could not open " + m_filename + " for writing";
-        return Job_Failed;
-    }
 
     if(initAllValidators(request))
         return Job_InProgress;
@@ -47,12 +35,36 @@ JobStatus FileSink::initCache(QNetworkRequest &)
     return Job_InProgress;
 }
 
+bool FileSink::openOutputFile()
+{
+    if (m_output_file)
+    {
+        return true;
+    }
+    if (!FS::ensureFilePathExists(m_filename))
+    {
+        qCritical() << "Could not create folder for " + m_filename;
+        return false;
+    }
+    m_output_file.reset(new QSaveFile(m_filename));
+    if (!m_output_file->open(QIODevice::WriteOnly))
+    {
+        qCritical() << "Could not open " + m_filename + " for writing";
+        m_output_file.reset();
+        return false;
+    }
+    return true;
+}
+
 JobStatus FileSink::write(QByteArray& data)
 {
-    if (!writeAllValidators(data) || m_output_file->write(data) != data.size())
+    if (!openOutputFile() || !writeAllValidators(data) || m_output_file->write(data) != data.size())
     {
         qCritical() << "Failed writing into " + m_filename;
-        m_output_file->cancelWriting();
+        if (m_output_file)
+        {
+            m_output_file->cancelWriting();
+        }
         m_output_file.reset();
         wroteAnyData = false;
         return Job_Failed;
@@ -63,7 +75,11 @@ JobStatus FileSink::write(QByteArray& data)
 
 JobStatus FileSink::abort()
 {
-    m_output_file->cancelWriting();
+    if (m_output_file)
+    {
+        m_output_file->cancelWriting();
+        m_output_file.reset();
+    }
     failAllValidators();
     return Job_Failed;
 }
@@ -83,15 +99,22 @@ JobStatus FileSink::finalize(QNetworkReply& reply)
     // if it actually got a proper file, we write it even if it was empty
     if (gotFile || wroteAnyData)
     {
+        if (!m_output_file && !openOutputFile())
+            return Job_Failed;
         // ask validators for data consistency
         // we only do this for actual downloads, not 'your data is still the same' cache hits
         if(!finalizeAllValidators(reply))
+        {
+            m_output_file->cancelWriting();
+            m_output_file.reset();
             return Job_Failed;
+        }
         // nothing went wrong...
         if (!m_output_file->commit())
         {
             qCritical() << "Failed to commit changes to " << m_filename;
             m_output_file->cancelWriting();
+            m_output_file.reset();
             return Job_Failed;
         }
     }
