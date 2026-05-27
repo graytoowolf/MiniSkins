@@ -1,10 +1,13 @@
 #include "LogView.h"
 #include <QTextBlock>
 #include <QScrollBar>
-#include <QCoreApplication>
 
 LogView::LogView(QWidget* parent) : QPlainTextEdit(parent)
 {
+    auto logPalette = palette();
+    logPalette.setColor(QPalette::Base, Qt::white);
+    logPalette.setColor(QPalette::Text, Qt::black);
+    setPalette(logPalette);
     setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     m_defaultFormat = new QTextCharFormat(currentCharFormat());
 }
@@ -64,52 +67,66 @@ void LogView::modelDestroyed(QObject* model)
 
 void LogView::repopulate()
 {
-    setUpdatesEnabled(false);
-    auto doc = document();
-    doc->clear();
+    document()->clear();
+    m_repopulateRow = 0;
+    m_repopulating = m_model != nullptr;
     if(!m_model)
     {
-        setUpdatesEnabled(true);
         return;
     }
-    int totalRows = m_model->rowCount();
-    const int batchSize = 500;
-    int processed = 0;
-    
-    while(processed < totalRows)
+
+    QMetaObject::invokeMethod(this, "repopulateBatch", Qt::QueuedConnection);
+}
+
+void LogView::repopulateBatch()
+{
+    if(!m_repopulating || !m_model)
     {
-        int batchEnd = qMin(processed + batchSize, totalRows);
-        QTextCursor cursor(doc);
-        cursor.movePosition(QTextCursor::End);
-        
-        for(int i = processed; i < batchEnd; i++)
-        {
-            auto idx = m_model->index(i, 0);
-            auto text = m_model->data(idx, Qt::DisplayRole).toString();
-            QTextCharFormat format(*m_defaultFormat);
-            auto font = m_model->data(idx, Qt::FontRole);
-            if(font.isValid())
-            {
-                format.setFont(font.value<QFont>());
-            }
-            auto fg = m_model->data(idx, Qt::TextColorRole);
-            if(fg.isValid())
-            {
-                format.setForeground(fg.value<QColor>());
-            }
-            auto bg = m_model->data(idx, Qt::BackgroundRole);
-            if(bg.isValid())
-            {
-                format.setBackground(bg.value<QColor>());
-            }
-            cursor.insertText(text, format);
-            cursor.insertBlock();
-        }
-        processed = batchEnd;
-        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        return;
     }
-    setUpdatesEnabled(true);
-    scrollToBottom();
+
+    auto doc = document();
+    const int batchSize = 500;
+    const int batchEnd = qMin(m_repopulateRow + batchSize, m_model->rowCount());
+    QTextCursor cursor(doc);
+    cursor.movePosition(QTextCursor::End);
+    cursor.beginEditBlock();
+
+    for(int i = m_repopulateRow; i < batchEnd; i++)
+    {
+        auto idx = m_model->index(i, 0);
+        auto text = m_model->data(idx, Qt::DisplayRole).toString();
+        QTextCharFormat format(*m_defaultFormat);
+        auto font = m_model->data(idx, Qt::FontRole);
+        if(font.isValid())
+        {
+            format.setFont(font.value<QFont>());
+        }
+        auto fg = m_model->data(idx, Qt::TextColorRole);
+        if(fg.isValid())
+        {
+            format.setForeground(fg.value<QColor>());
+        }
+        auto bg = m_model->data(idx, Qt::BackgroundRole);
+        if(bg.isValid())
+        {
+            format.setBackground(bg.value<QColor>());
+        }
+        cursor.insertText(text, format);
+        cursor.insertBlock();
+    }
+    cursor.endEditBlock();
+    m_repopulateRow = batchEnd;
+
+    if(m_repopulateRow < m_model->rowCount())
+    {
+        QMetaObject::invokeMethod(this, "repopulateBatch", Qt::QueuedConnection);
+    }
+    else
+    {
+        m_repopulating = false;
+        scrollToBottom();
+    }
 }
 
 void LogView::rowsAboutToBeInserted(const QModelIndex& parent, int first, int last)
@@ -132,6 +149,10 @@ void LogView::rowsAboutToBeInserted(const QModelIndex& parent, int first, int la
 
 void LogView::rowsInserted(const QModelIndex& parent, int first, int last)
 {
+    if(m_repopulating)
+    {
+        return;
+    }
     for(int i = first; i <= last; i++)
     {
         auto idx = m_model->index(i, 0, parent);
@@ -166,6 +187,11 @@ void LogView::rowsInserted(const QModelIndex& parent, int first, int last)
 
 void LogView::rowsRemoved(const QModelIndex& parent, int first, int last)
 {
+    if(m_repopulating)
+    {
+        repopulate();
+        return;
+    }
     // TODO: some day... maybe
     Q_UNUSED(parent)
     Q_UNUSED(first)

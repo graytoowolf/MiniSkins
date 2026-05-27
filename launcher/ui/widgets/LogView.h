@@ -21,6 +21,7 @@ public slots:
 
 protected slots:
     void repopulate();
+    void repopulateBatch();
     // note: this supports only appending
     void rowsInserted(const QModelIndex &parent, int first, int last);
     void rowsAboutToBeInserted(const QModelIndex &parent, int first, int last);
@@ -33,4 +34,6 @@ protected:
     QTextCharFormat *m_defaultFormat = nullptr;
     bool m_scroll = false;
     bool m_scrolling = false;
+    bool m_repopulating = false;
+    int m_repopulateRow = 0;
 };
