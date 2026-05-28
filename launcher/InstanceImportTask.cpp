@@ -45,11 +45,16 @@
 #include <QJsonObject>
 #include <QMetaObject>
 #include <QPointer>
+#include <QRegularExpression>
 
 namespace
 {
     QString iconKeyForInstanceName(const QString &instanceName, const QString &stagingPath);
     QString importPackIcon(const QString &folder, const QString &instanceIconKey);
+    QString normalizedVersion(QString version);
+    QString displayVersion(QString version);
+    bool hasTrailingPackVersion(const QString &instanceName, const QString &minecraftVersion, const QString &packVersion);
+    QString instanceNameWithPackVersion(const QString &instanceName, const QString &minecraftVersion, const QString &packVersion);
 }
 
 InstanceImportTask::InstanceImportTask(const QUrl sourceUrl, const ModpackUpdateContext &updateContext)
@@ -408,21 +413,9 @@ void InstanceImportTask::processCurseForge()
         // nuke the original files
         FS::deletePath(jarmodsPath);
     }
-    QString cleanVersion = pack.version;
-    cleanVersion.remove('v');
-    if (m_instName.contains(cleanVersion))
-    {
-        m_instName.replace(cleanVersion, "");
-        m_instName.remove(QRegExp("-+$"));
-    }
-
-    int index = m_instName.indexOf("_v");
-    if (index != -1)
-    {
-        m_instName.truncate(index);
-    }
     instance.setModpackInfo(m_addonId, m_fileId, "curseforge");
-    const QString finalInstanceName = QString("%1_v%2").arg(m_instName).arg(cleanVersion);
+    const QString cleanVersion = normalizedVersion(pack.version);
+    const QString finalInstanceName = instanceNameWithPackVersion(m_instName, mcVersion, cleanVersion);
     if (m_instIcon == "default")
     {
         const QString importedIconKey = importPackIcon(instance.instanceRoot(), iconKeyForInstanceName(m_instName, m_stagingPath));
@@ -636,6 +629,75 @@ namespace
             dir.cdUp();
         }
         return dir.absolutePath();
+    }
+
+    QString normalizedVersion(QString version)
+    {
+        version = version.trimmed();
+        if (version.length() > 1 && version.at(0).toLower() == QLatin1Char('v') && version.at(1).isDigit())
+        {
+            version.remove(0, 1);
+        }
+        return version;
+    }
+
+    QString displayVersion(QString version)
+    {
+        version = normalizedVersion(version);
+        return version.isEmpty() ? QString() : QStringLiteral("v%1").arg(version);
+    }
+
+    bool hasTrailingPackVersion(const QString &instanceName, const QString &minecraftVersion, const QString &packVersion)
+    {
+        static const QRegularExpression trailingVersionExpression(
+            QStringLiteral("(?:^|[\\s_-])v?(\\d+(?:[._]\\d+)+(?:[-+][A-Za-z][A-Za-z0-9._-]*)?)\\s*$"));
+
+        const auto match = trailingVersionExpression.match(instanceName);
+        if (!match.hasMatch())
+        {
+            return false;
+        }
+
+        const QString trailingVersion = normalizedVersion(match.captured(1));
+        const QString normalizedMinecraftVersion = normalizedVersion(minecraftVersion);
+        const QString normalizedPackVersion = normalizedVersion(packVersion);
+        if (normalizedPackVersion.isEmpty() && trailingVersion == normalizedMinecraftVersion)
+        {
+            return false;
+        }
+        if (!normalizedPackVersion.isEmpty() && trailingVersion == normalizedMinecraftVersion && trailingVersion != normalizedPackVersion)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    QString instanceNameWithPackVersion(const QString &instanceName, const QString &minecraftVersion, const QString &packVersion)
+    {
+        if (!packVersion.isEmpty())
+        {
+            const QRegularExpression exactPackVersionExpression(
+                QStringLiteral("^(.*)[\\s_-]v?%1\\s*$").arg(QRegularExpression::escape(packVersion)));
+            const auto exactMatch = exactPackVersionExpression.match(instanceName);
+            if (exactMatch.hasMatch())
+            {
+                return QString("%1_%2").arg(exactMatch.captured(1)).arg(displayVersion(packVersion));
+            }
+        }
+
+        static const QRegularExpression trailingVersionExpression(
+            QStringLiteral("^(.*?)[\\s_-]v?(\\d+(?:[._]\\d+)+(?:[-+][A-Za-z][A-Za-z0-9._-]*)?)\\s*$"));
+
+        const auto match = trailingVersionExpression.match(instanceName);
+        if (match.hasMatch() && hasTrailingPackVersion(instanceName, minecraftVersion, packVersion))
+        {
+            return QString("%1_%2").arg(match.captured(1)).arg(displayVersion(match.captured(2)));
+        }
+        if (packVersion.isEmpty())
+        {
+            return instanceName;
+        }
+        return QString("%1_%2").arg(instanceName).arg(displayVersion(packVersion));
     }
 
     QString iconKeyForInstanceName(const QString &instanceName, const QString &stagingPath)
