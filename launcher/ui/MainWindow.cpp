@@ -1590,13 +1590,6 @@ void MainWindow::processReply()
         return;
     }
 
-    QString currentMcVersion;
-    auto mcInstance = std::dynamic_pointer_cast<MinecraftInstance>(m_selectedInstance);
-    if (mcInstance)
-    {
-        currentMcVersion = mcInstance->getPackProfile()->getComponentVersion("net.minecraft");
-    }
-
     QDateTime currentFileDate;
     for (const QJsonValue &val : dataArray)
     {
@@ -1636,37 +1629,13 @@ void MainWindow::processReply()
             }
         }
 
-        QJsonArray gameVersions = fileObj.value("sortableGameVersions").toArray();
-        bool matches = false;
-        if (!currentMcVersion.isEmpty())
-        {
-            for (const QJsonValue &gv : gameVersions)
-            {
-                QJsonObject gvObj = gv.toObject();
-                QString gameVersion = gvObj.value("gameVersion").toString();
-                if (gameVersion == currentMcVersion)
-                {
-                    matches = true;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            matches = true;
-        }
-
-        if (matches)
-        {
-            matchingFiles.append(fileObj);
-        }
+        matchingFiles.append(fileObj);
     }
 
     if (matchingFiles.isEmpty())
     {
         QMessageBox::information(this, tr("No Update"),
-                                 tr("Your modpack is up to date for Minecraft %1. No compatible updates found.")
-                                     .arg(currentMcVersion));
+                                 tr("Your modpack is up to date. No newer versions found."));
         return;
     }
 
@@ -2203,11 +2172,13 @@ void MainWindow::instanceChanged(const QModelIndex &current, const QModelIndex &
         {
             ui->actionLaunchInstance->setEnabled(true);
             ui->setLaunchAction(true);
+            ui->CheckInstanceupdates->setEnabled(false);
         }
         else
         {
             ui->actionLaunchInstance->setEnabled(m_selectedInstance->canLaunch());
             ui->setLaunchAction(false);
+            ui->CheckInstanceupdates->setEnabled(true);
         }
         ui->actionLaunchInstanceOffline->setEnabled(m_selectedInstance->canLaunch());
         ui->actionExportInstance->setEnabled(m_selectedInstance->canExport());
