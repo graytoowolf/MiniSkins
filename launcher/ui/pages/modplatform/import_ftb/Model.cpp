@@ -330,7 +330,7 @@ bool tryLoadInstance(const QString& location, Modpack & out) {
                     icon.close();
 
                     icon.setFileName(iconPath);
-                    icon.open(QIODevice::WriteOnly | QIODevice::NewOnly);
+                    icon.open(QIODevice::WriteOnly);
                     icon.write(buffer);
                     icon.flush();
                     icon.close();
