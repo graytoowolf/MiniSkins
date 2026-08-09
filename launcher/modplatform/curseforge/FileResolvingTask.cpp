@@ -247,7 +247,8 @@ CurseForge::ComparisonResult CurseForge::FileResolvingTask::compareManifests(con
     struct AFileInfo
     {
         int fileID;
-        QString name;
+        QString name;     // 显示名
+        QString fileName; // 真实 jar 文件名
         bool required;
     };
     QMap<int, AFileInfo> aFileMap; // projectID -> FileInfo
@@ -258,6 +259,9 @@ CurseForge::ComparisonResult CurseForge::FileResolvingTask::compareManifests(con
         AFileInfo info;
         info.fileID = obj["fileID"].toInt();
         info.name = obj["name"].toString();
+        // fileName 字段才是真实的 jar 文件名；旧格式 mod.json 可能只有 name，兼容处理
+        QString fn = obj["fileName"].toString();
+        info.fileName = fn.isEmpty() ? info.name : fn;
         info.required = obj["required"].toBool(true); // 默认为true
 
         aFileMap[projectID] = info;
@@ -290,12 +294,13 @@ CurseForge::ComparisonResult CurseForge::FileResolvingTask::compareManifests(con
         if (aInfo.fileID != fileID)
         {
             result.filesToDownload.append(fileID);
-            result.filesToDelete.append(aInfo.name);
+            // 使用真实 jar 文件名，确保 backupFiles 能正确找到并移走旧文件
+            result.filesToDelete.append(aInfo.fileName);
         }
         else
         {
             // fileID相同时,同步name和required状态
-            file.fileName = aInfo.name;
+            file.fileName = aInfo.fileName;
             file.required = aInfo.required;
         }
 
@@ -310,7 +315,8 @@ CurseForge::ComparisonResult CurseForge::FileResolvingTask::compareManifests(con
     for (auto it = aFileMap.begin(); it != aFileMap.end(); ++it)
     {
         int projectID = it.key();
-        QString fileName = it.value().name;
+        // 使用真实 jar 文件名
+        QString fileName = it.value().fileName;
 
         if (!bProjectIDs.contains(projectID))
         {
