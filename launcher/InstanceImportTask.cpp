@@ -170,10 +170,8 @@ void InstanceImportTask::processZipPack()
         }
         root = rootDirectory;
     }
-    else
-    {
-        QuaZipDir packZipDir(m_packZip.get());
-        bool technicFound = packZipDir.exists("/bin/modpack.jar") || packZipDir.exists("/bin/version.json");
+    if (m_modpackType == ModpackType::Unknown) {
+        bool technicFound = QuaZipDir(m_packZip.get()).exists("/bin/modpack.jar") || QuaZipDir(m_packZip.get()).exists("/bin/version.json");
         if (technicFound)
         {
             // process as Technic pack
