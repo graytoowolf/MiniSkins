@@ -55,6 +55,7 @@ namespace
     QString displayVersion(QString version);
     bool hasTrailingPackVersion(const QString &instanceName, const QString &minecraftVersion, const QString &packVersion);
     QString instanceNameWithPackVersion(const QString &instanceName, const QString &minecraftVersion, const QString &packVersion);
+    QString instanceNameForUpdate(const QString &instanceName, const QString &packVersion);
 }
 
 InstanceImportTask::InstanceImportTask(const QUrl sourceUrl, const ModpackUpdateContext &updateContext)
@@ -413,7 +414,9 @@ void InstanceImportTask::processCurseForge()
     }
     instance.setModpackInfo(m_addonId, m_fileId, "curseforge");
     const QString cleanVersion = normalizedVersion(pack.version);
-    const QString finalInstanceName = instanceNameWithPackVersion(m_instName, mcVersion, cleanVersion);
+    const QString finalInstanceName = m_updateContext.isValid()
+        ? instanceNameForUpdate(m_instName, cleanVersion)
+        : instanceNameWithPackVersion(m_instName, mcVersion, cleanVersion);
     if (m_instIcon == "default")
     {
         const QString importedIconKey = importPackIcon(instance.instanceRoot(), iconKeyForInstanceName(m_instName, m_stagingPath));
@@ -696,6 +699,25 @@ namespace
             return instanceName;
         }
         return QString("%1_%2").arg(instanceName).arg(displayVersion(packVersion));
+    }
+
+    QString instanceNameForUpdate(const QString &instanceName, const QString &packVersion)
+    {
+        if (packVersion.isEmpty())
+        {
+            return instanceName;
+        }
+        // 更新场景：去掉旧名末尾由 displayVersion 产生的 "_vXXX" 后缀，再拼上新版本号。
+        // 与 iconKeyForInstanceName 里去掉 "_v..." 后缀的方式保持一致。
+        static const QRegularExpression trailingVersionSuffix(QStringLiteral("_v[^_]+$"));
+        QString baseName = instanceName;
+        baseName.remove(trailingVersionSuffix);
+        if (baseName == instanceName)
+        {
+            // 旧名末尾没有检测到版本后缀（用户可能手动改过名），保持原名不变。
+            return instanceName;
+        }
+        return baseName + "_" + displayVersion(packVersion);
     }
 
     QString iconKeyForInstanceName(const QString &instanceName, const QString &stagingPath)
