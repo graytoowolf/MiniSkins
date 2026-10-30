@@ -254,6 +254,9 @@ void ModFolderModel::finishFingerprint(QList<fingerprint::ModInfo> result)
     m_jsonManager.addMods(result);
     m_jsonManager.save();
 
+    if (qEnvironmentVariableIsSet("DISABLE_FINGERPRINT"))
+        return;
+
     if (m_fingerprintJob)
     {
         m_fingerprintJob->abort();

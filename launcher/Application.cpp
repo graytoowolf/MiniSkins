@@ -16,7 +16,6 @@
 #include "ui/pages/global/AccountListPage.h"
 #include "ui/pages/global/ModFilterPage.h"
 #include "ui/pages/global/PasteEEPage.h"
-#include "ui/pages/global/AIModelPage.h"
 #include "ui/pages/global/CustomCommandsPage.h"
 
 #include "ui/themes/ITheme.h"
@@ -792,9 +791,6 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_settings->registerSetting("PasteEEAPIKey", "miniskins");
         m_settings->registerSetting("LogPlatform", "mclo.gs");
 
-        m_settings->registerSetting("AIModels", "");
-        m_settings->registerSetting("AIDefaultModel", "");
-
         // Init page provider
         {
             m_globalSettingsProvider = std::make_shared<GenericPageProvider>(tr("Settings"));
@@ -808,7 +804,6 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
             m_globalSettingsProvider->addPage<AccountListPage>();
             m_globalSettingsProvider->addPage<ModFilterPage>();
             m_globalSettingsProvider->addPage<PasteEEPage>();
-            m_globalSettingsProvider->addPage<AIModelPage>();
         }
         qDebug() << "<> Settings loaded.";
     }

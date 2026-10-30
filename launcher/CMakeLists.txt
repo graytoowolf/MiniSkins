@@ -87,10 +87,6 @@ set(CORE_SOURCES
     # Time
     MMCTime.h
     MMCTime.cpp
-
-    # AI Analysis
-    ai/AIAnalyzer.h
-    ai/AIAnalyzer.cpp
 )
 
 add_unit_test(FileSystem
@@ -755,8 +751,6 @@ SET(LAUNCHER_SOURCES
     ui/pages/global/ProxyPage.h
     ui/pages/global/PasteEEPage.cpp
     ui/pages/global/PasteEEPage.h
-    ui/pages/global/AIModelPage.cpp
-    ui/pages/global/AIModelPage.h
 
     # GUI - platform pages
     ui/pages/modplatform/VanillaPage.cpp
@@ -851,10 +845,6 @@ SET(LAUNCHER_SOURCES
     ui/dialogs/UpdateDialog.h
     ui/dialogs/VersionSelectDialog.cpp
     ui/dialogs/VersionSelectDialog.h
-    ui/dialogs/AIAnalysisDialog.cpp
-    ui/dialogs/AIAnalysisDialog.h
-    ui/dialogs/AIProgressDialog.cpp
-    ui/dialogs/AIProgressDialog.h
     ui/dialogs/SkinUploadDialog.cpp
     ui/dialogs/SkinUploadDialog.h
     ui/dialogs/CreateShortcutDialog.cpp
@@ -933,7 +923,6 @@ qt5_wrap_ui(LAUNCHER_UI
     ui/dialogs/ProfileSetupDialog.ui
     ui/dialogs/ProgressDialog.ui
     ui/dialogs/SkinUploadDialog.ui
-    ui/dialogs/AIAnalysisDialog.ui
     ui/dialogs/UpdateDialog.ui
     ui/pages/global/AccountListPage.ui
     ui/pages/global/ModFilterPage.ui
@@ -942,7 +931,6 @@ qt5_wrap_ui(LAUNCHER_UI
     ui/pages/global/LauncherPage.ui
     ui/pages/global/MinecraftPage.ui
     ui/pages/global/PasteEEPage.ui
-    ui/pages/global/AIModelPage.ui
     ui/pages/global/ProxyPage.ui
     ui/pages/instance/GameOptionsPage.ui
     ui/pages/instance/InstanceSettingsPage.ui

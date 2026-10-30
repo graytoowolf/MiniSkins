@@ -21,7 +21,6 @@
 #include "launch/LaunchTask.h"
 #include "ui/pages/BasePage.h"
 #include <Application.h>
-#include "ai/AIAnalyzer.h"
 
 namespace Ui
 {
@@ -29,7 +28,6 @@ namespace Ui
 }
 class QTextCharFormat;
 class LogFormatProxyModel;
-class AIProgressDialog;
 
 class LogPage : public QWidget, public BasePage
 {
@@ -73,15 +71,10 @@ private slots:
 
     void onInstanceLaunchTaskChanged(shared_qobject_ptr<LaunchTask> proc);
 
-    void on_btnAIAnalysis_clicked();
-    void onAIAnalysisFinished(const QString &result);
-    void onAIAnalysisError(const QString &error);
-
 private:
     void modelStateToUI();
     void UIToModelState();
     void setInstanceLaunchTaskChanged(shared_qobject_ptr<LaunchTask> proc, bool initial);
-    void populateAIModelCombo();
 
 private:
     Ui::LogPage *ui;
@@ -90,6 +83,4 @@ private:
 
     LogFormatProxyModel *m_proxy;
     shared_qobject_ptr<LogModel> m_model;
-    AIAnalyzer *m_aiAnalyzer;
-    AIProgressDialog *m_progressDialog;
 };
