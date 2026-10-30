@@ -100,6 +100,20 @@ void NetJob::partProgress(int index, qint64 bytesReceived, qint64 bytesTotal)
 
 void NetJob::executeTask()
 {
+    // 并发下载数（并非线程数）：任务开始时取一次快照并限制在合理区间，
+    // 避免非法配置导致队列永远停滞，也避免运行中改设置影响本任务。
+    int source = 6;
+    if (APPLICATION->getconfigfile())
+    {
+        bool ok = false;
+        int threads = APPLICATION->settings()->get("Threads").toInt(&ok);
+        if (ok)
+        {
+            source = qBound(1, threads, 32);
+        }
+    }
+    m_concurrency = source;
+
     // hack that delays early failures so they can be caught easier
     QMetaObject::invokeMethod(this, "startMoreParts", Qt::QueuedConnection);
 }
@@ -133,12 +147,7 @@ void NetJob::startMoreParts()
         return;
     }
     // There's work to do, try to start more parts.
-    int source = 6;
-    if (APPLICATION->getconfigfile())
-    {
-        source = APPLICATION->settings()->get("Threads").toInt();
-    }
-    while (m_doing.size() < source)
+    while (m_doing.size() < m_concurrency)
     {
         if (!m_todo.size())
             return;

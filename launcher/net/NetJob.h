@@ -89,4 +89,6 @@ private:
     QSet<int> m_failed;
     qint64 m_current_progress = 0;
     bool m_aborted = false;
+    // 任务开始时的并发下载数快照，运行中不再读取设置
+    int m_concurrency = 1;
 };
