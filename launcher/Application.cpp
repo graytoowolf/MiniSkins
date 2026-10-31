@@ -39,12 +39,16 @@
 #include <QAccessible>
 #include <QDir>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QTranslator>
 #include <QLibraryInfo>
 #include <QList>
 #include <QStringList>
 #include <QDebug>
+#include <QSaveFile>
 #include <QStyleFactory>
 
 #include "InstanceList.h"
@@ -855,14 +859,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
     // 加载MOD黑名单
     loadModList();
 
-    // 获取源
-    {
-        auto *netJob = new NetJob("Acquire download source", network());
-        netJob->addNetAction(Net::Download::makeByteArray(QUrl(BuildConfig.UPDATER_BASE + "source.json"), &response));
-        m_filesNetJob = netJob;
-        m_filesNetJob->start();
-        QObject::connect(netJob, &NetJob::succeeded, this, &Application::sourceFinished);
-    }
+    // 加载本地配置中的下载源与 Yggdrasil 源
+    loadSources();
 
     // Instance icons
     {
@@ -1701,8 +1699,31 @@ void Application::authlibFinished()
 const QList<DownloadSource> &Application::getDownloadSources() const { return downloadSources; }
 const QList<YggSource> &Application::getYggSources() const { return yggSources; }
 
+DownloadSource Application::getSelectedDownloadSource() const
+{
+    QString selectedType = "Mojang";
+    if (m_settings)
+    {
+        selectedType = m_settings->get("Downloadsource").toString();
+    }
+    for (const DownloadSource &source : downloadSources)
+    {
+        if (source.getType() == selectedType)
+        {
+            return source;
+        }
+    }
+    for (const DownloadSource &source : downloadSources)
+    {
+        if (source.getType() == "Mojang")
+        {
+            return source;
+        }
+    }
+    return DownloadSource("Official", "", "Mojang", false);
+}
+
 // Add methods
-void Application::addDownloadSource(const DownloadSource &source) { downloadSources.append(source); }
 void Application::addYggSource(const YggSource &source, int position)
 {
     QString normalizedUrl = source.getUrl().trimmed(); // 去掉多余空格
@@ -1719,7 +1740,7 @@ void Application::addYggSource(const YggSource &source, int position)
 
     // 创建标准化后的源对象
     YggSource normalizedSource = source;
-    normalizedSource.setUrl(normalizedUrl); // 假设有setUrl方法，或者直接用构造函数
+    normalizedSource.setUrl(normalizedUrl);
 
     // 如果未指定插入位置，添加到末尾
     if (position < 0 || position > yggSources.size())
@@ -1731,79 +1752,194 @@ void Application::addYggSource(const YggSource &source, int position)
         yggSources.insert(position, normalizedSource); // 指定位置插入
     }
 
-    // 记录 URL（移除了重复的 append 调用）
     yggSourceUrls.insert(normalizedUrl);
+    saveSources();
 }
 
-// Clear methods
-void Application::clearDownloadSources() { downloadSources.clear(); }
-void Application::clearYggSources() { yggSources.clear(); }
-
-void Application::sourceFinished()
+void Application::setDownloadSources(const QList<DownloadSource> &sources)
 {
-    m_filesNetJob.reset();
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
-    if (!jsonDoc.isObject())
+    downloadSources = sources;
+    saveSources();
+}
+
+QString Application::sourcesFilePath() const
+{
+    // 源列表独立配置与主配置文件放在同一目录，便于便携化部署
+    QFileInfo configFile(BuildConfig.LAUNCHER_CONFIGFILE);
+    return QDir(configFile.absolutePath()).filePath("sources.json");
+}
+
+void Application::loadSources()
+{
+    downloadSources.clear();
+    yggSources.clear();
+    yggSourceUrls.clear();
+
+    QJsonArray sourcesArray;
+    QJsonArray yggArray;
+
+    // 读取独立的源列表配置文件
+    QString sourcesPath = sourcesFilePath();
+    QFile sourcesFile(sourcesPath);
+    if (sourcesFile.exists())
     {
-        qDebug() << "JSON document is not an object";
-        return;
+        if (sourcesFile.open(QFile::ReadOnly | QFile::Text))
+        {
+            QJsonParseError error;
+            QJsonDocument doc = QJsonDocument::fromJson(sourcesFile.readAll(), &error);
+            sourcesFile.close();
+            if (error.error == QJsonParseError::NoError && doc.isObject())
+            {
+                QJsonObject root = doc.object();
+                sourcesArray = root.value("downloadSources").toArray();
+                yggArray = root.value("yggSources").toArray();
+            }
+            else
+            {
+                qWarning() << "Failed to parse source config" << sourcesPath << ":" << error.errorString();
+            }
+        }
+        else
+        {
+            qWarning() << "Failed to open source config" << sourcesPath;
+        }
     }
 
-    QJsonObject jsonObject = jsonDoc.object();
-
-    // Parse the "sources" array
-    if (jsonObject.contains("sources") && jsonObject["sources"].isArray())
+    for (const QJsonValue &value : sourcesArray)
     {
-        QJsonArray sourcesArray = jsonObject["sources"].toArray();
-        for (const QJsonValue &value : sourcesArray)
+        if (!value.isObject())
         {
-            if (!value.isObject())
-            {
-                qDebug() << "Source entry is not an object";
-                continue;
-            }
-
-            QJsonObject obj = value.toObject();
-            DownloadSource source;
-            source.name = obj["name"].toString();
-            source.url = obj["url"].toString();
-            source.type = obj["type"].toString();
-            source.proxy = obj["proxy"].toBool();
-
-            addDownloadSource(source);
+            continue;
         }
+        QJsonObject obj = value.toObject();
+        QString type = obj["type"].toString();
+        if (type.isEmpty())
+        {
+            continue;
+        }
+        downloadSources.append(
+            DownloadSource(obj["name"].toString(), obj["url"].toString(), type, obj["proxy"].toBool()));
+    }
+
+    // 配置缺失时使用内置默认源
+    if (downloadSources.isEmpty())
+    {
+        downloadSources.append(DownloadSource("Official", "", "Mojang", false));
+        downloadSources.append(DownloadSource("BMCLAPI", "bmclapi2.bangbang93.com", "Bmclapi", false));
+        downloadSources.append(DownloadSource("Custom", "", "Custom", true));
     }
     else
     {
-        qDebug() << "No valid 'sources' array found in JSON";
-    }
-
-    // Parse the "ygg" array
-    if (jsonObject.contains("ygg") && jsonObject["ygg"].isArray())
-    {
-        QJsonArray yggArray = jsonObject["ygg"].toArray();
-        int position = 0;
-        for (const QJsonValue &value : yggArray)
+        // 保证内置源与自定义源选项始终存在
+        bool hasCustom = false;
+        bool hasBmclapi = false;
+        for (const DownloadSource &source : downloadSources)
         {
-            if (!value.isObject())
+            if (source.getType() == "Custom")
             {
-                qDebug() << "Ygg entry is not an object";
-                continue;
+                hasCustom = true;
             }
-
-            QJsonObject obj = value.toObject();
-            YggSource ygg;
-            ygg.name = obj["name"].toString();
-            ygg.url = obj["url"].toString();
-
-            addYggSource(ygg, position);
-            position++;
+            else if (source.getType() == "Bmclapi")
+            {
+                hasBmclapi = true;
+            }
+        }
+        if (!hasBmclapi)
+        {
+            downloadSources.append(DownloadSource("BMCLAPI", "bmclapi2.bangbang93.com", "Bmclapi", false));
+        }
+        if (!hasCustom)
+        {
+            downloadSources.append(DownloadSource("Custom", "", "Custom", true));
+        }
+        for (int i = 0; i < downloadSources.size(); i++)
+        {
+            if (downloadSources[i].getType() == "Bmclapi" && downloadSources[i].getUrl().trimmed().isEmpty())
+            {
+                downloadSources[i].setUrl("bmclapi2.bangbang93.com");
+            }
         }
     }
-    else
+
+    for (const QJsonValue &value : yggArray)
     {
-        qDebug() << "No valid 'ygg' array found in JSON";
+        if (!value.isObject())
+        {
+            continue;
+        }
+        QJsonObject obj = value.toObject();
+        QString name = obj["name"].toString();
+        QString url = obj["url"].toString().trimmed();
+        if (url.isEmpty() || yggSourceUrls.contains(url))
+        {
+            continue;
+        }
+        yggSources.append(YggSource(name, url));
+        yggSourceUrls.insert(url);
     }
+
+    // Yggdrasil 源默认仅保留 MiniSkins
+    if (yggSources.isEmpty())
+    {
+        yggSources.append(YggSource("MiniSkins", "https://www.mcpeau.com/api/yggdrasil"));
+        yggSourceUrls.insert(yggSources.first().getUrl());
+    }
+
+    if (m_settings)
+    {
+        // 选中源类型非法时回退到官方源
+        QString selectedType = m_settings->get("Downloadsource").toString();
+        if (selectedType != "Mojang" && selectedType != "Bmclapi" && selectedType != "Custom")
+        {
+            m_settings->set("Downloadsource", "Mojang");
+        }
+    }
+
+    // 首次运行时写回独立配置文件
+    saveSources();
+}
+
+bool Application::saveSources()
+{
+    QJsonArray sourcesArray;
+    for (const DownloadSource &source : downloadSources)
+    {
+        QJsonObject obj;
+        obj["name"] = source.getName();
+        obj["url"] = source.getUrl();
+        obj["type"] = source.getType();
+        obj["proxy"] = source.isProxy();
+        sourcesArray.append(obj);
+    }
+
+    QJsonArray yggArray;
+    for (const YggSource &source : yggSources)
+    {
+        QJsonObject obj;
+        obj["name"] = source.getName();
+        obj["url"] = source.getUrl();
+        yggArray.append(obj);
+    }
+
+    QJsonObject root;
+    root["version"] = 1;
+    root["downloadSources"] = sourcesArray;
+    root["yggSources"] = yggArray;
+
+    QString sourcesPath = sourcesFilePath();
+    QSaveFile file(sourcesPath);
+    if (!file.open(QFile::WriteOnly | QFile::Text))
+    {
+        qWarning() << "Failed to open source config for writing" << sourcesPath;
+        return false;
+    }
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    if (!file.commit())
+    {
+        qWarning() << "Failed to save source config" << sourcesPath;
+        return false;
+    }
+    return true;
 }
 
 bool Application::getconfigfile()

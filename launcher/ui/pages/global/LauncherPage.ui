@@ -156,7 +156,7 @@
           <item row="2" column="0">
            <widget class="QLabel" name="labelthread">
             <property name="text">
-             <string>Number of download threads:</string>
+             <string>Download threads:</string>
             </property>
            </widget>
           </item>

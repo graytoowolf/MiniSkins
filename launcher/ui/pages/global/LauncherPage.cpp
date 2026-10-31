@@ -21,6 +21,12 @@
 #include <QDir>
 #include <QTextCharFormat>
 #include <QTimer>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QVBoxLayout>
+#include <QSignalBlocker>
 
 #include "updater/UpdateChecker.h"
 
@@ -73,6 +79,7 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
 
     connect(ui->fontSizeBox, SIGNAL(valueChanged(int)), SLOT(refreshFontPreview()));
     connect(ui->consoleFont, SIGNAL(currentFontChanged(QFont)), SLOT(refreshFontPreview()));
+    connect(ui->downloadcomboBox, SIGNAL(currentIndexChanged(int)), SLOT(onDownloadSourceChanged(int)));
 
     // move mac data button
     QFile file(QDir::current().absolutePath() + "/dontmovemacdata");
@@ -225,12 +232,18 @@ void LauncherPage::applySettings()
             break;
         }
     }
-    if (ui->downloadcomboBox && ui->downloadcomboBox->currentIndex() >= 0 && ui->downloadcomboBox->currentIndex() < ui->downloadcomboBox->count() && !sources.isEmpty())
+    if (ui->downloadcomboBox && !sources.isEmpty())
     {
-        const DownloadSource &secondSource = sources[ui->downloadcomboBox->currentIndex()];
-        s->set("Downloadsource", secondSource.getType());
-        s->set("Downloadsourceurl", secondSource.getUrl());
-        s->set("Downloadsourceproxy", secondSource.isProxy());
+        const int index = ui->downloadcomboBox->currentIndex();
+        if (index >= 0 && index < sources.size())
+        {
+            const DownloadSource &selectedSource = sources[index];
+            s->set("Downloadsource", selectedSource.getType());
+            s->set("Downloadsourceurl", selectedSource.getUrl());
+            s->set("Downloadsourceproxy", selectedSource.isProxy());
+            // 源列表（含自定义源）统一保存到本地配置文件
+            APPLICATION->setDownloadSources(sources);
+        }
     }
 
     if (ui->threadcomboBox)
@@ -435,25 +448,39 @@ void LauncherPage::loadSettings()
         ui->themeComboBox->setCurrentIndex(0);
     }
 
-    int i = 0;
-    auto download = s->get("Downloadsource").toString();
-    int selectedIndex = -1;
-    for (const DownloadSource &source : sources)
+    if (ui->downloadcomboBox)
     {
-        if (ui->downloadcomboBox)
+        QSignalBlocker blocker(ui->downloadcomboBox);
+        ui->downloadcomboBox->clear();
+        auto download = s->get("Downloadsource").toString();
+        int selectedIndex = -1;
+        m_lastDownloadSourceIndex = 0;
+        for (int i = 0; i < sources.size(); i++)
         {
-            ui->downloadcomboBox->addItem(source.getName());
+            const DownloadSource &source = sources[i];
+            QString displayName = source.getName();
+            if (source.getType() == "Custom" && (displayName.isEmpty() || source.getUrl().isEmpty()))
+            {
+                displayName = tr("Custom");
+            }
+            ui->downloadcomboBox->addItem(displayName);
             if (source.getType() == download)
             {
                 selectedIndex = i;
             }
         }
-        i++;
-    }
-
-    if (selectedIndex != -1 && ui->downloadcomboBox)
-    {
-        ui->downloadcomboBox->setCurrentIndex(selectedIndex);
+        if (selectedIndex == -1 && ui->downloadcomboBox->count() > 0)
+        {
+            selectedIndex = 0;
+        }
+        if (selectedIndex != -1)
+        {
+            ui->downloadcomboBox->setCurrentIndex(selectedIndex);
+            if (sources[selectedIndex].getType() != "Custom")
+            {
+                m_lastDownloadSourceIndex = selectedIndex;
+            }
+        }
     }
 
     auto thread = s->get("Threads").toString();
@@ -568,6 +595,89 @@ void LauncherPage::loadSettings()
             ui->sortByNameBtn->setChecked(true);
         }
     }
+}
+
+void LauncherPage::onDownloadSourceChanged(int index)
+{
+    if (m_editingCustomSource || index < 0 || index >= sources.size())
+    {
+        return;
+    }
+
+    DownloadSource &source = sources[index];
+    if (source.getType() != "Custom")
+    {
+        m_lastDownloadSourceIndex = index;
+        return;
+    }
+
+    // 编辑自定义源：支持手动输入名称与代理地址
+    m_editingCustomSource = true;
+    bool accepted = false;
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Custom Source"));
+
+    QLineEdit *nameEdit = new QLineEdit(source.getName(), &dialog);
+    QLineEdit *urlEdit = new QLineEdit(source.getUrl(), &dialog);
+    urlEdit->setPlaceholderText("https://***.****.com");
+    // 按字体度量保证占位提示完整可见，并随 DPI 缩放自适应
+    urlEdit->setMinimumWidth(urlEdit->fontMetrics().width(urlEdit->placeholderText()) + 24);
+
+    // 表单只作为内容布局加入，避免与按钮布局同时挂到对话框上导致控件重叠
+    QFormLayout *formLayout = new QFormLayout();
+    formLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    formLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    formLayout->addRow(tr("Source name:"), nameEdit);
+    formLayout->addRow(tr("Proxy address:"), urlEdit);
+
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    // 窗口随内容自适应，且不允许缩小到裁切控件
+    layout->setSizeConstraint(QLayout::SetMinimumSize);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(12);
+    layout->addLayout(formLayout);
+    layout->addWidget(buttonBox, 0, Qt::AlignRight);
+
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        QString newName = nameEdit->text().trimmed();
+        QString newUrl = urlEdit->text().trimmed();
+        if (newName.isEmpty())
+        {
+            newName = tr("Custom");
+        }
+        if (newUrl.isEmpty())
+        {
+            QMessageBox::warning(this, tr("Custom Source"), tr("Please enter a proxy address."));
+        }
+        else
+        {
+            if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://"))
+            {
+                newUrl.prepend("https://");
+            }
+            while (newUrl.endsWith('/'))
+            {
+                newUrl.chop(1);
+            }
+            source.setName(newName);
+            source.setUrl(newUrl);
+            ui->downloadcomboBox->setItemText(index, newName);
+            accepted = true;
+        }
+    }
+
+    if (!accepted)
+    {
+        QSignalBlocker blocker(ui->downloadcomboBox);
+        ui->downloadcomboBox->setCurrentIndex(m_lastDownloadSourceIndex);
+    }
+    m_editingCustomSource = false;
 }
 
 void LauncherPage::refreshFontPreview()

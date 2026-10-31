@@ -147,13 +147,18 @@ public:
     const QList<DownloadSource> &getDownloadSources() const;
     const QList<YggSource> &getYggSources() const;
 
+    // 根据设置中保存的类型返回当前选中的下载源，找不到时回退到官方源
+    DownloadSource getSelectedDownloadSource() const;
+
     // Add methods
-    void addDownloadSource(const DownloadSource &source);
     void addYggSource(const YggSource &source, int position = -1);
 
-    // Clear methods
-    void clearDownloadSources();
-    void clearYggSources();
+    // Replace methods
+    void setDownloadSources(const QList<DownloadSource> &sources);
+
+    // 源配置的本地持久化（全部保存在同一个配置文件中）
+    void loadSources();
+    bool saveSources();
 
     /// this is the root of the 'installation'. Used for automatic updates
     const QString &root()
@@ -218,7 +223,6 @@ public slots:
 private slots:
     void requestFinished();
     void authlibFinished();
-    void sourceFinished();
     bool FileHash(QString srcDir, QString hash256);
     void on_windowClose();
     void messageReceived(const QByteArray &message);
@@ -239,10 +243,8 @@ private:
     bool shouldExitNow() const;
 
 private:
-    NetJob::Ptr m_filesNetJob;
     NetJob::Ptr authlib_filesNetJob;
     QByteArray authlib_response;
-    QByteArray response;
     QDateTime startTime;
 
     shared_qobject_ptr<QNetworkAccessManager> m_network;
@@ -318,4 +320,6 @@ public:
 
 private:
     void loadModList();
+    // 源列表独立配置文件的路径（与主配置文件同目录）
+    QString sourcesFilePath() const;
 };

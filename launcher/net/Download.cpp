@@ -30,6 +30,108 @@
 namespace Net
 {
 
+namespace
+{
+    // BMCLAPI 支持的 Mojang / 模组平台资源域名及其对应的路径前缀
+    struct SourceReplacement
+    {
+        QString search;
+        QString prefix;
+    };
+
+    const SourceReplacement bmclapiReplacements[] = {
+        {"resources.download.minecraft.net", "/assets"},
+        {"libraries.minecraft.net", "/maven"},
+        {"maven.fabricmc.net", "/maven"},
+        {"meta.fabricmc.net", "/fabric-meta"},
+        {"maven.minecraftforge.net", "/maven"},
+        {"files.minecraftforge.net", ""},
+        {"maven.neoforged.net/releases", "/maven"},
+        {"maven.quiltmc.org/repository/release", "/maven"},
+        {"meta.quiltmc.org", "/quilt-meta"},
+        {"dl.liteloader.com/versions/versions.json", "/maven/com/mumfrey/liteloader/versions.json"},
+        {"dl.liteloader.com/versions", "/maven"},
+        {"launchermeta.mojang.com", ""},
+        {"launcher.mojang.com", ""},
+        {"piston-meta.mojang.com", ""},
+        {"piston-data.mojang.com", ""}};
+
+    bool isKnownResourceUrl(const QString &url)
+    {
+        for (const auto &replacement : bmclapiReplacements)
+        {
+            if (url.contains(replacement.search))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    QString normalizeBaseUrl(QString url, const QString &fallback)
+    {
+        url = url.trimmed();
+        if (url.isEmpty())
+        {
+            url = fallback;
+        }
+        if (url.isEmpty())
+        {
+            return url;
+        }
+        if (!url.startsWith("http://") && !url.startsWith("https://"))
+        {
+            url.prepend("https://");
+        }
+        while (url.endsWith('/'))
+        {
+            url.chop(1);
+        }
+        return url;
+    }
+
+    QUrl applyDownloadSource(const QUrl &url, const DownloadSource &source)
+    {
+        if (source.getType() == "Bmclapi")
+        {
+            const QString baseUrl = normalizeBaseUrl(source.getUrl(), "bmclapi2.bangbang93.com");
+            const QString host = url.host();
+            if (baseUrl.isEmpty() || host.contains("bmclapi2.bangbang93.com"))
+            {
+                return url;
+            }
+            // 用“域名 + 路径”匹配并替换为 BMCLAPI 对应的域名与路径前缀
+            const QString remainder = host + url.path();
+            for (const auto &replacement : bmclapiReplacements)
+            {
+                if (!remainder.contains(replacement.search))
+                {
+                    continue;
+                }
+                QString newPath = remainder;
+                newPath.replace(replacement.search, replacement.prefix);
+                QUrl result(baseUrl);
+                result.setPath(newPath);
+                result.setQuery(url.query());
+                return result;
+            }
+            return url;
+        }
+        if (source.getType() == "Custom")
+        {
+            // 自定义源：在原始地址前拼接代理地址，仅处理 Minecraft 相关资源
+            const QString proxyUrl = normalizeBaseUrl(source.getUrl(), QString());
+            const QString target = url.toString();
+            if (proxyUrl.isEmpty() || !isKnownResourceUrl(target) || target.startsWith(proxyUrl + "/"))
+            {
+                return url;
+            }
+            return QUrl(proxyUrl + "/" + target);
+        }
+        return url;
+    }
+}
+
     Download::Download() : NetAction()
     {
         m_status = Job_NotStarted;
@@ -78,64 +180,14 @@ namespace Net
             emit aborted(m_index_within_job);
             return;
         }
-        QString source = "Mojang";
-        if (APPLICATION->getconfigfile())
+        // 应用本地配置中选中的下载源（测试等场景下实例可能不是 Application，需要判断类型）
+        auto app = qobject_cast<Application *>(QCoreApplication::instance());
+        if (app)
         {
-            source = APPLICATION->settings()->get("Downloadsource").toString();
-        }
-
-        if (source != "Mojang")
-        {
-            auto settings = APPLICATION->settings();
-            bool useProxy = settings->get("Downloadsourceproxy").toBool();
-            QString baseUrl = settings->get("Downloadsourceurl").toString().trimmed();
-            if (!baseUrl.isEmpty())
+            DownloadSource source = app->getSelectedDownloadSource();
+            if (source.getType() != "Mojang")
             {
-                baseUrl = QUrl::fromUserInput(baseUrl).toString();
-                if (!baseUrl.startsWith("https://"))
-                {
-                    baseUrl = baseUrl.replace("http://", "https://");
-                }
-                if (!baseUrl.endsWith("/"))
-                {
-                    baseUrl.append('/');
-                }
-            }
-
-            QString host = m_url.toString();
-            struct Replacement
-            {
-                QString search, replace;
-            };
-            Replacement replacements[] = {
-                {"resources.download.minecraft.net", "<j_url>/assets"},
-                {"libraries.minecraft.net", "<j_url>/maven"},
-                {"maven.fabricmc.net", "<j_url>/maven"},
-                {"launchermeta.mojang.com", "<j_url>"},
-                {"launcher.mojang.com", "<j_url>"},
-                {"files.minecraftforge.net", "<j_url>"},
-                {"meta.fabricmc.net", "<j_url>/fabric-meta"},
-                {"maven.neoforged.net/releases", "<j_url>/maven"},
-                {"maven.quiltmc.org/repository/release", "<j_url>/maven"},
-                {"meta.quiltmc.org", "<j_url>/quilt-meta"},
-                {"edge.forgecdn.net", ""},
-                {"mediafilez.forgecdn.net", ""}};
-            for (const auto &replacement : replacements)
-            {
-                if (host.contains(replacement.search) && !host.contains(baseUrl))
-                {
-                    QString replacementUrl = baseUrl.isEmpty() ? "" : baseUrl + replacement.replace;
-                    if (useProxy && !baseUrl.isEmpty())
-                    {
-                        m_url = QUrl(baseUrl + host);
-                    }
-                    else if (!replacementUrl.isEmpty())
-                    {
-                        host.replace(replacement.search, replacementUrl);
-                        m_url = QUrl(host);
-                        break;
-                    }
-                }
+                m_url = applyDownloadSource(m_url, source);
             }
         }
 

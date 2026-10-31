@@ -67,6 +67,7 @@ private slots:
     void on_modsDirBrowseBtn_clicked();
     void on_iconsDirBrowseBtn_clicked();
     void on_migrateDataFolderMacBtn_clicked();
+    void onDownloadSourceChanged(int index);
 
     /*!
      * Updates the font preview
@@ -83,4 +84,6 @@ private:
 
     std::shared_ptr<TranslationsModel> m_languageModel;
     QList<DownloadSource> sources;
+    int m_lastDownloadSourceIndex = 0;
+    bool m_editingCustomSource = false;
 };
