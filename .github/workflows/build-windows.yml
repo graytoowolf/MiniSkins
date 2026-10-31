@@ -9,7 +9,7 @@ on:
 
 jobs:
   trigger:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Dispatch Event
         run: |
@@ -187,7 +187,8 @@ jobs:
 
   build-linux:
     name: build-linux
-    runs-on: ubuntu-latest
+    # 依赖 apt-key 与 xenial 源中的 gcc-5/g++-5，Ubuntu 26 的 apt 3.x 已移除 apt-key，故固定在 22.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@main
@@ -245,8 +246,7 @@ jobs:
 
   build-mac:
     name: build-mac
-    # 如果 macos-13 依然报 configuration not supported，请尝试改为 macos-14
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - uses: actions/checkout@v4
