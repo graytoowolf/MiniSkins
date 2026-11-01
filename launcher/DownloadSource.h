@@ -3,6 +3,15 @@
 
 #include <QString>
 
+namespace DownloadSourceDefaults
+{
+    // 内置 BMCLAPI 源地址：集中定义，避免同一域名在多个文件中重复硬编码
+    inline QString bmclapiHost()
+    {
+        return QStringLiteral("bmclapi2.bangbang93.com");
+    }
+}
+
 class DownloadSource
 {
 public:

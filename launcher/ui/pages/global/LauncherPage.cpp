@@ -80,6 +80,8 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
     connect(ui->fontSizeBox, SIGNAL(valueChanged(int)), SLOT(refreshFontPreview()));
     connect(ui->consoleFont, SIGNAL(currentFontChanged(QFont)), SLOT(refreshFontPreview()));
     connect(ui->downloadcomboBox, SIGNAL(currentIndexChanged(int)), SLOT(onDownloadSourceChanged(int)));
+    connect(ui->downloadcomboBox, SIGNAL(deleteRequested(int)), SLOT(onDownloadSourceDeleteRequested(int)));
+    connect(ui->downloadcomboBox, SIGNAL(editRequested(int)), SLOT(onDownloadSourceEditRequested(int)));
 
     // move mac data button
     QFile file(QDir::current().absolutePath() + "/dontmovemacdata");
@@ -237,13 +239,11 @@ void LauncherPage::applySettings()
         const int index = ui->downloadcomboBox->currentIndex();
         if (index >= 0 && index < sources.size())
         {
-            const DownloadSource &selectedSource = sources[index];
-            s->set("Downloadsource", selectedSource.getType());
-            s->set("Downloadsourceurl", selectedSource.getUrl());
-            s->set("Downloadsourceproxy", selectedSource.isProxy());
-            // 源列表（含自定义源）统一保存到本地配置文件
-            APPLICATION->setDownloadSources(sources);
+            // 选中项立即生效并写入配置，官方默认源不显式写入
+            persistDownloadSelection(index);
         }
+        // 源列表（含多个用户自定义源）统一保存到独立配置文件
+        APPLICATION->setDownloadSources(sources);
     }
 
     if (ui->threadcomboBox)
@@ -453,21 +453,49 @@ void LauncherPage::loadSettings()
         QSignalBlocker blocker(ui->downloadcomboBox);
         ui->downloadcomboBox->clear();
         auto download = s->get("Downloadsource").toString();
+        auto customUrl = s->get("Downloadsourcecustomurl").toString();
         int selectedIndex = -1;
+        int firstCustomIndex = -1;
         m_lastDownloadSourceIndex = 0;
         for (int i = 0; i < sources.size(); i++)
         {
             const DownloadSource &source = sources[i];
+            const bool isCustom = source.getType() == "Custom";
+            // 末尾空的 Custom 条目是“新增自定义源”入口，不是真实的自定义源
+            const bool isPlaceholder = isCustom && source.getUrl().isEmpty();
+            // 只有真实的自定义源才显示行内编辑与删除按钮，官方源与 BMCLAPI 保持原样
+            const bool hasItemActions = isCustom && !source.getUrl().isEmpty();
             QString displayName = source.getName();
-            if (source.getType() == "Custom" && (displayName.isEmpty() || source.getUrl().isEmpty()))
+            if (displayName.isEmpty())
             {
                 displayName = tr("Custom");
             }
             ui->downloadcomboBox->addItem(displayName);
-            if (source.getType() == download)
+            ui->downloadcomboBox->setItemActions(i, hasItemActions, hasItemActions);
+
+            bool matches = false;
+            if (isCustom)
+            {
+                // 多个自定义源之间按代理地址区分，不能只按类型匹配
+                matches = !isPlaceholder && source.getUrl() == customUrl;
+                if (firstCustomIndex == -1 && !isPlaceholder)
+                {
+                    firstCustomIndex = i;
+                }
+            }
+            else
+            {
+                matches = source.getType() == download;
+            }
+            if (matches && selectedIndex == -1)
             {
                 selectedIndex = i;
             }
+        }
+        // 标识缺失时回退到第一个自定义源，再回退到官方源
+        if (selectedIndex == -1 && download == "Custom" && firstCustomIndex != -1)
+        {
+            selectedIndex = firstCustomIndex;
         }
         if (selectedIndex == -1 && ui->downloadcomboBox->count() > 0)
         {
@@ -476,7 +504,8 @@ void LauncherPage::loadSettings()
         if (selectedIndex != -1)
         {
             ui->downloadcomboBox->setCurrentIndex(selectedIndex);
-            if (sources[selectedIndex].getType() != "Custom")
+            // 自定义源编辑入口不作为上一次有效选择
+            if (!(sources[selectedIndex].getType() == "Custom" && sources[selectedIndex].getUrl().isEmpty()))
             {
                 m_lastDownloadSourceIndex = selectedIndex;
             }
@@ -597,29 +626,59 @@ void LauncherPage::loadSettings()
     }
 }
 
-void LauncherPage::onDownloadSourceChanged(int index)
+void LauncherPage::persistDownloadSelection(int index)
 {
-    if (m_editingCustomSource || index < 0 || index >= sources.size())
+    if (index < 0 || index >= sources.size())
     {
         return;
     }
-
-    DownloadSource &source = sources[index];
-    if (source.getType() != "Custom")
+    auto s = APPLICATION->settings();
+    const DownloadSource &selectedSource = sources[index];
+    // 官方默认源使用内置默认值，不显式写入配置文件
+    if (selectedSource.getType() == "Mojang")
     {
-        m_lastDownloadSourceIndex = index;
+        s->reset("Downloadsource");
+        s->reset("Downloadsourcecustomurl");
         return;
     }
+    if (selectedSource.getType() == "Custom")
+    {
+        // 末尾的“自定义”入口不是真实的自定义源，不写入选中标识
+        if (selectedSource.getUrl().isEmpty())
+        {
+            return;
+        }
+        s->set("Downloadsource", "Custom");
+        s->set("Downloadsourcecustomurl", selectedSource.getUrl());
+        return;
+    }
+    s->set("Downloadsource", selectedSource.getType());
+    s->reset("Downloadsourcecustomurl");
+}
 
-    // 编辑自定义源：支持手动输入名称与代理地址
-    m_editingCustomSource = true;
-    bool accepted = false;
+bool LauncherPage::isDuplicateCustomUrl(const QString &url, int exceptIndex) const
+{
+    for (int i = 0; i < sources.size(); i++)
+    {
+        if (i == exceptIndex)
+        {
+            continue;
+        }
+        if (sources[i].getType() == "Custom" && sources[i].getUrl() == url)
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
+bool LauncherPage::openCustomSourceDialog(const QString &initialName, const QString &initialUrl, QString &name, QString &url)
+{
     QDialog dialog(this);
     dialog.setWindowTitle(tr("Custom Source"));
 
-    QLineEdit *nameEdit = new QLineEdit(source.getName(), &dialog);
-    QLineEdit *urlEdit = new QLineEdit(source.getUrl(), &dialog);
+    QLineEdit *nameEdit = new QLineEdit(initialName, &dialog);
+    QLineEdit *urlEdit = new QLineEdit(initialUrl, &dialog);
     urlEdit->setPlaceholderText("https://***.****.com");
     // 按字体度量保证占位提示完整可见，并随 DPI 缩放自适应
     urlEdit->setMinimumWidth(urlEdit->fontMetrics().width(urlEdit->placeholderText()) + 24);
@@ -643,41 +702,181 @@ void LauncherPage::onDownloadSourceChanged(int index)
     layout->addLayout(formLayout);
     layout->addWidget(buttonBox, 0, Qt::AlignRight);
 
-    if (dialog.exec() == QDialog::Accepted)
+    if (dialog.exec() != QDialog::Accepted)
     {
-        QString newName = nameEdit->text().trimmed();
-        QString newUrl = urlEdit->text().trimmed();
-        if (newName.isEmpty())
+        return false;
+    }
+
+    QString newName = nameEdit->text().trimmed();
+    QString newUrl = urlEdit->text().trimmed();
+    if (newName.isEmpty())
+    {
+        newName = tr("Custom");
+    }
+    if (newUrl.isEmpty())
+    {
+        // 未填写代理地址时不写入任何配置
+        QMessageBox::warning(this, tr("Custom Source"), tr("Please enter a proxy address."));
+        return false;
+    }
+    if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://"))
+    {
+        newUrl.prepend("https://");
+    }
+    while (newUrl.endsWith('/'))
+    {
+        newUrl.chop(1);
+    }
+    name = newName;
+    url = newUrl;
+    return true;
+}
+
+void LauncherPage::onDownloadSourceChanged(int index)
+{
+    if (m_editingCustomSource || index < 0 || index >= sources.size())
+    {
+        return;
+    }
+
+    const DownloadSource &selected = sources[index];
+    // 非“自定义”入口：记录并立即持久化当前选择
+    if (selected.getType() != "Custom" || !selected.getUrl().isEmpty())
+    {
+        m_lastDownloadSourceIndex = index;
+        persistDownloadSelection(index);
+        return;
+    }
+
+    // 选中末尾“自定义”入口：每次都新增一个独立的自定义代理源
+    m_editingCustomSource = true;
+    QString name;
+    QString url;
+    if (openCustomSourceDialog(QString(), QString(), name, url))
+    {
+        if (isDuplicateCustomUrl(url, -1))
         {
-            newName = tr("Custom");
-        }
-        if (newUrl.isEmpty())
-        {
-            QMessageBox::warning(this, tr("Custom Source"), tr("Please enter a proxy address."));
+            QMessageBox::warning(this, tr("Custom Source"), tr("This proxy address is already in use."));
+            QSignalBlocker blocker(ui->downloadcomboBox);
+            ui->downloadcomboBox->setCurrentIndex(m_lastDownloadSourceIndex);
         }
         else
         {
-            if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://"))
             {
-                newUrl.prepend("https://");
+                QSignalBlocker blocker(ui->downloadcomboBox);
+                DownloadSource newSource(name, url, "Custom", true);
+                // 新自定义源插入到“自定义”入口上方，与已有自定义源一起排列
+                sources.insert(index, newSource);
+                ui->downloadcomboBox->insertItem(index, name);
+                ui->downloadcomboBox->setItemActions(index, true, true);
+                ui->downloadcomboBox->setCurrentIndex(index);
             }
-            while (newUrl.endsWith('/'))
-            {
-                newUrl.chop(1);
-            }
-            source.setName(newName);
-            source.setUrl(newUrl);
-            ui->downloadcomboBox->setItemText(index, newName);
-            accepted = true;
+            m_lastDownloadSourceIndex = index;
+            // 新增后立即生效并持久化
+            persistDownloadSelection(index);
+            APPLICATION->setDownloadSources(sources);
         }
     }
-
-    if (!accepted)
+    else
     {
         QSignalBlocker blocker(ui->downloadcomboBox);
         ui->downloadcomboBox->setCurrentIndex(m_lastDownloadSourceIndex);
     }
     m_editingCustomSource = false;
+}
+
+void LauncherPage::onDownloadSourceDeleteRequested(int index)
+{
+    if (index < 0 || index >= sources.size())
+    {
+        return;
+    }
+    const DownloadSource &source = sources[index];
+    // 内置源与“自定义”入口没有删除按钮，这里再做一次防御
+    if (source.getType() != "Custom" || source.getUrl().isEmpty())
+    {
+        return;
+    }
+
+    QMessageBox::StandardButton answer = QMessageBox::question(
+        this,
+        tr("Delete Source"),
+        tr("Delete the custom source \"%1\"?").arg(source.getName()),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No);
+    if (answer != QMessageBox::Yes)
+    {
+        return;
+    }
+
+    const bool wasSelected = ui->downloadcomboBox->currentIndex() == index;
+    int fallbackIndex = 0;
+    {
+        QSignalBlocker blocker(ui->downloadcomboBox);
+        ui->downloadcomboBox->removeItem(index);
+        sources.removeAt(index);
+        // 删除当前选中的源后，退回到相邻的有效源（不会落到“自定义”入口）
+        fallbackIndex = qMax(index - 1, 0);
+        if (fallbackIndex >= ui->downloadcomboBox->count())
+        {
+            fallbackIndex = qMax(ui->downloadcomboBox->count() - 1, 0);
+        }
+        if (wasSelected)
+        {
+            ui->downloadcomboBox->setCurrentIndex(fallbackIndex);
+        }
+        else
+        {
+            fallbackIndex = ui->downloadcomboBox->currentIndex();
+        }
+    }
+    m_lastDownloadSourceIndex = fallbackIndex;
+    if (wasSelected)
+    {
+        // 删除当前选中源后立即生效并同步配置
+        persistDownloadSelection(fallbackIndex);
+    }
+    APPLICATION->setDownloadSources(sources);
+}
+
+void LauncherPage::onDownloadSourceEditRequested(int index)
+{
+    if (index < 0 || index >= sources.size())
+    {
+        return;
+    }
+    const DownloadSource &source = sources[index];
+    // 仅真实的自定义源支持编辑
+    if (source.getType() != "Custom" || source.getUrl().isEmpty())
+    {
+        return;
+    }
+
+    QString name;
+    QString url;
+    if (!openCustomSourceDialog(source.getName(), source.getUrl(), name, url))
+    {
+        return;
+    }
+    if (isDuplicateCustomUrl(url, index))
+    {
+        QMessageBox::warning(this, tr("Custom Source"), tr("This proxy address is already in use."));
+        return;
+    }
+
+    sources[index].setName(name);
+    sources[index].setUrl(url);
+    {
+        QSignalBlocker blocker(ui->downloadcomboBox);
+        ui->downloadcomboBox->setItemText(index, name);
+    }
+    // 正在使用该源时同步更新选中标识，保证修改立即生效
+    if (ui->downloadcomboBox->currentIndex() == index)
+    {
+        m_lastDownloadSourceIndex = index;
+        persistDownloadSelection(index);
+    }
+    APPLICATION->setDownloadSources(sources);
 }
 
 void LauncherPage::refreshFontPreview()

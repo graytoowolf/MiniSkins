@@ -59,6 +59,8 @@ namespace Net
 
     private: /* methods */
         bool handleRedirect();
+        QNetworkRequest buildRequest() const;
+        void sendRequest(QNetworkRequest &request);
 
     protected slots:
         void downloadProgress(qint64 bytesReceived, qint64 bytesTotal) override;
@@ -75,6 +77,8 @@ namespace Net
         QString m_target_path;
         std::unique_ptr<Sink> m_sink;
         Options m_options;
+        // 手动重定向兜底时已跟随的跳数，避免重定向循环
+        int m_redirect_count = 0;
     };
 }
 

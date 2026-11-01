@@ -882,6 +882,8 @@ SET(LAUNCHER_SOURCES
     ui/widgets/PageContainer.cpp
     ui/widgets/PageContainer.h
     ui/widgets/PageContainer_p.h
+    ui/widgets/SourceComboBox.cpp
+    ui/widgets/SourceComboBox.h
     ui/widgets/VersionListView.cpp
     ui/widgets/VersionListView.h
     ui/widgets/VersionSelectWidget.cpp

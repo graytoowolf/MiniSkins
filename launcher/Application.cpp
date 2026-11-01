@@ -711,8 +711,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_settings->registerSetting("CFKeyOverride", "");
 
         m_settings->registerSetting("Downloadsource", "Mojang");
-        m_settings->registerSetting("Downloadsourceurl", "");
-        m_settings->registerSetting("Downloadsourceproxy", false);
+        // 选中的自定义代理源标识（代理地址），用于区分多个自定义源
+        m_settings->registerSetting("Downloadsourcecustomurl", "");
 
         m_settings->registerSetting("Threads", 8);
 
@@ -1702,10 +1702,34 @@ const QList<YggSource> &Application::getYggSources() const { return yggSources; 
 DownloadSource Application::getSelectedDownloadSource() const
 {
     QString selectedType = "Mojang";
+    QString selectedCustomUrl;
     if (m_settings)
     {
         selectedType = m_settings->get("Downloadsource").toString();
+        selectedCustomUrl = m_settings->get("Downloadsourcecustomurl").toString();
     }
+
+    // 自定义源可能有多个，必须按配置的代理地址精确匹配，避免选中错误的源
+    if (selectedType == "Custom")
+    {
+        for (const DownloadSource &source : downloadSources)
+        {
+            if (source.getType() == "Custom" && source.getUrl() == selectedCustomUrl)
+            {
+                return source;
+            }
+        }
+        // 标识缺失或已失效时回退到第一个自定义源
+        for (const DownloadSource &source : downloadSources)
+        {
+            if (source.getType() == "Custom" && !source.getUrl().isEmpty())
+            {
+                return source;
+            }
+        }
+        selectedType = "Mojang";
+    }
+
     for (const DownloadSource &source : downloadSources)
     {
         if (source.getType() == selectedType)
@@ -1805,6 +1829,12 @@ void Application::loadSources()
         }
     }
 
+    // 内置源：官方源与 BMCLAPI 始终存在，无需用户配置，也不写入配置文件
+    downloadSources.append(DownloadSource("Official", "", "Mojang", false));
+    downloadSources.append(DownloadSource("BMCLAPI", DownloadSourceDefaults::bmclapiHost(), "Bmclapi", false));
+
+    // 用户自定义代理源可以有多个，全部读入并按代理地址去重
+    QSet<QString> customUrls;
     for (const QJsonValue &value : sourcesArray)
     {
         if (!value.isObject())
@@ -1812,54 +1842,26 @@ void Application::loadSources()
             continue;
         }
         QJsonObject obj = value.toObject();
-        QString type = obj["type"].toString();
-        if (type.isEmpty())
+        if (obj["type"].toString() != "Custom")
         {
             continue;
         }
-        downloadSources.append(
-            DownloadSource(obj["name"].toString(), obj["url"].toString(), type, obj["proxy"].toBool()));
+        QString url = obj["url"].toString().trimmed();
+        if (url.isEmpty() || customUrls.contains(url))
+        {
+            continue;
+        }
+        QString name = obj["name"].toString().trimmed();
+        if (name.isEmpty())
+        {
+            name = "Custom";
+        }
+        downloadSources.append(DownloadSource(name, url, "Custom", true));
+        customUrls.insert(url);
     }
 
-    // 配置缺失时使用内置默认源
-    if (downloadSources.isEmpty())
-    {
-        downloadSources.append(DownloadSource("Official", "", "Mojang", false));
-        downloadSources.append(DownloadSource("BMCLAPI", "bmclapi2.bangbang93.com", "Bmclapi", false));
-        downloadSources.append(DownloadSource("Custom", "", "Custom", true));
-    }
-    else
-    {
-        // 保证内置源与自定义源选项始终存在
-        bool hasCustom = false;
-        bool hasBmclapi = false;
-        for (const DownloadSource &source : downloadSources)
-        {
-            if (source.getType() == "Custom")
-            {
-                hasCustom = true;
-            }
-            else if (source.getType() == "Bmclapi")
-            {
-                hasBmclapi = true;
-            }
-        }
-        if (!hasBmclapi)
-        {
-            downloadSources.append(DownloadSource("BMCLAPI", "bmclapi2.bangbang93.com", "Bmclapi", false));
-        }
-        if (!hasCustom)
-        {
-            downloadSources.append(DownloadSource("Custom", "", "Custom", true));
-        }
-        for (int i = 0; i < downloadSources.size(); i++)
-        {
-            if (downloadSources[i].getType() == "Bmclapi" && downloadSources[i].getUrl().trimmed().isEmpty())
-            {
-                downloadSources[i].setUrl("bmclapi2.bangbang93.com");
-            }
-        }
-    }
+    // 自定义源编辑入口，占位项仅用于界面交互，不写入配置文件
+    downloadSources.append(DownloadSource("Custom", "", "Custom", true));
 
     for (const QJsonValue &value : yggArray)
     {
@@ -1887,11 +1889,36 @@ void Application::loadSources()
 
     if (m_settings)
     {
-        // 选中源类型非法时回退到官方源
+        // 选中源类型非法时回退到内置的官方源（不写入默认值）
         QString selectedType = m_settings->get("Downloadsource").toString();
         if (selectedType != "Mojang" && selectedType != "Bmclapi" && selectedType != "Custom")
         {
-            m_settings->set("Downloadsource", "Mojang");
+            m_settings->reset("Downloadsource");
+            m_settings->reset("Downloadsourcecustomurl");
+        }
+        else if (selectedType == "Custom")
+        {
+            // 选中的自定义源已被删除时，回退到第一个自定义源，没有自定义源则恢复官方源
+            QString selectedUrl = m_settings->get("Downloadsourcecustomurl").toString();
+            if (!customUrls.contains(selectedUrl))
+            {
+                m_settings->reset("Downloadsourcecustomurl");
+                if (customUrls.isEmpty())
+                {
+                    m_settings->reset("Downloadsource");
+                }
+                else
+                {
+                    for (const DownloadSource &source : downloadSources)
+                    {
+                        if (source.getType() == "Custom" && !source.getUrl().isEmpty())
+                        {
+                            m_settings->set("Downloadsourcecustomurl", source.getUrl());
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1904,6 +1931,11 @@ bool Application::saveSources()
     QJsonArray sourcesArray;
     for (const DownloadSource &source : downloadSources)
     {
+        // 仅保存用户实际配置的自定义代理源，内置源与空占位项不写入
+        if (source.getType() != "Custom" || source.getUrl().trimmed().isEmpty())
+        {
+            continue;
+        }
         QJsonObject obj;
         obj["name"] = source.getName();
         obj["url"] = source.getUrl();

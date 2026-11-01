@@ -32,6 +32,9 @@ namespace Net
 
 namespace
 {
+    // 手动跟随重定向时的最大跳数，防止重定向循环
+    const int kMaxRedirects = 10;
+
     // BMCLAPI 支持的 Mojang / 模组平台资源域名及其对应的路径前缀
     struct SourceReplacement
     {
@@ -94,9 +97,9 @@ namespace
     {
         if (source.getType() == "Bmclapi")
         {
-            const QString baseUrl = normalizeBaseUrl(source.getUrl(), "bmclapi2.bangbang93.com");
+            const QString baseUrl = normalizeBaseUrl(source.getUrl(), DownloadSourceDefaults::bmclapiHost());
             const QString host = url.host();
-            if (baseUrl.isEmpty() || host.contains("bmclapi2.bangbang93.com"))
+            if (baseUrl.isEmpty() || host.contains(DownloadSourceDefaults::bmclapiHost()))
             {
                 return url;
             }
@@ -191,7 +194,7 @@ namespace
             }
         }
 
-        QNetworkRequest request(m_url);
+        QNetworkRequest request = buildRequest();
         m_status = m_sink->init(request);
         switch (m_status)
         {
@@ -211,6 +214,21 @@ namespace
             return;
         }
 
+        m_redirect_count = 0;
+        sendRequest(request);
+    }
+
+    QNetworkRequest Download::buildRequest() const
+    {
+        QNetworkRequest request(m_url);
+        // Qt 5.6 起支持内建跟随 301/302/303/307，由 QNetworkReply 内部完成跳转，
+        // 这样 sink 只初始化一次，重定向地址也不会再次套用下载源转换
+        request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+        return request;
+    }
+
+    void Download::sendRequest(QNetworkRequest &request)
+    {
         request.setHeader(QNetworkRequest::UserAgentHeader, BuildConfig.USER_AGENT);
         for (auto iter = m_extra_headers.begin(); iter != m_extra_headers.end(); iter++)
         {
@@ -280,6 +298,21 @@ namespace
 
     bool Download::handleRedirect()
     {
+        /*
+         * Qt 5.6 自动跟随重定向后，最终响应（例如 200）上仍可能残留上一跳 302 的 Location 头。
+         * 若只凭 Location 头判断，会把普通响应再次当作重定向，导致同一文件被下载两次、
+         * 校验必然失败。因此只有 HTTP 状态码是 3xx 时才认为是需要手动跟随的重定向。
+         */
+        const QVariant statusVar = m_reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+        if (statusVar.isValid())
+        {
+            const int statusCode = statusVar.toInt();
+            if (statusCode < 300 || statusCode > 399)
+            {
+                return false;
+            }
+        }
+
         QUrl redirect = m_reply->header(QNetworkRequest::LocationHeader).toUrl();
         if (!redirect.isValid())
         {
@@ -334,9 +367,20 @@ namespace
             qDebug() << "Location header:" << redirect;
         }
 
+        if (m_redirect_count >= kMaxRedirects)
+        {
+            qCritical() << "Too many redirects for " << m_url.toString();
+            m_status = Job_Failed;
+            return false;
+        }
+        m_redirect_count++;
+
         m_url = QUrl(redirect.toString());
         qDebug() << "Following redirect to " << m_url.toString();
-        start(m_network);
+
+        // 兜底跟随：只重新发起请求，不重复初始化 sink，也不再套用下载源转换
+        QNetworkRequest request = buildRequest();
+        sendRequest(request);
         return true;
     }
 

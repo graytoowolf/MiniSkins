@@ -62,12 +62,21 @@ private:
     void applySettings();
     void loadSettings();
 
+    // 打开自定义源配置窗口，返回是否确认并输出规范化后的名称与代理地址
+    bool openCustomSourceDialog(const QString &initialName, const QString &initialUrl, QString &name, QString &url);
+    // 立即持久化当前选中的下载源
+    void persistDownloadSelection(int index);
+    // 判断代理地址是否已被其他自定义源使用
+    bool isDuplicateCustomUrl(const QString &url, int exceptIndex) const;
+
 private slots:
     void on_instDirBrowseBtn_clicked();
     void on_modsDirBrowseBtn_clicked();
     void on_iconsDirBrowseBtn_clicked();
     void on_migrateDataFolderMacBtn_clicked();
     void onDownloadSourceChanged(int index);
+    void onDownloadSourceDeleteRequested(int index);
+    void onDownloadSourceEditRequested(int index);
 
     /*!
      * Updates the font preview
