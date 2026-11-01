@@ -46,6 +46,11 @@ public:
 public:
     void reset(T * wrap)
     {
+        if (!wrap)
+        {
+            m_ptr.reset();
+            return;
+        }
         using namespace std::placeholders;
         m_ptr.reset(wrap, std::bind(&QObject::deleteLater, _1));
     }
