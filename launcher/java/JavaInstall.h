@@ -33,6 +33,7 @@ struct JavaInstall : public BaseVersion
     JavaVersion id;
     Sys::Architecture arch;
     QString path;
+    QString vendor;
     bool recommended = false;
 
 private:

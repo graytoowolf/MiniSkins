@@ -464,6 +464,8 @@ set(JAVA_SOURCES
     java/JavaInstall.cpp
     java/JavaInstallList.h
     java/JavaInstallList.cpp
+    java/JavaMatch.h
+    java/JavaMatch.cpp
     java/JavaUtils.h
     java/JavaUtils.cpp
     java/JavaVersion.h
@@ -472,6 +474,11 @@ set(JAVA_SOURCES
 
 add_unit_test(JavaVersion
     SOURCES java/JavaVersion_test.cpp
+    LIBS Launcher_logic
+    )
+
+add_unit_test(JavaMatch
+    SOURCES java/JavaMatch_test.cpp
     LIBS Launcher_logic
     )
 
@@ -692,6 +699,10 @@ SET(LAUNCHER_SOURCES
     JavaCommon.h
     JavaCommon.cpp
 
+    # Java version auto-matching before launch (uses dialogs, GUI side)
+    java/JavaMatchTask.h
+    java/JavaMatchTask.cpp
+
     # GUI - paged dialog base
     ui/pages/BasePage.h
     ui/pages/BasePageContainer.h
@@ -853,6 +864,8 @@ SET(LAUNCHER_SOURCES
     ui/dialogs/ModrinthExportDialog.h
     ui/dialogs/ModpackUpdateVersionSelectDialog.cpp
     ui/dialogs/ModpackUpdateVersionSelectDialog.h
+    ui/dialogs/JavaMatchSelectDialog.cpp
+    ui/dialogs/JavaMatchSelectDialog.h
 
     # GUI - widgets
     ui/widgets/Common.cpp

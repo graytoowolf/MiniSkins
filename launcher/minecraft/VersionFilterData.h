@@ -41,3 +41,8 @@ struct VersionFilterData
     QDateTime neoForgeBeginsDate;
 };
 extern VersionFilterData g_VersionFilterData;
+
+// Returns the minimum Java major version required by a Minecraft version with the given
+// release date, based on the boundaries in g_VersionFilterData.
+// Returns 0 when there is no requirement (invalid date or version predates Java 8 requirement).
+int requiredJavaMajor(const QDateTime &mcReleaseDate);

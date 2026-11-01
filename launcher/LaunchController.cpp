@@ -312,6 +312,27 @@ void LaunchController::launchInstance()
         return;
     }
 
+    // Java compatibility check and auto-matching: this must happen before the
+    // LaunchTask is created, so that no game resources are loaded before a
+    // suitable Java runtime is in place.
+    m_javaMatchTask = new JavaMatchTask(m_instance, m_parentWidget);
+    connect(m_javaMatchTask.get(), &Task::succeeded, this, &LaunchController::javaMatchSucceeded);
+    connect(m_javaMatchTask.get(), &Task::failed, this, &LaunchController::javaMatchFailed);
+    m_javaMatchTask->start();
+}
+
+void LaunchController::javaMatchSucceeded()
+{
+    createAndStartLauncher();
+}
+
+void LaunchController::javaMatchFailed(QString reason)
+{
+    emitFailed(reason);
+}
+
+void LaunchController::createAndStartLauncher()
+{
     m_launcher = m_instance->createLaunchTask(m_session, m_quickPlayTarget);
     if (!m_launcher)
     {

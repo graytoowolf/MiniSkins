@@ -34,50 +34,30 @@ void VerifyJavaInstall::executeTask() {
     auto javaVersion = m_inst->getJavaVersion();
     auto minecraftComponent = m_inst->getPackProfile()->getComponent("net.minecraft");
 
-    // Java 25 Requirement
-    if (minecraftComponent->getReleaseDateTime() >= g_VersionFilterData.java25BeginsDate) {
-        if (javaVersion.major() < 25) {
-            emit logLine("Minecraft 26.1 Snapshot 1 and above require the use of Java 25",
-                         MessageLevel::Fatal);
-            emitFailed(tr("Minecraft 26.1 Snapshot 1 and above require the use of Java 25"));
-            return;
+    int requiredMajor = requiredJavaMajor(minecraftComponent->getReleaseDateTime());
+    if (requiredMajor > 0 && javaVersion.major() < requiredMajor) {
+        QString message;
+        switch (requiredMajor) {
+            case 25:
+                message = tr("Minecraft 26.1 Snapshot 1 and above require the use of Java 25");
+                break;
+            case 21:
+                message = tr("Minecraft 24w14a and above require the use of Java 21");
+                break;
+            case 17:
+                message = tr("Minecraft 1.18 Pre Release 2 up to 24w13a require the use of Java 17");
+                break;
+            case 16:
+                message = tr("Minecraft 21w19a up to 1.18 Pre Release 1 require the use of Java 16");
+                break;
+            case 8:
+            default:
+                message = tr("Minecraft 17w13a up to 21w18a require the use of Java 8");
+                break;
         }
-    }    
-    // Java 21 Requirement
-    if (minecraftComponent->getReleaseDateTime() >= g_VersionFilterData.java21BeginsDate) {
-        if (javaVersion.major() < 21) {
-            emit logLine("Minecraft 24w14a and above require the use of Java 21",
-                         MessageLevel::Fatal);
-            emitFailed(tr("Minecraft 24w14a and above require the use of Java 21"));
-            return;
-        }
-    }
-    // Java 17 requirement
-    if (minecraftComponent->getReleaseDateTime() >= g_VersionFilterData.java17BeginsDate) {
-        if (javaVersion.major() < 17) {
-            emit logLine("Minecraft 1.18 Pre Release 2 up to 24w13a require the use of Java 17",
-                         MessageLevel::Fatal);
-            emitFailed(tr("Minecraft 1.18 Pre Release 2 up to 24w13a require the use of Java 17"));
-            return;
-        }
-    }
-    // Java 16 requirement
-    else if (minecraftComponent->getReleaseDateTime() >= g_VersionFilterData.java16BeginsDate) {
-        if (javaVersion.major() < 16) {
-            emit logLine("Minecraft 21w19a up to 1.18 Pre Release 1 require the use of Java 16",
-                         MessageLevel::Fatal);
-            emitFailed(tr("Minecraft 21w19a up to 1.18 Pre Release 1 require the use of Java 16"));
-            return;
-        }
-    }
-    // Java 8 requirement
-    else if (minecraftComponent->getReleaseDateTime() >= g_VersionFilterData.java8BeginsDate) {
-        if (javaVersion.major() < 8) {
-            emit logLine("Minecraft 17w13a up to 21w18a require the use of Java 8",
-                         MessageLevel::Fatal);
-            emitFailed(tr("Minecraft 17w13a up to 21w18a require the use of Java 8"));
-            return;
-        }
+        emit logLine(message, MessageLevel::Fatal);
+        emitFailed(message);
+        return;
     }
 
     emitSucceeded();

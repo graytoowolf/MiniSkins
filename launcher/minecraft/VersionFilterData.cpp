@@ -76,3 +76,32 @@ VersionFilterData::VersionFilterData()
     fabricBeginsDate    = timeFromS3Time("2019-04-23T14:52:44+00:00");
     neoForgeBeginsDate  = timeFromS3Time("2023-06-12T13:25:51+00:00");
 }
+
+int requiredJavaMajor(const QDateTime &mcReleaseDate)
+{
+    if (!mcReleaseDate.isValid())
+    {
+        return 0;
+    }
+    if (mcReleaseDate >= g_VersionFilterData.java25BeginsDate)
+    {
+        return 25;
+    }
+    if (mcReleaseDate >= g_VersionFilterData.java21BeginsDate)
+    {
+        return 21;
+    }
+    if (mcReleaseDate >= g_VersionFilterData.java17BeginsDate)
+    {
+        return 17;
+    }
+    if (mcReleaseDate >= g_VersionFilterData.java16BeginsDate)
+    {
+        return 16;
+    }
+    if (mcReleaseDate >= g_VersionFilterData.java8BeginsDate)
+    {
+        return 8;
+    }
+    return 0;
+}
