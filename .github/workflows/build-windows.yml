@@ -147,6 +147,17 @@ jobs:
           cd build
           mingw32-make install
 
+      - name: Strip Symbols
+        shell: cmd
+        run: |
+          if not exist "D:\MiniSkins\install\MiniSkins.exe" exit /b 1
+          for %%A in ("D:\MiniSkins\install\MiniSkins.exe") do set "SIZE_BEFORE=%%~zA"
+          D:\Qt\Tools\mingw492_32\bin\strip.exe "D:\MiniSkins\install\MiniSkins.exe"
+          if errorlevel 1 exit /b 1
+          for %%A in ("D:\MiniSkins\install\MiniSkins.exe") do set "SIZE_AFTER=%%~zA"
+          echo Before: %SIZE_BEFORE% bytes
+          echo After : %SIZE_AFTER% bytes
+
       - name: Copy OpenSSL
         shell: cmd
         run: |
