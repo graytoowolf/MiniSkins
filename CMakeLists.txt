@@ -82,11 +82,60 @@ set(Launcher_VERSION_BUILD -1 CACHE STRING "Build number. -1 for no build number
 # Build platform.
 set(Launcher_BUILD_PLATFORM "" CACHE STRING "A short string identifying the platform that this build was built for. Only used by the notification system and to display in the about dialog.")
 
-# Channel list URL
-set(Launcher_UPDATER_BASE "" CACHE STRING "Base URL for the updater.")
+# Our sites, each a list of base URLs: the main server first, then its copies, in the order they are tried.
+# Every URL on a site is one of its base URLs and a path.
+set(Launcher_FILES_MIRRORS "https://files.multimc.org/;https://files-r2.multimc.org/" CACHE STRING "Base URLs of the files site (updates, notifications, translations, ...), in order.")
+set(Launcher_META_MIRRORS "https://meta.multimc.org/;https://meta-r2.multimc.org/" CACHE STRING "Base URLs of the meta site, in order.")
+foreach(site FILES META)
+    if(NOT Launcher_${site}_MIRRORS)
+        message(FATAL_ERROR "Launcher_${site}_MIRRORS must have at least one base URL")
+    endif()
+    foreach(url ${Launcher_${site}_MIRRORS})
+        if(NOT url MATCHES "^https?://[^/]+/$")
+            message(FATAL_ERROR "Launcher_${site}_MIRRORS: ${url} is not a base URL like https://example.org/")
+        endif()
+    endforeach()
+    # as C++ string literals, one per URL: "a", "b"
+    string(REPLACE ";" "\", \"" Launcher_${site}_MIRRORS_LITERALS "\"${Launcher_${site}_MIRRORS}\"")
+endforeach()
 
 # Notification URL
 set(Launcher_NOTIFICATION_URL "" CACHE STRING "URL for checking for notifications.")
+# Which updater a build uses: 1, the current one, or 2, the new one (Design/Updater.md in the
+# MultiMC repository). Both are built into every build.
+set(Launcher_UPDATER_VERSION "1" CACHE STRING "The updater this build uses: 1 or 2")
+# Updater v2: pinned root keys: Ed25519 public keys, 64 hex digits each
+set(Launcher_UPDATER_ROOT_KEYS "" CACHE STRING "Updater v2: pinned root public keys, a list")
+# Updater v2: the keys document compiled in as the floor; it must list exactly the pinned root keys
+set(Launcher_UPDATER_KEYS_FLOOR "" CACHE FILEPATH "Updater v2: the keys document compiled in")
+set(Launcher_UPDATER_SERIAL_FLOOR "0" CACHE STRING "Updater v2: the lowest tags serial accepted")
+# Updater v2: the variant ID this build is, e.g. linux-x86_64-qt5 (see Design/UpdaterFormats.md)
+set(Launcher_UPDATER_VARIANT "" CACHE STRING "Updater v2: this build's variant ID")
+if(NOT Launcher_UPDATER_VERSION MATCHES "^[12]$")
+    message(FATAL_ERROR "Launcher_UPDATER_VERSION must be 1 or 2, not '${Launcher_UPDATER_VERSION}'")
+endif()
+if(NOT Launcher_UPDATER_SERIAL_FLOOR MATCHES "^(0|[1-9][0-9]*)$")
+    message(FATAL_ERROR "Launcher_UPDATER_SERIAL_FLOOR must be a number, not '${Launcher_UPDATER_SERIAL_FLOOR}'")
+endif()
+foreach(key ${Launcher_UPDATER_ROOT_KEYS})
+    if(NOT key MATCHES "^[0-9a-f]+$")
+        message(FATAL_ERROR "Launcher_UPDATER_ROOT_KEYS: ${key} is not lowercase hex")
+    endif()
+endforeach()
+# as C++ string literals, one per key: "a", "b"
+if(Launcher_UPDATER_ROOT_KEYS)
+    string(REPLACE ";" "\", \"" Launcher_UPDATER_ROOT_KEYS_LITERALS "\"${Launcher_UPDATER_ROOT_KEYS}\"")
+endif()
+# The keys document as a string literal of its exact bytes
+set(Launcher_UPDATER_KEYS_FLOOR_BYTES "")
+if(Launcher_UPDATER_KEYS_FLOOR)
+    if(NOT EXISTS "${Launcher_UPDATER_KEYS_FLOOR}")
+        message(FATAL_ERROR "Launcher_UPDATER_KEYS_FLOOR: ${Launcher_UPDATER_KEYS_FLOOR} doesn't exist")
+    endif()
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${Launcher_UPDATER_KEYS_FLOOR}")
+    file(READ "${Launcher_UPDATER_KEYS_FLOOR}" floor_hex HEX)
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "\\\\x\\1" Launcher_UPDATER_KEYS_FLOOR_BYTES "${floor_hex}")
+endif()
 
 #### Check the current Git commit and branch
 include(GetGitRevisionDescription)
@@ -137,7 +186,6 @@ set(Launcher_Branding_ICNS "${PROJECT_SOURCE_DIR}/branding/${Launcher_CommonName
 set(Launcher_Branding_WindowsRC "${PROJECT_SOURCE_DIR}/branding/${Launcher_CommonName}.rc")
 set(Launcher_Branding_LogoQRC "${PROJECT_SOURCE_DIR}/branding/logo.qrc")
 
-set(Launcher_META_URL "https://meta.multimc.org/v1/")
 set(Launcher_PASTE_EE_API_KEY "utLvciUouSURFzfjPxLBf5W4ISsUX4pwBDF7N1AfZ")
 set(Launcher_MSA_CLIENT_ID "b1d72203-d142-4d7e-929a-aae9c27b2c7b")
 set(Launcher_CURSE_API_KEY "$2a$10$bL4bIL5pUWqfcO7KQtnMReakwtfHbNKh6v1uTpKlzhwoueEJQnPnm")
@@ -261,6 +309,7 @@ add_subdirectory(libraries/LocalPeer) # fork of a library from Qt solutions
 add_subdirectory(libraries/classparser) # java class file parser
 add_subdirectory(libraries/optional-bare)
 add_subdirectory(libraries/tomlc99) # toml parser
+add_subdirectory(libraries/monocypher) # signature checks for the updater
 add_subdirectory(libraries/katabasis) # An OAuth2 library that tried to do too much
 
 ############################### Built Artifacts ###############################

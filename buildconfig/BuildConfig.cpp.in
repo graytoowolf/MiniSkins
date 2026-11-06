@@ -23,13 +23,28 @@ Config::Config()
     VERSION_BUILD = @Launcher_VERSION_BUILD@;
 
     BUILD_PLATFORM = "@Launcher_BUILD_PLATFORM@";
+    FILES_MIRRORS = QStringList{@Launcher_FILES_MIRRORS_LITERALS@};
+    META_MIRRORS = QStringList{@Launcher_META_MIRRORS_LITERALS@};
     UPDATER_BASE = "@Launcher_UPDATER_BASE@";
     NOTIFICATION_URL = "@Launcher_NOTIFICATION_URL@";
+    FMLLIBS_BASE_URL = FILES_MIRRORS.first() + "fmllibs/";
+    PATRONS_URL = FILES_MIRRORS.first() + "patrons.txt";
+    META_URL = META_MIRRORS.first() + "v1/";
     FULL_VERSION_STR = "@Launcher_VERSION_MAJOR@.@Launcher_VERSION_MINOR@.@Launcher_VERSION_BUILD@";
+
+    UPDATER_VERSION = @Launcher_UPDATER_VERSION@;
+    UPDATER_ROOT_KEYS = QStringList{@Launcher_UPDATER_ROOT_KEYS_LITERALS@};
+    static const char keysFloor[] = "@Launcher_UPDATER_KEYS_FLOOR_BYTES@";
+    UPDATER_KEYS_FLOOR = QByteArray(keysFloor, sizeof(keysFloor) - 1);
+    UPDATER_SERIAL_FLOOR = @Launcher_UPDATER_SERIAL_FLOOR@;
+    UPDATER_VARIANT = "@Launcher_UPDATER_VARIANT@";
+    bool updaterConfigured = UPDATER_VERSION == 2
+        ? !UPDATER_ROOT_KEYS.isEmpty() && !UPDATER_KEYS_FLOOR.isEmpty() && !UPDATER_VARIANT.isEmpty()
+        : !UPDATER_BASE.isEmpty();
 
     GIT_COMMIT = "@Launcher_GIT_COMMIT@";
     GIT_REFSPEC = "@Launcher_GIT_REFSPEC@";
-    if(GIT_REFSPEC.startsWith("refs/heads/") && !UPDATER_BASE.isEmpty() && !BUILD_PLATFORM.isEmpty() && VERSION_BUILD >= 0)
+    if(GIT_REFSPEC.startsWith("refs/heads/") && updaterConfigured && !BUILD_PLATFORM.isEmpty() && VERSION_BUILD >= 0)
     {
         VERSION_CHANNEL = GIT_REFSPEC;
         VERSION_CHANNEL.remove("refs/heads/");
@@ -47,7 +62,6 @@ Config::Config()
     MSA_CLIENT_ID = "@Launcher_MSA_CLIENT_ID@";
     CURSE_API_KEY = "@Launcher_CURSE_API_KEY@";
     IMGUR_CLIENT_ID = "@Launcher_IMGUR_CLIENT_ID@";
-    META_URL = "@Launcher_META_URL@";
 
     BUG_TRACKER_URL = "@Launcher_BUG_TRACKER_URL@";
     DISCORD_URL = "@Launcher_DISCORD_URL@";

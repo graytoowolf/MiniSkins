@@ -90,6 +90,21 @@ public:
             m_extra_headers.insert(key, value);
         }
     }
+    /// the network error the last attempt ended with, NoError if there was none
+    QNetworkReply::NetworkError networkError() const
+    {
+        return m_network_error;
+    }
+    /// the HTTP status of the last response, 0 if there was none
+    int httpStatus() const
+    {
+        return m_http_status;
+    }
+    /// whether the last attempt failed because the file isn't there (HTTP 404, or a missing local file)
+    bool wasNotFound() const
+    {
+        return m_network_error == QNetworkReply::ContentNotFoundError;
+    }
 
 signals:
     void started(int index);
@@ -133,4 +148,6 @@ public:
 
 protected:
     JobStatus m_status = Job_NotStarted;
+    QNetworkReply::NetworkError m_network_error = QNetworkReply::NoError;
+    int m_http_status = 0;
 };

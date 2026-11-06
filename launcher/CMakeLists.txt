@@ -89,6 +89,11 @@ set(CORE_SOURCES
     MMCTime.cpp
 )
 
+add_unit_test(Download
+    SOURCES net/Download_test.cpp
+    LIBS Launcher_logic
+    )
+
 add_unit_test(FileSystem
     SOURCES FileSystem_test.cpp
     LIBS Launcher_logic
@@ -97,6 +102,11 @@ add_unit_test(FileSystem
 
 add_unit_test(GZip
     SOURCES GZip_test.cpp
+    LIBS Launcher_logic
+    )
+
+add_unit_test(Json
+    SOURCES Json_test.cpp
     LIBS Launcher_logic
     )
 
@@ -130,6 +140,9 @@ set(NET_SOURCES
     net/UploadTask.cpp
     net/UploadTask.h
     net/Sink.h
+    net/SizeValidator.h
+    net/Mirrors.h
+    net/Mirrors.cpp
     net/Validator.h
 )
 
@@ -155,26 +168,98 @@ set(LAUNCH_SOURCES
     launch/LogModel.h
 )
 
-# Old update system
+# Updater v1
 set(UPDATE_SOURCES
-    updater/GoUpdate.h
-    updater/GoUpdate.cpp
-    updater/UpdateChecker.h
-    updater/UpdateChecker.cpp
-    updater/DownloadTask.h
-    updater/DownloadTask.cpp
+    updater/v1/UpdateController.h
+    updater/v1/UpdateController.cpp
+    updater/v1/GoUpdate.h
+    updater/v1/GoUpdate.cpp
+    updater/v1/UpdateChecker.h
+    updater/v1/UpdateChecker.cpp
+    updater/v1/DownloadTask.h
+    updater/v1/DownloadTask.cpp
 )
 
-add_unit_test(UpdateChecker
-    SOURCES updater/UpdateChecker_test.cpp
+# Updater v2 (Design/Updater.md in the MultiMC repository): used only by builds made with Launcher_UPDATER_VERSION 2
+set(NEW_UPDATE_SOURCES
+    updater/v2/Signature.h
+    updater/v2/Signature.cpp
+    updater/v2/SystemRequirements.h
+    updater/v2/SystemRequirements.cpp
+    updater/v2/Formats.h
+    updater/v2/Formats.cpp
+    updater/v2/State.h
+    updater/v2/State.cpp
+    updater/v2/Plan.h
+    updater/v2/Plan.cpp
+    updater/v2/Install.h
+    updater/v2/Install.cpp
+    updater/v2/InstallController.h
+    updater/v2/InstallController.cpp
+    updater/v2/Checker.h
+    updater/v2/Checker.cpp
+    updater/v2/DownloadTask.h
+    updater/v2/DownloadTask.cpp
+)
+
+add_unit_test(UpdaterV1UpdateChecker
+    SOURCES updater/v1/UpdateChecker_test.cpp
     LIBS Launcher_logic
-    DATA updater/testdata
+    DATA updater/v1/testdata
     )
 
-add_unit_test(DownloadTask
-    SOURCES updater/DownloadTask_test.cpp
+add_unit_test(UpdaterV1DownloadTask
+    SOURCES updater/v1/DownloadTask_test.cpp
     LIBS Launcher_logic
-    DATA updater/testdata
+    DATA updater/v1/testdata
+    )
+
+add_unit_test(UpdaterV2Signature
+    SOURCES updater/v2/Signature_test.cpp
+    LIBS Launcher_logic
+    DATA updater/v2/testdata
+    )
+
+add_unit_test(UpdaterV2SystemRequirements
+    SOURCES updater/v2/SystemRequirements_test.cpp
+    LIBS Launcher_logic
+    )
+
+# test trees made by updater/v2/make-test-trees.py
+add_unit_test(UpdaterV2Formats
+    SOURCES updater/v2/Formats_test.cpp
+    LIBS Launcher_logic
+    DATA updater/v2/testdata
+    )
+
+add_unit_test(UpdaterV2State
+    SOURCES updater/v2/State_test.cpp
+    LIBS Launcher_logic
+    DATA updater/v2/testdata
+    )
+
+add_unit_test(UpdaterV2Plan
+    SOURCES updater/v2/Plan_test.cpp
+    LIBS Launcher_logic
+    DATA updater/v2/testdata
+    )
+
+add_unit_test(UpdaterV2Install
+    SOURCES updater/v2/Install_test.cpp
+    LIBS Launcher_logic
+    DATA updater/v2/testdata
+    )
+
+add_unit_test(UpdaterV2Checker
+    SOURCES updater/v2/Checker_test.cpp
+    LIBS Launcher_logic
+    DATA updater/v2/testdata
+    )
+
+add_unit_test(UpdaterV2DownloadTask
+    SOURCES updater/v2/DownloadTask_test.cpp
+    LIBS Launcher_logic
+    DATA updater/v2/testdata
     )
 
 # Rarely used notifications
@@ -509,6 +594,8 @@ set(META_SOURCES
     meta/JsonFormat.h
     meta/BaseEntity.cpp
     meta/BaseEntity.h
+    meta/UpdateStep.cpp
+    meta/UpdateStep.h
     meta/VersionList.cpp
     meta/VersionList.h
     meta/Version.cpp
@@ -580,6 +667,11 @@ add_unit_test(Index
     LIBS Launcher_logic
     )
 
+add_unit_test(UpdateStep
+    SOURCES meta/UpdateStep_test.cpp
+    LIBS Launcher_logic
+    )
+
 ################################ COMPILE ################################
 
 # we need zlib
@@ -591,6 +683,7 @@ set(LOGIC_SOURCES
     ${NET_SOURCES}
     ${LAUNCH_SOURCES}
     ${UPDATE_SOURCES}
+    ${NEW_UPDATE_SOURCES}
     ${NOTIFICATIONS_SOURCES}
     ${NEWS_SOURCES}
     ${MINECRAFT_SOURCES}
@@ -616,8 +709,6 @@ SET(LAUNCHER_SOURCES
     Application.h
     Application.cpp
     DownloadSource.cpp
-    UpdateController.cpp
-    UpdateController.h
     ApplicationMessage.h
     ApplicationMessage.cpp
 
@@ -1026,6 +1117,7 @@ target_link_libraries(Launcher_logic
     ${ZLIB_LIBRARIES}
     optional-bare
     tomlc99
+    monocypher
     BuildConfig
     Katabasis
     qrcode

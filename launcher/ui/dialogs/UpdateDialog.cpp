@@ -7,7 +7,7 @@
 
 #include "BuildConfig.h"
 
-UpdateDialog::UpdateDialog(bool hasUpdate, QWidget *parent) : QDialog(parent), ui(new Ui::UpdateDialog)
+UpdateDialog::UpdateDialog(bool hasUpdate, QWidget *parent, const QString &target) : QDialog(parent), ui(new Ui::UpdateDialog), m_target(target)
 {
     ui->setupUi(this);
     if(hasUpdate)
@@ -33,6 +33,7 @@ void UpdateDialog::loadChangelog()
 {
     dljob = new NetJob("Changelog", APPLICATION->network());
     QString url = BuildConfig.UPDATER_BASE + "update/commits.json";
+    m_changelogType = CHANGELOG_COMMITS;
     dljob->addNetAction(Net::Download::makeByteArray(QUrl(url), &changelogData));
     connect(dljob.get(), &NetJob::succeeded, this, &UpdateDialog::changelogLoaded);
     connect(dljob.get(), &NetJob::failed, this, &UpdateDialog::changelogFailed);

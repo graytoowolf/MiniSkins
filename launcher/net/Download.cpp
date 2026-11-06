@@ -24,12 +24,12 @@
 #include "ChecksumValidator.h"
 #include "MetaCacheSink.h"
 #include "ByteArraySink.h"
+#include "Mirrors.h"
 
 #include "BuildConfig.h"
 
 namespace Net
 {
-
 namespace
 {
     // 手动跟随重定向时的最大跳数，防止重定向循环
@@ -138,6 +138,12 @@ namespace
     Download::Download() : NetAction()
     {
         m_status = Job_NotStarted;
+        m_stall_timer.setSingleShot(true);
+        connect(&m_stall_timer, &QTimer::timeout, this, [this]()
+        {
+            qCritical() << "Download" << m_url.toString() << "stalled, giving up";
+            stop(QNetworkReply::TimeoutError);
+        });
     }
 
     Download::Ptr Download::makeCached(QUrl url, MetaEntryPtr entry, Options options)
@@ -175,6 +181,23 @@ namespace
         m_sink->addValidator(v);
     }
 
+    void Download::setStallTimeout(int msecs)
+    {
+        m_stall_timer.setInterval(msecs);
+    }
+
+    void Download::stop(QNetworkReply::NetworkError error)
+    {
+        // the reply's abort() comes back through downloadError() and downloadFinished(), which see Job_Failed
+        m_status = Job_Failed;
+        m_network_error = error;
+        m_stall_timer.stop();
+        if (m_reply)
+        {
+            m_reply->abort();
+        }
+    }
+
     void Download::startImpl()
     {
         if (m_status == Job_Aborted)
@@ -193,6 +216,23 @@ namespace
                 m_url = applyDownloadSource(m_url, source);
             }
         }
+
+        // every attempt starts again from the first mirror of the URL it was made for
+        if (!m_requested_url.isValid())
+        {
+            m_requested_url = m_url;
+        }
+        m_mirrors = (m_options & Option::NoMirrors) ? QList<QUrl>{m_requested_url} : Mirrors::candidates(m_requested_url);
+        m_mirror = 0;
+        m_mirrorSaidNotFound = false;
+        m_url = m_mirrors.first();
+        startRequest();
+    }
+
+    void Download::startRequest()
+    {
+        m_network_error = QNetworkReply::NoError;
+        m_http_status = 0;
 
         QNetworkRequest request = buildRequest();
         m_status = m_sink->init(request);
@@ -243,12 +283,20 @@ namespace
         connect(rep, SIGNAL(error(QNetworkReply::NetworkError)), SLOT(downloadError(QNetworkReply::NetworkError)));
         connect(rep, &QNetworkReply::sslErrors, this, &Download::sslErrors);
         connect(rep, &QNetworkReply::readyRead, this, &Download::downloadReadyRead);
+        if (m_stall_timer.interval() > 0)
+        {
+            m_stall_timer.start();
+        }
     }
 
     void Download::downloadProgress(qint64 bytesReceived, qint64 bytesTotal)
     {
         m_total_progress = bytesTotal;
         m_progress = bytesReceived;
+        if (m_stall_timer.isActive())
+        {
+            m_stall_timer.start();
+        }
         emit netActionProgress(m_index_within_job, bytesReceived, bytesTotal);
     }
 
@@ -256,11 +304,17 @@ namespace
     {
         if (error == QNetworkReply::OperationCanceledError)
         {
+            if (m_status == Job_Failed)
+            {
+                // stopped by us, not aborted: the data was refused, or the transfer stalled
+                return;
+            }
             qCritical() << "Aborted " << m_url.toString();
             m_status = Job_Aborted;
         }
         else
         {
+            m_network_error = error;
             if (m_options & Option::AcceptLocalFiles)
             {
                 if (m_sink->hasLocalData())
@@ -384,10 +438,43 @@ namespace
         return true;
     }
 
+    bool Download::tryNextMirror()
+    {
+        // only failures to reach the host at all, not HTTP errors or refused data
+        const bool unreachable = m_network_error > QNetworkReply::NoError && m_network_error < QNetworkReply::ProxyConnectionRefusedError
+            && m_network_error != QNetworkReply::OperationCanceledError;
+        if (unreachable)
+        {
+            Mirrors::markUnreachable(m_url);
+        }
+        if (wasNotFound())
+        {
+            m_mirrorSaidNotFound = true;
+        }
+        if (m_mirror + 1 >= m_mirrors.size())
+        {
+            // a mirror that answered knows better than ones that couldn't be reached: the file isn't there
+            if (unreachable && m_mirrorSaidNotFound)
+            {
+                m_network_error = QNetworkReply::ContentNotFoundError;
+            }
+            return false;
+        }
+        m_mirror++;
+        m_url = m_mirrors[m_mirror];
+        qWarning() << "Trying the next mirror:" << m_url.toString();
+        startRequest();
+        return true;
+    }
+
     void Download::downloadFinished()
     {
-        // handle HTTP redirection first
-        if (handleRedirect())
+        m_stall_timer.stop();
+        auto status = m_reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+        m_http_status = status.isValid() ? status.toInt() : 0;
+
+        // handle HTTP redirection first, unless it was stopped
+        if (m_status != Job_Failed && handleRedirect())
         {
             qDebug() << "Download redirected:" << m_url.toString();
             return;
@@ -407,7 +494,10 @@ namespace
             qDebug() << "Download failed in previous step:" << m_url.toString();
             m_sink->abort();
             m_reply.reset();
-            emit failed(m_index_within_job);
+            if (!tryNextMirror())
+            {
+                emit failed(m_index_within_job);
+            }
             return;
         }
         else if (m_status == Job_Aborted)
@@ -434,7 +524,10 @@ namespace
             qDebug() << "Download failed to finalize:" << m_url.toString();
             m_sink->abort();
             m_reply.reset();
-            emit failed(m_index_within_job);
+            if (!tryNextMirror())
+            {
+                emit failed(m_index_within_job);
+            }
             return;
         }
         m_reply.reset();
@@ -450,7 +543,9 @@ namespace
             m_status = m_sink->write(data);
             if (m_status == Job_Failed)
             {
-                qCritical() << "Failed to process response chunk for " << m_target_path;
+                // nothing more is wanted from this response
+                qCritical() << "Failed to process response chunk for " << m_url.toString();
+                stop(QNetworkReply::NoError);
             }
             // qDebug() << "Download" << m_url.toString() << "gained" << data.size() << "bytes";
         }
