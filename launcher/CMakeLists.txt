@@ -135,6 +135,12 @@ set(NET_SOURCES
     net/NetJob.h
     net/PasteUpload.cpp
     net/PasteUpload.h
+    net/RangeFileSink.cpp
+    net/RangeFileSink.h
+    net/RangePlan.cpp
+    net/RangePlan.h
+    net/RequestBudget.cpp
+    net/RequestBudget.h
     net/mcloUpload.cpp
     net/mcloUpload.h
     net/UploadTask.cpp

@@ -1,10 +1,10 @@
 #pragma once
-#include "FileSink.h"
+#include "RangeFileSink.h"
 #include "ChecksumValidator.h"
 #include "net/HttpMetaCache.h"
 
 namespace Net {
-class MetaCacheSink : public FileSink
+class MetaCacheSink : public RangeFileSink
 {
 public: /* con/des */
     MetaCacheSink(MetaEntryPtr entry, ChecksumValidator * md5sum);

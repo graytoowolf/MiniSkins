@@ -7,7 +7,7 @@
 namespace Net {
 
 MetaCacheSink::MetaCacheSink(MetaEntryPtr entry, ChecksumValidator * md5sum)
-    :Net::FileSink(entry->getFullPath()), m_entry(entry), m_md5Node(md5sum)
+    :Net::RangeFileSink(entry->getFullPath()), m_entry(entry), m_md5Node(md5sum)
 {
     addValidator(md5sum);
 }

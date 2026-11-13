@@ -35,6 +35,10 @@ if(Launcher_RUN_CLANG_TIDY)
   set(CMAKE_CXX_CLANG_TIDY ${DO_CLANG_TIDY})
 endif()
 
+# Standalone download tests: they use a Mock HTTP server and the real launcher/net code.
+# They are EXCLUDE_FROM_ALL and are not registered with add_test.
+option(Launcher_BUILD_DOWNLOAD_TESTS "Build the standalone download tests" OFF)
+
 
 ##################################### Set CMake options #####################################
 set(CMAKE_AUTOMOC ON)
@@ -318,3 +322,7 @@ add_subdirectory(buildconfig)
 
 # NOTE: this must always be last to appease the CMake deity of quirky install command evaluation order.
 add_subdirectory(launcher)
+
+if(Launcher_BUILD_DOWNLOAD_TESTS)
+    add_subdirectory(tests-download)
+endif()

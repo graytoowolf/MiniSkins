@@ -25,6 +25,9 @@
 #include "MetaCacheSink.h"
 #include "ByteArraySink.h"
 #include "Mirrors.h"
+#include "RangeFileSink.h"
+#include "RangePlan.h"
+#include "RequestBudget.h"
 
 #include "BuildConfig.h"
 
@@ -34,6 +37,46 @@ namespace
 {
     // 手动跟随重定向时的最大跳数，防止重定向循环
     const int kMaxRedirects = 10;
+
+    // 只有大于该大小的响应才尝试分片（恰好等于时不触发）
+    const qint64 kSegmentThreshold = 5 * 1024 * 1024;
+    // 默认并发分段数，以及允许的上限
+    const int kDefaultSegments = 4;
+    const int kMaxSegments = 8;
+    // 单个分段请求的最大重试次数
+    const int kMaxSegmentRetries = 3;
+
+    // 日志里不输出查询串，避免暴露签名等敏感参数
+    QString loggableUrl(const QUrl &url)
+    {
+        return url.host() + url.path();
+    }
+
+    // 分段请求遇到这些错误时值得重试该段，而不是放弃整个任务
+    bool isTransientSegmentError(QNetworkReply::NetworkError error, int status)
+    {
+        if (status >= 500 && status <= 599)
+        {
+            return true;
+        }
+        if (error == QNetworkReply::NoError)
+        {
+            return false;
+        }
+        switch (error)
+        {
+            case QNetworkReply::ConnectionRefusedError:
+            case QNetworkReply::RemoteHostClosedError:
+            case QNetworkReply::HostNotFoundError:
+            case QNetworkReply::TimeoutError:
+            case QNetworkReply::TemporaryNetworkFailureError:
+            case QNetworkReply::NetworkSessionFailedError:
+            case QNetworkReply::UnknownNetworkError:
+                return true;
+            default:
+                return false;
+        }
+    }
 
     // BMCLAPI 支持的 Mojang / 模组平台资源域名及其对应的路径前缀
     struct SourceReplacement
@@ -141,9 +184,40 @@ namespace
         m_stall_timer.setSingleShot(true);
         connect(&m_stall_timer, &QTimer::timeout, this, [this]()
         {
+            if (m_range_stage == RangeStage::Segmenting || m_switch_to_segments)
+            {
+                qCritical() << "Segmented download" << loggableUrl(m_url) << "stalled, giving up";
+                failSegments(QNetworkReply::TimeoutError, QStringLiteral("stalled"));
+                return;
+            }
             qCritical() << "Download" << m_url.toString() << "stalled, giving up";
             stop(QNetworkReply::TimeoutError);
         });
+    }
+
+    Download::~Download()
+    {
+        // nothing may be granted to or wait for a dead download
+        RequestBudget::instance().cancel(this);
+        m_stall_timer.stop();
+        stopAllSegments();
+        if (m_reply)
+        {
+            m_reply->disconnect(this);
+            m_reply->abort();
+        }
+        m_reply.reset();
+        if (m_probe_reply)
+        {
+            m_probe_reply->disconnect(this);
+            m_probe_reply->abort();
+        }
+        m_probe_reply.reset();
+        releaseBudgetSlot();
+        if (m_range_sink)
+        {
+            m_range_sink->discardSegmentedWrite();
+        }
     }
 
     Download::Ptr Download::makeCached(QUrl url, MetaEntryPtr entry, Options options)
@@ -172,7 +246,8 @@ namespace
         Download *dl = new Download();
         dl->m_url = url;
         dl->m_options = options;
-        dl->m_sink.reset(new FileSink(path));
+        // 与 FileSink 行为一致，同时让大文件有机会走分段路径
+        dl->m_sink.reset(new RangeFileSink(path));
         return dl;
     }
 
@@ -184,6 +259,11 @@ namespace
     void Download::setStallTimeout(int msecs)
     {
         m_stall_timer.setInterval(msecs);
+    }
+
+    void Download::setSegmentCount(int count)
+    {
+        m_segment_count = qBound(1, count, kMaxSegments);
     }
 
     void Download::stop(QNetworkReply::NetworkError error)
@@ -206,6 +286,21 @@ namespace
             emit aborted(m_index_within_job);
             return;
         }
+        // 每个顶层尝试都从干净的分段状态开始
+        m_range_sink = dynamic_cast<RangeFileSink *>(m_sink.get());
+        m_range_stage = RangeStage::None;
+        m_range_stopping = false;
+        m_switch_to_segments = false;
+        m_segments_attempted = false;
+        m_range_total = -1;
+        m_range_received = 0;
+        m_range_validator.clear();
+        m_range_etag.clear();
+        m_active_segments = 0;
+        m_segments.clear();
+        m_segment_queue.clear();
+        m_probe_reply.reset();
+
         // 应用本地配置中选中的下载源（测试等场景下实例可能不是 Application，需要判断类型）
         auto app = qobject_cast<Application *>(QCoreApplication::instance());
         if (app)
@@ -269,12 +364,36 @@ namespace
 
     void Download::sendRequest(QNetworkRequest &request)
     {
+        if (m_holds_budget_slot)
+        {
+            doSendRequest(request);
+            return;
+        }
+        QNetworkRequest copy = request;
+        m_waiting_for_budget = true;
+        RequestBudget::instance().acquire(this, [this, copy]() mutable
+        {
+            m_waiting_for_budget = false;
+            if (m_status == Job_Aborted || m_status == Job_Failed)
+            {
+                // the download went away while this request was waiting for a slot
+                RequestBudget::instance().release();
+                return;
+            }
+            doSendRequest(copy);
+        });
+    }
+
+    void Download::doSendRequest(QNetworkRequest request)
+    {
         request.setHeader(QNetworkRequest::UserAgentHeader, BuildConfig.USER_AGENT);
         for (auto iter = m_extra_headers.begin(); iter != m_extra_headers.end(); iter++)
         {
             request.setRawHeader(iter.key().toUtf8(), iter.value().toUtf8());
         }
 
+        // the slot is ours from now on, a reply that finishes early must be able to free it
+        m_holds_budget_slot = true;
         QNetworkReply *rep = m_network->get(request);
 
         m_reply.reset(rep);
@@ -287,6 +406,16 @@ namespace
         {
             m_stall_timer.start();
         }
+    }
+
+    void Download::releaseBudgetSlot()
+    {
+        if (!m_holds_budget_slot)
+        {
+            return;
+        }
+        m_holds_budget_slot = false;
+        RequestBudget::instance().release();
     }
 
     void Download::downloadProgress(qint64 bytesReceived, qint64 bytesTotal)
@@ -302,6 +431,19 @@ namespace
 
     void Download::downloadError(QNetworkReply::NetworkError error)
     {
+        if (!m_reply)
+        {
+            return;
+        }
+        if (sender() && sender() != m_reply.get())
+        {
+            return;
+        }
+        if (m_switch_to_segments || m_range_stage != RangeStage::None)
+        {
+            // the probe was aborted on purpose: the body is fetched as segments instead
+            return;
+        }
         if (error == QNetworkReply::OperationCanceledError)
         {
             if (m_status == Job_Failed)
@@ -469,7 +611,40 @@ namespace
 
     void Download::downloadFinished()
     {
+        if (!m_reply)
+        {
+            // a reply we already handed over or tore down
+            return;
+        }
+        if (sender() && sender() != m_reply.get())
+        {
+            return;
+        }
+
         m_stall_timer.stop();
+        // the response is over, so its request slot is free again; a redirect takes a new one
+        releaseBudgetSlot();
+
+        bool switchedToSegments = false;
+        if (m_status == Job_InProgress)
+        {
+            // the whole body may have fit into the first packet, or arrived without a readyRead
+            switchedToSegments = m_switch_to_segments ||
+                                 (m_range_stage == RangeStage::None && tryStartSegments());
+        }
+        if (switchedToSegments)
+        {
+            m_switch_to_segments = false;
+            // the probe response is only kept for its headers; its body is not written
+            m_probe_reply = std::move(m_reply);
+            m_reply.reset();
+            const QVariant probeStatus = m_probe_reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+            m_http_status = probeStatus.isValid() ? probeStatus.toInt() : 0;
+            startSegments();
+            return;
+        }
+        m_switch_to_segments = false;
+
         auto status = m_reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
         m_http_status = status.isValid() ? status.toInt() : 0;
 
@@ -537,6 +712,27 @@ namespace
 
     void Download::downloadReadyRead()
     {
+        if (!m_reply)
+        {
+            return;
+        }
+        if (sender() && sender() != m_reply.get())
+        {
+            // a readyRead from a reply we are no longer reading
+            return;
+        }
+        if (m_switch_to_segments || m_range_stage != RangeStage::None)
+        {
+            // the body of a probe or of a segment is never written by the regular path
+            return;
+        }
+        if (m_status == Job_InProgress && tryStartSegments())
+        {
+            // decide before writing a single body byte; the abort comes back through
+            // downloadError() and downloadFinished(), which start the segments
+            m_reply->abort();
+            return;
+        }
         if (m_status == Job_InProgress)
         {
             auto data = m_reply->readAll();
@@ -555,18 +751,587 @@ namespace
         }
     }
 
+    bool Download::tryStartSegments()
+    {
+        if (m_segments_attempted || m_switch_to_segments || m_range_stage != RangeStage::None)
+        {
+            return false;
+        }
+        if (!m_reply || !m_range_sink)
+        {
+            return false;
+        }
+        QNetworkReply *reply = m_reply.get();
+        const QVariant statusAttribute = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+        if (!statusAttribute.isValid() || statusAttribute.toInt() != 200)
+        {
+            return false;
+        }
+        bool ok = false;
+        const qint64 total = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(&ok);
+        if (!ok || total <= kSegmentThreshold)
+        {
+            return false;
+        }
+        // ranges of an encoded body are not ranges of the file
+        const QByteArray contentEncoding = reply->rawHeader("Content-Encoding");
+        if (!contentEncoding.isEmpty() && contentEncoding.toLower() != "identity")
+        {
+            return false;
+        }
+        const QByteArray etag = reply->rawHeader("ETag");
+        const bool hasStrongEtag = !etag.isEmpty() && !etag.startsWith("W/");
+        const QByteArray lastModified = reply->rawHeader("Last-Modified");
+        if (!hasStrongEtag && lastModified.isEmpty())
+        {
+            // without a strong validator there is no safe way to mix segment responses
+            return false;
+        }
+
+        m_segments_attempted = true;
+        m_switch_to_segments = true;
+        m_range_total = total;
+        m_range_received = 0;
+        // a strong ETag is the only thing that guarantees one version across segments
+        m_range_validator = hasStrongEtag ? etag : lastModified;
+        m_range_etag = hasStrongEtag ? etag : QByteArray();
+        m_total_progress = total;
+        qDebug() << "Range candidate" << loggableUrl(m_url) << "size" << total << "strong ETag"
+                 << hasStrongEtag << "Last-Modified" << !lastModified.isEmpty();
+        return true;
+    }
+
+    void Download::startSegments()
+    {
+        m_range_stage = RangeStage::Segmenting;
+        m_range_stopping = false;
+        m_range_received = 0;
+        m_active_segments = 0;
+        m_segments.clear();
+        m_segment_queue.clear();
+
+        if (!m_range_sink)
+        {
+            failSegments(QNetworkReply::NoError, QStringLiteral("no range capable sink"));
+            return;
+        }
+        if (m_range_total <= 0)
+        {
+            failSegments(QNetworkReply::NoError, QStringLiteral("invalid total size"));
+            return;
+        }
+        if (m_range_sink->beginSegmentedWrite(m_range_total) != Job_InProgress)
+        {
+            failSegments(QNetworkReply::NoError, QStringLiteral("could not create the temporary file"));
+            return;
+        }
+
+        int segmentCount = m_segment_count > 0 ? m_segment_count : kDefaultSegments;
+        if (segmentCount > kMaxSegments)
+        {
+            segmentCount = kMaxSegments;
+        }
+        const QVector<ByteRange> plan = planSegments(m_range_total, segmentCount);
+        if (!validatePlan(plan, m_range_total))
+        {
+            failSegments(QNetworkReply::NoError, QStringLiteral("invalid segment plan"));
+            return;
+        }
+
+        m_segments.resize(plan.size());
+        for (int i = 0; i < plan.size(); ++i)
+        {
+            m_segments[i].start = plan.at(i).start;
+            m_segments[i].end = plan.at(i).end;
+            m_segment_queue.enqueue(i);
+            qDebug() << "Range segment" << i << ":" << plan.at(i).start << "-" << plan.at(i).end;
+        }
+        qDebug() << "Segmented download of" << loggableUrl(m_url) << "into"
+                 << static_cast<int>(m_segments.size()) << "segments," << m_range_total << "bytes";
+        emitRangeProgress();
+        startMoreSegments();
+    }
+
+    void Download::startMoreSegments()
+    {
+        if (!segmentsRunning())
+        {
+            return;
+        }
+        int segmentCount = m_segment_count > 0 ? m_segment_count : kDefaultSegments;
+        if (segmentCount > kMaxSegments)
+        {
+            segmentCount = kMaxSegments;
+        }
+        while (m_active_segments < segmentCount && !m_segment_queue.isEmpty())
+        {
+            const int index = m_segment_queue.dequeue();
+            if (index < 0 || index >= static_cast<int>(m_segments.size()) || m_segments[index].done)
+            {
+                continue;
+            }
+            ++m_active_segments;
+            m_segments[index].active = true;
+            qDebug() << "Range starting segment" << index << "active" << m_active_segments
+                     << "budget active" << RequestBudget::instance().activeCount();
+            RequestBudget::instance().acquire(this, [this, index]()
+            {
+                if (!segmentsRunning())
+                {
+                    if (m_active_segments > 0)
+                    {
+                        --m_active_segments;
+                    }
+                    RequestBudget::instance().release();
+                    return;
+                }
+                startSegment(index);
+            });
+        }
+    }
+
+    void Download::startSegment(int index)
+    {
+        if (index < 0 || index >= static_cast<int>(m_segments.size()) || !segmentsRunning())
+        {
+            // the slot was granted for this segment, so give it back
+            if (m_active_segments > 0)
+            {
+                --m_active_segments;
+            }
+            RequestBudget::instance().release();
+            return;
+        }
+        SegmentState &segment = m_segments[index];
+        QNetworkRequest request = buildRequest();
+        request.setHeader(QNetworkRequest::UserAgentHeader, BuildConfig.USER_AGENT);
+        for (auto iter = m_extra_headers.begin(); iter != m_extra_headers.end(); iter++)
+        {
+            request.setRawHeader(iter.key().toUtf8(), iter.value().toUtf8());
+        }
+        const QByteArray rangeHeader = "bytes=" + QByteArray::number(segment.start) + "-" +
+                                       QByteArray::number(segment.end);
+        request.setRawHeader("Range", rangeHeader);
+        if (!m_range_validator.isEmpty())
+        {
+            request.setRawHeader("If-Range", m_range_validator);
+        }
+
+        QNetworkReply *reply = m_network->get(request);
+        segment.reply = reply;
+        connect(reply, &QNetworkReply::readyRead, this, [this, index, reply]()
+        {
+            segmentReadyRead(index, reply);
+        });
+        connect(reply, &QNetworkReply::finished, this, [this, index, reply]()
+        {
+            segmentFinished(index, reply);
+        });
+        if (m_stall_timer.interval() > 0)
+        {
+            m_stall_timer.start();
+        }
+        qDebug() << "Range request" << rangeHeader << "for" << loggableUrl(m_url);
+    }
+
+    void Download::segmentReadyRead(int index, QNetworkReply *reply)
+    {
+        if (m_range_stopping || !segmentsRunning())
+        {
+            return;
+        }
+        if (index < 0 || index >= static_cast<int>(m_segments.size()))
+        {
+            return;
+        }
+        SegmentState &segment = m_segments[index];
+        if (!reply || segment.reply != reply || !m_range_sink)
+        {
+            return;
+        }
+
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status == 200)
+        {
+            // the server ignored the Range header: a regular download is the only option
+            fallbackToRegularDownload(QStringLiteral("server ignored Range"));
+            return;
+        }
+
+        QByteArray data = reply->readAll();
+        if (data.isEmpty())
+        {
+            return;
+        }
+        const qint64 segmentLength = segment.end - segment.start + 1;
+        if (segment.received + data.size() > segmentLength)
+        {
+            fallbackToRegularDownload(QStringLiteral("more data than the range holds"));
+            return;
+        }
+        if (m_range_sink->writeAt(segment.start + segment.received, data) != Job_InProgress)
+        {
+            failSegments(QNetworkReply::NoError, QStringLiteral("could not write to the temporary file"));
+            return;
+        }
+        segment.received += data.size();
+        m_range_received += data.size();
+        emitRangeProgress();
+        if (m_stall_timer.isActive())
+        {
+            m_stall_timer.start();
+        }
+    }
+
+    void Download::segmentFinished(int index, QNetworkReply *reply)
+    {
+        if (m_range_stopping)
+        {
+            return;
+        }
+        if (index < 0 || index >= static_cast<int>(m_segments.size()))
+        {
+            return;
+        }
+        SegmentState &segment = m_segments[index];
+        if (!reply || segment.reply != reply)
+        {
+            return;
+        }
+
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QNetworkReply::NetworkError error = reply->error();
+        const QByteArray contentRangeHeader = reply->rawHeader("Content-Range");
+        const QByteArray etag = reply->rawHeader("ETag");
+
+        // this reply is done: free its slot before anything else can run
+        segment.reply = nullptr;
+        segment.active = false;
+        reply->disconnect(this);
+        reply->deleteLater();
+        RequestBudget::instance().release();
+        if (m_active_segments > 0)
+        {
+            --m_active_segments;
+        }
+
+        if (!segmentsRunning())
+        {
+            return;
+        }
+
+        if (status == 200 || status == 416)
+        {
+            fallbackToRegularDownload(QStringLiteral("unexpected HTTP status %1").arg(status));
+            return;
+        }
+        if (status != 206)
+        {
+            if (isTransientSegmentError(error, status))
+            {
+                retrySegment(index, QStringLiteral("network error %1").arg(static_cast<int>(error)), error);
+            }
+            else
+            {
+                fallbackToRegularDownload(QStringLiteral("unexpected HTTP status %1").arg(status));
+            }
+            return;
+        }
+        if (error != QNetworkReply::NoError)
+        {
+            retrySegment(index, QStringLiteral("network error %1").arg(static_cast<int>(error)), error);
+            return;
+        }
+
+        const ContentRange parsed = parseContentRange(contentRangeHeader);
+        if (!parsed.valid || parsed.start != segment.start || parsed.end != segment.end ||
+            parsed.total != m_range_total)
+        {
+            fallbackToRegularDownload(QStringLiteral("invalid Content-Range"));
+            return;
+        }
+        if (!m_range_etag.isEmpty() && etag != m_range_etag)
+        {
+            // the file changed under us: never mix two versions
+            fallbackToRegularDownload(QStringLiteral("ETag changed"));
+            return;
+        }
+
+        const qint64 segmentLength = segment.end - segment.start + 1;
+        if (segment.received != segmentLength)
+        {
+            retrySegment(index, QStringLiteral("short segment"), error);
+            return;
+        }
+
+        segment.done = true;
+        qDebug() << "Range segment" << index << "done, received" << m_range_received << "of"
+                 << m_range_total;
+
+        bool allDone = true;
+        for (int i = 0; i < static_cast<int>(m_segments.size()); ++i)
+        {
+            if (!m_segments[i].done)
+            {
+                allDone = false;
+                break;
+            }
+        }
+        if (allDone)
+        {
+            finishSegments();
+            return;
+        }
+        if (m_active_segments == 0)
+        {
+            m_stall_timer.stop();
+        }
+        startMoreSegments();
+    }
+
+    void Download::retrySegment(int index, const QString &reason, QNetworkReply::NetworkError error)
+    {
+        if (!segmentsRunning() || index < 0 || index >= static_cast<int>(m_segments.size()))
+        {
+            return;
+        }
+        SegmentState &segment = m_segments[index];
+        if (segment.done)
+        {
+            return;
+        }
+        if (segment.attempts >= kMaxSegmentRetries)
+        {
+            failSegments(error,
+                         QStringLiteral("segment %1 failed after %2 retries: %3")
+                             .arg(index)
+                             .arg(segment.attempts)
+                             .arg(reason));
+            return;
+        }
+        ++segment.attempts;
+        // the bytes of a failed attempt aren't part of the result anymore
+        m_range_received -= segment.received;
+        if (m_range_received < 0)
+        {
+            m_range_received = 0;
+        }
+        segment.received = 0;
+        qWarning() << "Range segment" << index << "retry" << segment.attempts << "because" << reason;
+        m_segment_queue.enqueue(index);
+        emitRangeProgress();
+        startMoreSegments();
+    }
+
+    void Download::finishSegments()
+    {
+        m_stall_timer.stop();
+        m_range_stage = RangeStage::None;
+        m_active_segments = 0;
+        qDebug() << "Segmented download assembled" << loggableUrl(m_url) << "size" << m_range_total
+                 << "budget active" << RequestBudget::instance().activeCount();
+        if (!m_probe_reply)
+        {
+            failSegments(QNetworkReply::NoError, QStringLiteral("probe response is gone"));
+            return;
+        }
+
+        const JobStatus finalStatus = m_sink->finalize(*m_probe_reply);
+        if (finalStatus == Job_Finished)
+        {
+            m_status = Job_Finished;
+            m_progress = m_range_total;
+            m_total_progress = m_range_total;
+            m_probe_reply.reset();
+            m_segments.clear();
+            m_segment_queue.clear();
+            qDebug() << "Segmented download committed" << loggableUrl(m_url);
+            emit succeeded(m_index_within_job);
+        }
+        else
+        {
+            m_sink->abort();
+            m_status = Job_Failed;
+            m_network_error = QNetworkReply::NoError;
+            m_probe_reply.reset();
+            m_segments.clear();
+            m_segment_queue.clear();
+            qCritical() << "Segmented download failed to validate or commit" << loggableUrl(m_url);
+            emit failed(m_index_within_job);
+        }
+    }
+
+    void Download::failSegments(QNetworkReply::NetworkError error, const QString &reason)
+    {
+        qCritical() << "Segmented download of" << loggableUrl(m_url) << "failed:" << reason;
+        // a probe still in flight (never turned into segments) must not linger either
+        if (m_reply)
+        {
+            m_reply->disconnect(this);
+            m_reply->abort();
+            m_reply.reset();
+        }
+        releaseBudgetSlot();
+        stopAllSegments();
+        if (m_range_sink)
+        {
+            m_range_sink->discardSegmentedWrite();
+        }
+        m_segments.clear();
+        m_segment_queue.clear();
+        m_probe_reply.reset();
+        m_range_stage = RangeStage::None;
+        m_switch_to_segments = false;
+        m_range_stopping = false;
+        m_range_total = -1;
+        m_range_received = 0;
+        m_range_validator.clear();
+        m_range_etag.clear();
+        m_active_segments = 0;
+        m_network_error = error;
+        m_status = Job_Failed;
+        emit failed(m_index_within_job);
+    }
+
+    void Download::fallbackToRegularDownload(const QString &reason)
+    {
+        qWarning() << "Range download of" << loggableUrl(m_url) << "fell back to a regular download:"
+                   << reason;
+        // no probe may survive into the regular request
+        if (m_reply)
+        {
+            m_reply->disconnect(this);
+            m_reply->abort();
+            m_reply.reset();
+        }
+        releaseBudgetSlot();
+        stopAllSegments();
+        if (m_range_sink)
+        {
+            m_range_sink->discardSegmentedWrite();
+        }
+        m_segments.clear();
+        m_segment_queue.clear();
+        m_probe_reply.reset();
+        m_range_stage = RangeStage::None;
+        m_switch_to_segments = false;
+        m_range_stopping = false;
+        m_range_total = -1;
+        m_range_received = 0;
+        m_range_validator.clear();
+        m_range_etag.clear();
+        m_active_segments = 0;
+        m_progress = 0;
+        m_total_progress = 1;
+        m_status = Job_InProgress;
+        m_network_error = QNetworkReply::NoError;
+        m_http_status = 0;
+        startRequest();
+    }
+
+    void Download::stopAllSegments()
+    {
+        m_range_stopping = true;
+        for (int i = 0; i < static_cast<int>(m_segments.size()); ++i)
+        {
+            SegmentState &segment = m_segments[i];
+            QNetworkReply *reply = segment.reply;
+            segment.reply = nullptr;
+            segment.active = false;
+            if (!reply)
+            {
+                continue;
+            }
+            reply->disconnect(this);
+            reply->abort();
+            reply->deleteLater();
+            // every started segment holds exactly one slot
+            RequestBudget::instance().release();
+        }
+        m_active_segments = 0;
+        m_segment_queue.clear();
+        // also drops segment requests that were still waiting for a slot
+        RequestBudget::instance().cancel(this);
+        m_stall_timer.stop();
+    }
+
+    bool Download::segmentsRunning() const
+    {
+        return m_range_stage == RangeStage::Segmenting && !m_range_stopping && m_status == Job_InProgress;
+    }
+
+    void Download::emitRangeProgress()
+    {
+        if (m_range_total <= 0)
+        {
+            return;
+        }
+        qint64 current = m_range_received;
+        if (current > m_range_total)
+        {
+            current = m_range_total;
+        }
+        if (current < m_progress)
+        {
+            // never report backwards progress, even after a retry gives bytes back
+            current = m_progress;
+        }
+        m_progress = current;
+        m_total_progress = m_range_total;
+        emit netActionProgress(m_index_within_job, current, m_range_total);
+    }
+
 }
 
 bool Net::Download::abort()
 {
+    if (m_range_stage == RangeStage::Segmenting || m_switch_to_segments)
+    {
+        // stop everything first so no late signal can start more work
+        m_status = Job_Aborted;
+        m_switch_to_segments = false;
+        m_range_stopping = true;
+        stopAllSegments();
+        if (m_range_sink)
+        {
+            m_range_sink->discardSegmentedWrite();
+        }
+        m_segments.clear();
+        m_segment_queue.clear();
+        if (m_reply)
+        {
+            // drop our interest before aborting: the abort may emit finished right away
+            m_reply->disconnect(this);
+            m_reply->abort();
+        }
+        m_reply.reset();
+        m_probe_reply.reset();
+        releaseBudgetSlot();
+        m_range_stage = RangeStage::None;
+        m_range_stopping = false;
+        m_stall_timer.stop();
+        qDebug() << "Segmented download aborted:" << loggableUrl(m_url);
+        emit aborted(m_index_within_job);
+        return true;
+    }
     if (m_reply)
     {
         m_reply->abort();
+        return true;
     }
-    else
+    if (m_waiting_for_budget)
     {
+        // nothing was sent yet: cancel the pending grant and end the task here, so NetJob isn't stuck
+        RequestBudget::instance().cancel(this);
+        m_waiting_for_budget = false;
+        releaseBudgetSlot();
         m_status = Job_Aborted;
+        m_stall_timer.stop();
+        qDebug() << "Download aborted while waiting for a request slot:" << loggableUrl(m_url);
+        emit aborted(m_index_within_job);
+        return true;
     }
+    m_status = Job_Aborted;
     return true;
 }
 

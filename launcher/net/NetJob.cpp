@@ -15,6 +15,7 @@
 
 #include "NetJob.h"
 #include "Download.h"
+#include "RequestBudget.h"
 #include "Application.h"
 
 #include <QDebug>
@@ -113,6 +114,9 @@ void NetJob::executeTask()
         }
     }
     m_concurrency = source;
+
+    // 普通请求与分段请求共用同一个进程级槽位预算
+    Net::RequestBudget::instance().setCapacity(m_concurrency);
 
     // hack that delays early failures so they can be caught easier
     QMetaObject::invokeMethod(this, "startMoreParts", Qt::QueuedConnection);
