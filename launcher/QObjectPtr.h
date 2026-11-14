@@ -48,6 +48,7 @@ public:
     {
         if (!wrap)
         {
+            // a shared_ptr given a deleter calls it even for null: deleteLater() on null
             m_ptr.reset();
             return;
         }

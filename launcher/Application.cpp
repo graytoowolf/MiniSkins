@@ -1,4 +1,4 @@
-#include "Application.h"
+﻿#include "Application.h"
 #include "BuildConfig.h"
 
 #include "ui/MainWindow.h"
@@ -11,6 +11,7 @@
 #include "ui/pages/global/MinecraftPage.h"
 #include "ui/pages/global/JavaPage.h"
 #include "ui/pages/global/LanguagePage.h"
+#include "ui/pages/global/AppearancePage.h"
 #include "ui/pages/global/ProxyPage.h"
 #include "ui/pages/global/ExternalToolsPage.h"
 #include "ui/pages/global/AccountListPage.h"
@@ -18,16 +19,15 @@
 #include "ui/pages/global/PasteEEPage.h"
 #include "ui/pages/global/CustomCommandsPage.h"
 
-#include "ui/themes/ITheme.h"
-#include "ui/themes/SystemTheme.h"
-#include "ui/themes/DarkTheme.h"
-#include "ui/themes/BrightTheme.h"
-#include "ui/themes/CustomTheme.h"
+#include "ui/themes/ThemeManager.h"
+#include "ui/themes/TitleBar.h"
 
 #include "ui/setupwizard/SetupWizard.h"
 #include "ui/setupwizard/LanguageWizardPage.h"
 #include "ui/setupwizard/JavaWizardPage.h"
+#include "ui/setupwizard/ThemeWizardPage.h"
 
+#include "ui/dialogs/AccountsDialog.h"
 #include "ui/dialogs/CustomMessageBox.h"
 
 #include "ui/pagedialog/PageDialog.h"
@@ -43,6 +43,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
+#include <QTimer>
 #include <QTranslator>
 #include <QLibraryInfo>
 #include <QList>
@@ -61,6 +62,7 @@
 
 #include "updater/v1/UpdateChecker.h"
 #include "updater/v2/Checker.h"
+#include "updater/v2/HeadlessUpdate.h"
 #include "updater/v2/SystemRequirements.h"
 
 #include "tools/JProfiler.h"
@@ -263,6 +265,11 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         // --alive
         parser.addSwitch("alive");
         parser.addDocumentation("alive", "Write a small '" + liveCheckFile + "' file after the launcher starts");
+        // --update
+        parser.addOption("update");
+        parser.addDocumentation("update", "Switch to the given tier (latest, testing, stable) and install its build, newer or older, without any window, and exit: "
+                                          "0 updated, 1 failed, 2 nothing to do, 3 not for this machine. "
+                                          "With --alive, only start and exit. For testing updates");
         // --import
         parser.addOption("import");
         parser.addShortOpt("import", 'I');
@@ -310,6 +317,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_offlineName = args["name"].toString();
     }
     m_liveCheck = args["alive"].toBool();
+    m_headlessUpdateTier = args["update"].toString();
     m_zipToImport = args["import"].toUrl();
 
     QString origcwdPath = QDir::currentPath();
@@ -498,7 +506,9 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
      * If there is one, tell it what the user actually wanted to do and exit.
      * We want to initialize this before logging to avoid messing with the log of a potential already running copy.
      */
-    auto appID = ApplicationId::fromPathAndVersion(QDir::currentPath(), BuildConfig.printableVersionString());
+    // with the platform: switching variants installs the same build for another one, and the new
+    // process must not take the old one, still waiting for it to start, for itself
+    auto appID = ApplicationId::fromPathAndVersion(QDir::currentPath(), BuildConfig.printableVersionString() + " on " + BuildConfig.BUILD_PLATFORM);
     {
         // FIXME: you can run the same binaries with multiple data dirs and they won't clash. This could cause issues for updates.
         m_peerInstance = new LocalPeer(this, appID);
@@ -674,13 +684,33 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         // Updater v2's tier: latest, testing or stable. Not the old channel setting, which
         // develop users have and would put them on Latest.
         m_settings->registerSetting("UpdateTier", QString("stable"));
+        // Updater v2's variant the user chose to stay on or go back to; empty: none, the
+        // Launcher moves along `supersedes` (Design/UpdaterFormats.md)
+        m_settings->registerSetting("UpdateVariant", QString());
+        // the last build an automatic check said can't be installed here, so it's said once
+        m_settings->registerSetting("UpdateNotPossibleBuild", 0);
+        // updater v2's checks, to notice that they keep failing (UpdaterV2::CheckHistory):
+        // when one last got a verified answer, when they started failing, and how many have
+        // failed since (times in seconds since 1970, 0 for none)
+        m_settings->registerSetting("UpdateLastSuccess", 0);
+        m_settings->registerSetting("UpdateFailingSince", 0);
+        m_settings->registerSetting("UpdateFailedChecks", 0);
+        // when the deprecation notice for this installation's variant was last shown (seconds)
+        m_settings->registerSetting("UpdateDeprecationNotice", 0);
 
         // Theming
         m_settings->registerSetting("IconTheme", QString("pe_colored"));
-        m_settings->registerSetting("ApplicationTheme", QString("system"));
+        // ThemeManager's; empty until chosen (in the setup wizard, ThemeWizardPage), then the
+        // defaults apply. Not the old ApplicationTheme, whose System was the platform's style.
+        m_settings->registerSetting("Theme", QString());
+        m_settings->registerSetting("ThemeStyle", QString());
+        m_settings->registerSetting("AccentSource", QString());
+        m_settings->registerSetting("AccentColor", QString());
 
         // Notifications
         m_settings->registerSetting("ShownNotifications", QString());
+        // questions with a "Don't ask again" (brought back by "Reset hidden notifications")
+        m_settings->registerSetting("ConfirmLogClear", true);
 
         // Remembered state
         m_settings->registerSetting("LastUsedGroupForNewInstance", QString());
@@ -815,6 +845,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         {
             m_globalSettingsProvider = std::make_shared<GenericPageProvider>(tr("Settings"));
             m_globalSettingsProvider->addPage<LauncherPage>();
+            m_globalSettingsProvider->addPage<AppearancePage>();
             m_globalSettingsProvider->addPage<MinecraftPage>();
             m_globalSettingsProvider->addPage<JavaPage>();
             m_globalSettingsProvider->addPage<LanguagePage>();
@@ -867,6 +898,12 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         config.statePath = QDir("updater").absoluteFilePath("state.json");
         config.system = SystemRequirements::detect();
         m_updaterV2.reset(new UpdaterV2::Checker(m_network, config));
+        auto setting = m_settings->getSetting("UpdateVariant");
+        m_updaterV2->setPreferredVariant(setting->get().toString());
+        connect(setting.get(), &Setting::SettingChanged, [&](const Setting &, QVariant value)
+        {
+            m_updaterV2->setPreferredVariant(value.toString());
+        });
         qDebug() << "<> Updater v2 started.";
     }
     else if(BuildConfig.UPDATER_ENABLED)
@@ -915,20 +952,16 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         auto searchPaths = QIcon::themeSearchPaths();
         searchPaths.append("iconthemes");
         QIcon::setThemeSearchPaths(searchPaths);
+        // custom icon themes needn't have every icon (the mod platforms' logos, say), and
+        // often inherit from themes the launcher doesn't have: the rest come from ours
+        XdgIcon::setFallbackThemeName("pe_colored");
         qDebug() << "<> Icon themes initialized.";
     }
 
     // Initialize widget themes
     {
-        auto insertTheme = [this](ITheme *theme)
-        {
-            m_themes.insert(std::make_pair(theme->id(), std::unique_ptr<ITheme>(theme)));
-        };
-        auto darkTheme = new DarkTheme();
-        insertTheme(new SystemTheme());
-        insertTheme(darkTheme);
-        insertTheme(new BrightTheme());
-        insertTheme(new CustomTheme(darkTheme, "custom"));
+        m_themeManager.reset(new ThemeManager(m_settings));
+        installEventFilter(new TitleBarWatcher(this));
         qDebug() << "<> Widget themes initialized.";
     }
 
@@ -1019,15 +1052,54 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
     {
         setIconTheme(settings()->get("IconTheme").toString());
         qDebug() << "<> Icon theme set.";
-        setApplicationTheme(settings()->get("ApplicationTheme").toString(), true);
+        m_themeManager->apply(m_themeManager->savedChoice());
         qDebug() << "<> Application theme set.";
     }
 
+    if(!m_headlessUpdateTier.isEmpty())
+    {
+        startHeadlessUpdate();
+        return;
+    }
     if (createSetupWizard())
     {
         return;
     }
     performMainStartupAction();
+}
+
+void Application::startHeadlessUpdate()
+{
+    if(m_liveCheck)
+    {
+        // Restarted by the installer of a headless update: having started is all it waits
+        // for. It also checks that this process still runs (LiveCheck::waitFor, every 250 ms),
+        // so stay a while before exiting.
+        qDebug() << "Update (headless): started with --alive, exiting in 5 seconds";
+        m_status = Application::Initialized;
+        QTimer::singleShot(5000, this, []() { QCoreApplication::exit(0); });
+        return;
+    }
+    UpdaterV2::Tier tier;
+    if(!UpdaterV2::parseTier(m_headlessUpdateTier, tier))
+    {
+        std::cerr << "Update (headless): unknown tier " << m_headlessUpdateTier.toStdString() << std::endl;
+        m_status = Application::Failed;
+        return;
+    }
+    if(!m_updaterV2)
+    {
+        // a build that can't update itself with updater 2: exactly what this mode must catch
+        qWarning() << "Update (headless): this build doesn't use updater 2 (enabled:" << BuildConfig.UPDATER_ENABLED << "version:"
+                   << BuildConfig.UPDATER_VERSION << ")";
+        std::cerr << "Update (headless): this build doesn't use updater 2" << std::endl;
+        m_status = Application::Failed;
+        return;
+    }
+    m_status = Application::Initialized;
+    auto update = new UpdaterV2::HeadlessUpdate(m_updaterV2.get(), m_network, BuildConfig.FILES_MIRRORS.first(), root(), tier, this);
+    // once the event loop runs, so that exiting works even when the check ends right away
+    QTimer::singleShot(0, update, &UpdaterV2::HeadlessUpdate::start);
 }
 
 bool Application::createSetupWizard()
@@ -1055,7 +1127,9 @@ bool Application::createSetupWizard()
             return true;
         return false;
     }();
-    bool wizardRequired = javaRequired || languageRequired;
+    // the theme, until it is chosen; existing installs choose once too
+    bool themeRequired = !m_themeManager->themeChosen();
+    bool wizardRequired = javaRequired || languageRequired || themeRequired;
 
     if (wizardRequired)
     {
@@ -1063,6 +1137,10 @@ bool Application::createSetupWizard()
         if (languageRequired)
         {
             m_setupWizard->addPage(new LanguageWizardPage(m_setupWizard));
+        }
+        if (themeRequired)
+        {
+            m_setupWizard->addPage(new ThemeWizardPage(m_setupWizard));
         }
         if (javaRequired)
         {
@@ -1259,36 +1337,14 @@ std::shared_ptr<JavaInstallList> Application::javalist()
     return m_javalist;
 }
 
-std::vector<ITheme *> Application::getValidApplicationThemes()
-{
-    std::vector<ITheme *> ret;
-    auto iter = m_themes.cbegin();
-    while (iter != m_themes.cend())
-    {
-        ret.push_back((*iter).second.get());
-        iter++;
-    }
-    return ret;
-}
-
-void Application::setApplicationTheme(const QString &name, bool initial)
-{
-    auto systemPalette = qApp->palette();
-    auto themeIter = m_themes.find(name);
-    if (themeIter != m_themes.end())
-    {
-        auto &theme = (*themeIter).second;
-        theme->apply(initial);
-    }
-    else
-    {
-        qWarning() << "Tried to set invalid theme:" << name;
-    }
-}
-
 void Application::setIconTheme(const QString &name)
 {
     XdgIcon::setThemeName(name);
+    // icons load again from the new theme when they are painted next
+    for(auto widget: QApplication::allWidgets())
+    {
+        widget->update();
+    }
 }
 
 QIcon Application::getThemedIcon(const QString &name)
@@ -1490,6 +1546,12 @@ void Application::ShowGlobalSettings(class QWidget *parent, QString open_page)
     emit globalSettingsClosed();
 }
 
+void Application::ShowAccountsDialog(class QWidget *parent)
+{
+    AccountsDialog dialog(parent);
+    dialog.exec();
+}
+
 MainWindow *Application::showMainWindow(bool minimized)
 {
     if (m_mainWindow)
@@ -1512,7 +1574,7 @@ MainWindow *Application::showMainWindow(bool minimized)
             m_mainWindow->show();
         }
 
-        m_mainWindow->checkInstancePathForProblems();
+        QTimer::singleShot(0, m_mainWindow, &MainWindow::startupChecks);
         connect(this, &Application::updateAllowedChanged, m_mainWindow, &MainWindow::updatesAllowedChanged);
         connect(m_mainWindow, &MainWindow::isClosing, this, &Application::on_windowClose);
         m_openWindows++;

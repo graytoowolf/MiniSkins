@@ -98,6 +98,12 @@ void ListModel::requestLogo(QString logo, QString url)
     {
         return;
     }
+    if(url.isEmpty())
+    {
+        // 没有图标地址时没必要发起必然失败的下载
+        logoFailed(logo);
+        return;
+    }
 
     MetaEntryPtr entry = APPLICATION->metacache()->resolveEntry("CurseForgePacks", QString("logos/%1").arg(logo.section(".", 0, 0)));
     NetJob *job = new NetJob(QString("CurseForge Icon Download %1").arg(logo), APPLICATION->network());

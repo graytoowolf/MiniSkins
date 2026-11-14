@@ -367,6 +367,10 @@ QList<InstanceId> InstanceList::discoverInstances()
 
 InstanceList::InstListError InstanceList::loadList()
 {
+    // the group file can change outside too (edited by hand, GH-1824): read it again. Nothing
+    // gets lost: group changes made here are saved right away.
+    loadGroupList();
+
     auto existingIds = getIdMapping(m_instances);
 
     QList<InstancePtr> newList;
@@ -448,6 +452,11 @@ InstanceList::InstListError InstanceList::loadList()
         {
             removeNow();
         }
+    }
+    // the instances kept may be in other groups now
+    if (!m_instances.isEmpty())
+    {
+        emit dataChanged(index(0), index(m_instances.size() - 1), {GroupRole});
     }
     if (newList.size())
     {
@@ -652,9 +661,13 @@ void InstanceList::loadGroupList()
 {
     QString groupFileName = m_instDir + "/instgroups.json";
 
-    // if there's no group file, fail
+    // no group file: no groups (also when it went away while running; one that can't be read or
+    // parsed below leaves the groups as they are, it may be in the middle of an edit)
     if (!QFileInfo(groupFileName).exists())
+    {
+        m_instanceGroupIndex.clear();
         return;
+    }
 
     QByteArray jsonData;
     try

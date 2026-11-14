@@ -10,6 +10,8 @@
 UpdateDialog::UpdateDialog(bool hasUpdate, QWidget *parent, const QString &target) : QDialog(parent), ui(new Ui::UpdateDialog), m_target(target)
 {
     ui->setupUi(this);
+    // no "What's this?" help here
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     if(hasUpdate)
     {
         ui->label->setText(tr("A new update is available!"));
@@ -27,6 +29,24 @@ UpdateDialog::UpdateDialog(bool hasUpdate, QWidget *parent, const QString &targe
 
 UpdateDialog::~UpdateDialog()
 {
+}
+
+void UpdateDialog::offerVariantMove(const QString &text)
+{
+    ui->variantCheck->setText(text);
+    ui->variantCheck->setChecked(true);
+    ui->variantCheck->setVisible(true);
+}
+
+void UpdateDialog::announceVariantMove(const QString &text)
+{
+    ui->variantLabel->setText(text);
+    ui->variantLabel->setVisible(true);
+}
+
+bool UpdateDialog::variantMoveAccepted() const
+{
+    return ui->variantCheck->isChecked();
 }
 
 void UpdateDialog::loadChangelog()

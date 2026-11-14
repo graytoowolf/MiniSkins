@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QApplication>
 #include <memory>
@@ -25,6 +25,7 @@ class InstanceWindow;
 class MainWindow;
 class SetupWizard;
 class GenericPageProvider;
+class QFile;
 class HttpMetaCache;
 class SettingsObject;
 class InstanceList;
@@ -43,7 +44,7 @@ namespace UpdaterV2
 class BaseProfilerFactory;
 class BaseDetachedToolFactory;
 class TranslationsModel;
-class ITheme;
+class ThemeManager;
 class MCEditTool;
 
 namespace Meta
@@ -86,9 +87,10 @@ public:
 
     void setIconTheme(const QString &name);
 
-    std::vector<ITheme *> getValidApplicationThemes();
-
-    void setApplicationTheme(const QString &name, bool initial);
+    ThemeManager *themeManager()
+    {
+        return m_themeManager.get();
+    }
 
     void setUpdating(bool updating);
     void setUpdateTargetInstanceId(const QString &instanceId);
@@ -188,6 +190,8 @@ public:
     InstanceWindow *showInstanceWindow(InstancePtr instance, QString page = QString());
     MainWindow *showMainWindow(bool minimized = false);
 
+    void ShowAccountsDialog(class QWidget *parent);
+
     void updateIsRunning(bool running);
     bool updatesAreAllowed();
 
@@ -208,7 +212,7 @@ public:
     // MOD白名单相关方法
     const QMap<int, QString> &getModWhitelist() const { return m_modWhitelist; }
     bool isModWhitelisted(const int &projectId) const;
-    void addModToWhitelist(const int &projectId, const QString &name);         // 返回void
+    void addModToWhitelist(const int &projectId, const QString &name);         // 返回void，不再直接保存
     void removeModFromWhitelist(const int &projectId);                         // 返回void
     void updateModWhitelistName(const int &projectId, const QString &newName); // 返回void
     QString getModNameFromWhitelist(int projectId) const;
@@ -245,6 +249,8 @@ private slots:
 
 private:
     bool createSetupWizard();
+    // the --update mode, in place of the setup wizard and main window
+    void startHeadlessUpdate();
     void performMainStartupAction();
 
     // sets the fatal error message and m_status to Failed.
@@ -275,7 +281,8 @@ private:
     std::shared_ptr<JavaInstallList> m_javalist;
     std::shared_ptr<TranslationsModel> m_translations;
     std::shared_ptr<GenericPageProvider> m_globalSettingsProvider;
-    std::map<QString, std::unique_ptr<ITheme>> m_themes;
+    // after m_settings, so it goes first: it holds on to the settings
+    std::unique_ptr<ThemeManager> m_themeManager;
     std::unique_ptr<MCEditTool> m_mcedit;
     QString m_jarsPath;
     QSet<QString> m_features;
@@ -331,6 +338,8 @@ public:
     bool m_liveCheck = false;
     QUrl m_zipToImport;
     std::unique_ptr<QFile> logFile;
+    // --update: the tier to update to without any window (UpdaterV2::HeadlessUpdate)
+    QString m_headlessUpdateTier;
 
 private:
     void loadModList();

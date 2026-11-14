@@ -37,7 +37,6 @@ namespace Net
             return;
         }
         m_capacity = clamped;
-        qDebug() << "RequestBudget: capacity" << m_capacity << "active" << m_active;
         grantWaiters();
     }
 
@@ -50,7 +49,6 @@ namespace Net
         if (m_active < m_capacity)
         {
             ++m_active;
-            qDebug() << "RequestBudget: granted, active" << m_active << "capacity" << m_capacity;
             onGranted();
             return;
         }
@@ -59,8 +57,6 @@ namespace Net
         waiter.context = const_cast<QObject *>(context);
         waiter.onGranted = onGranted;
         m_waiting.enqueue(waiter);
-        qDebug() << "RequestBudget: queued, active" << m_active << "capacity" << m_capacity << "waiting"
-                 << m_waiting.size();
     }
 
     void RequestBudget::cancel(const QObject *context)
@@ -69,7 +65,6 @@ namespace Net
         {
             return;
         }
-        const int before = m_waiting.size();
         for (int i = 0; i < m_waiting.size();)
         {
             const Waiter &waiter = m_waiting.at(i);
@@ -82,12 +77,6 @@ namespace Net
                 ++i;
             }
         }
-        const int removed = before - m_waiting.size();
-        if (removed > 0)
-        {
-            qDebug() << "RequestBudget: cancelled" << removed << "waiters, active" << m_active << "waiting"
-                     << m_waiting.size();
-        }
     }
 
     void RequestBudget::release()
@@ -98,8 +87,6 @@ namespace Net
             return;
         }
         --m_active;
-        qDebug() << "RequestBudget: released, active" << m_active << "capacity" << m_capacity << "waiting"
-                 << m_waiting.size();
         grantWaiters();
     }
 
@@ -121,8 +108,6 @@ namespace Net
                 continue;
             }
             ++m_active;
-            qDebug() << "RequestBudget: granted waiter, active" << m_active << "capacity" << m_capacity
-                     << "waiting" << m_waiting.size();
             if (waiter.onGranted)
             {
                 waiter.onGranted();

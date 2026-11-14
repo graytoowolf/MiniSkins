@@ -220,39 +220,45 @@ void BaseInstance::setRunning(bool running)
 
     if (running)
     {
-        m_timeStarted = QDateTime::currentDateTime();
+        m_timeStarted.start();
+        m_countingTime = true;
     }
     else
     {
-        QDateTime timeEnded = QDateTime::currentDateTime();
-
-        qint64 current = settings()->get("totalTimePlayed").toLongLong();
-        settings()->set("totalTimePlayed", current + m_timeStarted.secsTo(timeEnded));
-        settings()->set("lastTimePlayed", m_timeStarted.secsTo(timeEnded));
-
-        emit propertiesChanged(this);
+        recordTimePlayed();
     }
 
     emit runningStatusChanged(running);
 }
 
+void BaseInstance::recordTimePlayed()
+{
+    if (!m_countingTime)
+        return;
+
+    settings()->set("totalTimePlayed", qint64(totalTimePlayed()));
+    settings()->set("lastTimePlayed", qint64(lastTimePlayed()));
+    m_countingTime = false;
+
+    emit propertiesChanged(this);
+}
+
 int64_t BaseInstance::totalTimePlayed() const
 {
-    qint64 current = settings()->get("totalTimePlayed").toLongLong();
-    if (m_isRunning)
+    // clock changes used to be able to save a negative total
+    qint64 current = qMax<qint64>(0, settings()->get("totalTimePlayed").toLongLong());
+    if (m_countingTime)
     {
-        QDateTime timeNow = QDateTime::currentDateTime();
-        return current + m_timeStarted.secsTo(timeNow);
+        return current + m_timeStarted.elapsed() / 1000;
     }
     return current;
 }
 
 int64_t BaseInstance::lastTimePlayed() const
 {
-    if (m_isRunning)
+    if (m_countingTime)
     {
-        QDateTime timeNow = QDateTime::currentDateTime();
-        return m_timeStarted.secsTo(timeNow);
+        return m_timeStarted.elapsed() / 1000;
     }
     return settings()->get("lastTimePlayed").toLongLong();
 }

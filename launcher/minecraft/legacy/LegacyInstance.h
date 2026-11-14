@@ -96,8 +96,6 @@ public:
     virtual bool shouldUpdate() const;
     virtual Task::Ptr createUpdateTask(Net::Mode mode) override;
 
-    virtual QString typeName() const override;
-
     bool canLaunch() const override
     {
         return false;

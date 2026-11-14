@@ -338,7 +338,6 @@ namespace
             qDebug() << "Download cache hit " << m_url.toString();
             return;
         case Job_InProgress:
-            qDebug() << "Downloading " << m_url.toString();
             break;
         case Job_Failed_Proceed: // this is meaningless in this context. We do need a sink.
         case Job_NotStarted:
@@ -466,7 +465,6 @@ namespace
                 }
             }
             // error happened during download.
-            qCritical() << "Failed " << m_url.toString() << " with reason " << error;
             m_status = Job_Failed;
         }
     }
@@ -666,7 +664,6 @@ namespace
         }
         else if (m_status == Job_Failed)
         {
-            qDebug() << "Download failed in previous step:" << m_url.toString();
             m_sink->abort();
             m_reply.reset();
             if (!tryNextMirror())
@@ -686,6 +683,12 @@ namespace
 
         // make sure we got all the remaining data, if any
         auto data = m_reply->readAll();
+        // an error page (some servers send a large HTML one with a 404) isn't the file: the
+        // error that follows decides, not the validators
+        if (m_http_status >= 400)
+        {
+            return;
+        }
         if (data.size())
         {
             qDebug() << "Writing extra" << data.size() << "bytes to" << m_target_path;
@@ -735,6 +738,13 @@ namespace
         }
         if (m_status == Job_InProgress)
         {
+            // an error page (some servers send a large HTML one with a 404) isn't the file: the
+            // error that follows decides, not the validators
+            const QVariant readyStatus = m_reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+            if (readyStatus.isValid() && readyStatus.toInt() >= 400)
+            {
+                return;
+            }
             auto data = m_reply->readAll();
             m_status = m_sink->write(data);
             if (m_status == Job_Failed)
@@ -757,7 +767,7 @@ namespace
         {
             return false;
         }
-        if (!m_reply || !m_range_sink)
+        if (!m_reply)
         {
             return false;
         }
@@ -768,15 +778,43 @@ namespace
             return false;
         }
         bool ok = false;
-        const qint64 total = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(&ok);
-        if (!ok || total <= kSegmentThreshold)
+        qint64 total = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(&ok);
+        if (!ok || total <= 0)
         {
+            // Qt 5.6 does not always refresh the attribute after an internal redirect and
+            // may merge the redirect and the final response values ("0, 12345")
+            const QByteArray rawLength = reply->rawHeader("Content-Length");
+            const QList<QByteArray> values = rawLength.split(',');
+            for (int i = values.size() - 1; i >= 0; --i)
+            {
+                const QByteArray candidate = values.at(i).trimmed();
+                if (candidate.isEmpty())
+                {
+                    continue;
+                }
+                total = candidate.toLongLong(&ok);
+                break;
+            }
+        }
+        if (!ok || total <= 0)
+        {
+            // 多数是小的 JSON 响应，分段没有意义，不再记录
+            return false;
+        }
+        if (total <= kSegmentThreshold)
+        {
+            // small files are downloaded in one go anyway
             return false;
         }
         // ranges of an encoded body are not ranges of the file
         const QByteArray contentEncoding = reply->rawHeader("Content-Encoding");
         if (!contentEncoding.isEmpty() && contentEncoding.toLower() != "identity")
         {
+            return false;
+        }
+        if (!m_range_sink)
+        {
+            // e.g. a cached file: its sink cannot write at offsets
             return false;
         }
         const QByteArray etag = reply->rawHeader("ETag");
@@ -792,12 +830,17 @@ namespace
         m_switch_to_segments = true;
         m_range_total = total;
         m_range_received = 0;
+        // Qt followed a redirect internally: the range requests must go to the final
+        // location, otherwise an edge that only redirects plain GETs would reject them
+        const QUrl finalUrl = reply->url();
+        if (finalUrl.isValid() && !finalUrl.isEmpty() && finalUrl != m_url)
+        {
+            m_url = finalUrl;
+        }
         // a strong ETag is the only thing that guarantees one version across segments
         m_range_validator = hasStrongEtag ? etag : lastModified;
         m_range_etag = hasStrongEtag ? etag : QByteArray();
         m_total_progress = total;
-        qDebug() << "Range candidate" << loggableUrl(m_url) << "size" << total << "strong ETag"
-                 << hasStrongEtag << "Last-Modified" << !lastModified.isEmpty();
         return true;
     }
 
@@ -844,7 +887,6 @@ namespace
             m_segments[i].start = plan.at(i).start;
             m_segments[i].end = plan.at(i).end;
             m_segment_queue.enqueue(i);
-            qDebug() << "Range segment" << i << ":" << plan.at(i).start << "-" << plan.at(i).end;
         }
         qDebug() << "Segmented download of" << loggableUrl(m_url) << "into"
                  << static_cast<int>(m_segments.size()) << "segments," << m_range_total << "bytes";
@@ -872,8 +914,6 @@ namespace
             }
             ++m_active_segments;
             m_segments[index].active = true;
-            qDebug() << "Range starting segment" << index << "active" << m_active_segments
-                     << "budget active" << RequestBudget::instance().activeCount();
             RequestBudget::instance().acquire(this, [this, index]()
             {
                 if (!segmentsRunning())
@@ -931,7 +971,6 @@ namespace
         {
             m_stall_timer.start();
         }
-        qDebug() << "Range request" << rangeHeader << "for" << loggableUrl(m_url);
     }
 
     void Download::segmentReadyRead(int index, QNetworkReply *reply)
@@ -1065,8 +1104,6 @@ namespace
         }
 
         segment.done = true;
-        qDebug() << "Range segment" << index << "done, received" << m_range_received << "of"
-                 << m_range_total;
 
         bool allDone = true;
         for (int i = 0; i < static_cast<int>(m_segments.size()); ++i)
@@ -1128,8 +1165,6 @@ namespace
         m_stall_timer.stop();
         m_range_stage = RangeStage::None;
         m_active_segments = 0;
-        qDebug() << "Segmented download assembled" << loggableUrl(m_url) << "size" << m_range_total
-                 << "budget active" << RequestBudget::instance().activeCount();
         if (!m_probe_reply)
         {
             failSegments(QNetworkReply::NoError, QStringLiteral("probe response is gone"));

@@ -34,7 +34,7 @@ struct System
 };
 
 /**
- * Finds out what the Launcher runs on.
+ * Finds out what the Launcher runs on, once; later calls return the same.
  */
 System detect();
 
@@ -60,6 +60,8 @@ struct Requirements
     QString glibcxx;
     // the major version must be the same, the rest is a minimum
     QString qt;
+    // requirements this Launcher doesn't know, so it can't check them
+    QStringList unknown;
 };
 
 /**

@@ -3,6 +3,7 @@
 
 #include "Application.h"
 
+#include <QCheckBox>
 #include <QIcon>
 #include <QScrollBar>
 #include <QShortcut>
@@ -12,6 +13,7 @@
 
 #include "ui/GuiUtil.h"
 #include "ui/ColorCache.h"
+#include "ui/themes/ThemeManager.h"
 #include "ui/dialogs/CustomMessageBox.h"
 
 #include <BuildConfig.h>
@@ -48,9 +50,12 @@ public:
         m_font = font;
     }
 
+    // the view shows everything again in the new colours
     void setColors(LogColorCache* colors)
     {
+        beginResetModel();
         m_colors.reset(colors);
+        endResetModel();
     }
 
     QModelIndex find(const QModelIndex &start, const QString &value, bool reverse) const
@@ -112,6 +117,13 @@ private:
     std::unique_ptr<LogColorCache> m_colors;
 };
 
+void LogPage::updateColors()
+{
+    auto origForeground = ui->text->palette().color(ui->text->foregroundRole());
+    auto origBackground = ui->text->palette().color(ui->text->backgroundRole());
+    m_proxy->setColors(new LogColorCache(origForeground, origBackground, APPLICATION->themeManager()->logColors()));
+}
+
 LogPage::LogPage(InstancePtr instance, QWidget *parent)
     : QWidget(parent), ui(new Ui::LogPage), m_instance(instance)
 {
@@ -119,12 +131,9 @@ LogPage::LogPage(InstancePtr instance, QWidget *parent)
     ui->tabWidget->tabBar()->hide();
 
     m_proxy = new LogFormatProxyModel(this);
-    // set up text colors in the log proxy and adapt them to the current theme foreground and background
-    {
-        auto origForeground = ui->text->palette().color(ui->text->foregroundRole());
-        auto origBackground = ui->text->palette().color(ui->text->backgroundRole());
-        m_proxy->setColors(new LogColorCache(origForeground, origBackground));
-    }
+    // set up text colors in the log proxy and adapt them to the current theme, again when it changes
+    updateColors();
+    connect(APPLICATION->themeManager(), &ThemeManager::applied, this, &LogPage::updateColors);
 
     // set up fonts in the log proxy
     {
@@ -291,6 +300,21 @@ void LogPage::on_btnClear_clicked()
 {
     if(!m_model)
         return;
+    auto settings = APPLICATION->settings();
+    if(settings->get("ConfirmLogClear").toBool())
+    {
+        QMessageBox question(QMessageBox::Question, tr("Clear"),
+                             tr("Do you really want to clear the log? What it shows now can't be brought back."),
+                             QMessageBox::Yes | QMessageBox::No, this);
+        question.setDefaultButton(QMessageBox::No);
+        auto dontAsk = new QCheckBox(tr("Don't ask again"));
+        question.setCheckBox(dontAsk);
+        if(question.exec() != QMessageBox::Yes)
+            return;
+        // only with a yes: a "no" doesn't turn the question off
+        if(dontAsk->isChecked())
+            settings->set("ConfirmLogClear", false);
+    }
     m_model->clear();
     m_container->refreshContainer();
 }

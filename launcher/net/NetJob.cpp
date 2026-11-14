@@ -103,7 +103,7 @@ void NetJob::executeTask()
 {
     // 并发下载数（并非线程数）：任务开始时取一次快照并限制在合理区间，
     // 避免非法配置导致队列永远停滞，也避免运行中改设置影响本任务。
-    int source = 6;
+    int source = 8;
     if (APPLICATION->getconfigfile())
     {
         bool ok = false;

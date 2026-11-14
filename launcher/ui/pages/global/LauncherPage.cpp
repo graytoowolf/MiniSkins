@@ -38,7 +38,6 @@
 #include <FileSystem.h>
 #include "Application.h"
 #include "BuildConfig.h"
-#include "ui/themes/ITheme.h"
 
 #include <QApplication>
 #include <QProcess>
@@ -55,14 +54,9 @@ enum InstSortMode
 LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::LauncherPage)
 {
     ui->setupUi(this);
-    auto origForeground = ui->fontPreview->palette().color(ui->fontPreview->foregroundRole());
-    auto origBackground = ui->fontPreview->palette().color(ui->fontPreview->backgroundRole());
-    m_colors.reset(new LogColorCache(origForeground, origBackground));
 
     ui->sortingModeGroup->setId(ui->sortByNameBtn, Sort_Name);
     ui->sortingModeGroup->setId(ui->sortLastLaunchedBtn, Sort_LastLaunch);
-
-    defaultFormat = new QTextCharFormat(ui->fontPreview->currentCharFormat());
 
     m_languageModel = APPLICATION->translations();
 
@@ -95,8 +89,6 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
         }
     }
 
-    connect(ui->fontSizeBox, SIGNAL(valueChanged(int)), SLOT(refreshFontPreview()));
-    connect(ui->consoleFont, SIGNAL(currentFontChanged(QFont)), SLOT(refreshFontPreview()));
     connect(ui->downloadcomboBox, SIGNAL(currentIndexChanged(int)), SLOT(onDownloadSourceChanged(int)));
     connect(ui->downloadcomboBox, SIGNAL(deleteRequested(int)), SLOT(onDownloadSourceDeleteRequested(int)));
     connect(ui->downloadcomboBox, SIGNAL(editRequested(int)), SLOT(onDownloadSourceEditRequested(int)));
@@ -115,7 +107,6 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
 LauncherPage::~LauncherPage()
 {
     delete ui;
-    delete defaultFormat;
 }
 
 bool LauncherPage::apply()
@@ -209,6 +200,7 @@ void LauncherPage::applySettings()
     if (ui->resetNotificationsBtn->isChecked())
     {
         s->set("ShownNotifications", QString());
+        s->set("ConfirmLogClear", true);
     }
 
     // Updates
@@ -229,42 +221,6 @@ void LauncherPage::applySettings()
             {
                 updater->check(parsed, true, true);
             }
-        }
-    }
-    auto original = s->get("IconTheme").toString();
-    // FIXME: make generic
-    if (ui->themeComboBox)
-    {
-        switch (ui->themeComboBox->currentIndex())
-        {
-        case 1:
-            s->set("IconTheme", "pe_dark");
-            break;
-        case 2:
-            s->set("IconTheme", "pe_light");
-            break;
-        case 3:
-            s->set("IconTheme", "pe_blue");
-            break;
-        case 4:
-            s->set("IconTheme", "pe_colored");
-            break;
-        case 5:
-            s->set("IconTheme", "OSX");
-            break;
-        case 6:
-            s->set("IconTheme", "iOS");
-            break;
-        case 7:
-            s->set("IconTheme", "flat");
-            break;
-        case 8:
-            s->set("IconTheme", "custom");
-            break;
-        case 0:
-        default:
-            s->set("IconTheme", "miniskins");
-            break;
         }
     }
     if (ui->downloadcomboBox && !sources.isEmpty())
@@ -302,17 +258,6 @@ void LauncherPage::applySettings()
     }
     }
 
-    if (ui->themeComboBoxColors)
-    {
-        auto originalAppTheme = s->get("ApplicationTheme").toString();
-        auto newAppTheme = ui->themeComboBoxColors->currentData().toString();
-        if (originalAppTheme != newAppTheme)
-        {
-            s->set("ApplicationTheme", newAppTheme);
-            APPLICATION->setApplicationTheme(newAppTheme, false);
-        }
-    }
-
     // Console settings
     if (ui->showConsoleCheck)
     {
@@ -325,12 +270,6 @@ void LauncherPage::applySettings()
     if (ui->showConsoleErrorCheck)
     {
         s->set("ShowConsoleOnError", ui->showConsoleErrorCheck->isChecked());
-    }
-    if (ui->consoleFont && ui->fontSizeBox)
-    {
-        QString consoleFontFamily = ui->consoleFont->currentFont().family();
-        s->set("ConsoleFont", consoleFontFamily);
-        s->set("ConsoleFontSize", ui->fontSizeBox->value());
     }
     if (ui->lineLimitSpinBox)
     {
@@ -395,35 +334,6 @@ void LauncherPage::applySettings()
         }
     }
 
-    if (original != s->get("IconTheme"))
-    {
-        APPLICATION->setIconTheme(s->get("IconTheme").toString());
-    }
-
-    auto originalAppTheme = s->get("ApplicationTheme").toString();
-    auto newAppTheme = ui->themeComboBoxColors->currentData().toString();
-    if (originalAppTheme != newAppTheme)
-    {
-        s->set("ApplicationTheme", newAppTheme);
-        APPLICATION->setApplicationTheme(newAppTheme, false);
-    }
-
-    // Console settings
-    s->set("ShowConsole", ui->showConsoleCheck->isChecked());
-    s->set("AutoCloseConsole", ui->autoCloseConsoleCheck->isChecked());
-    s->set("ShowConsoleOnError", ui->showConsoleErrorCheck->isChecked());
-    QString consoleFontFamily = ui->consoleFont->currentFont().family();
-    s->set("ConsoleFont", consoleFontFamily);
-    s->set("ConsoleFontSize", ui->fontSizeBox->value());
-    s->set("ConsoleMaxLines", ui->lineLimitSpinBox->value());
-    s->set("ConsoleOverflowStop", ui->checkStopLogging->checkState() != Qt::Unchecked);
-
-    // Folders
-    // TODO: Offer to move instances to new instance folder.
-    s->set("InstanceDir", ui->instDirTextBox->text());
-    s->set("CentralModsDir", ui->modsDirTextBox->text());
-    s->set("IconsDir", ui->iconsDirTextBox->text());
-
     auto sortMode = (InstSortMode)ui->sortingModeGroup->checkedId();
     switch (sortMode)
     {
@@ -446,44 +356,6 @@ void LauncherPage::loadSettings()
     {
         auto index = m_tierComboBox->findData(s->get("UpdateTier").toString());
         m_tierComboBox->setCurrentIndex(index < 0 ? 0 : index);
-    }
-    // FIXME: make generic
-    auto theme = s->get("IconTheme").toString();
-    if (theme == "pe_dark")
-    {
-        ui->themeComboBox->setCurrentIndex(1);
-    }
-    else if (theme == "pe_light")
-    {
-        ui->themeComboBox->setCurrentIndex(2);
-    }
-    else if (theme == "pe_blue")
-    {
-        ui->themeComboBox->setCurrentIndex(3);
-    }
-    else if (theme == "pe_colored")
-    {
-        ui->themeComboBox->setCurrentIndex(4);
-    }
-    else if (theme == "OSX")
-    {
-        ui->themeComboBox->setCurrentIndex(5);
-    }
-    else if (theme == "iOS")
-    {
-        ui->themeComboBox->setCurrentIndex(6);
-    }
-    else if (theme == "flat")
-    {
-        ui->themeComboBox->setCurrentIndex(7);
-    }
-    else if (theme == "custom")
-    {
-        ui->themeComboBox->setCurrentIndex(8);
-    }
-    else
-    {
-        ui->themeComboBox->setCurrentIndex(0);
     }
 
     if (ui->downloadcomboBox)
@@ -576,25 +448,6 @@ void LauncherPage::loadSettings()
         ui->threadcomboBox->setCurrentIndex(2);
     }
 
-    {
-        auto currentTheme = s->get("ApplicationTheme").toString();
-        auto themes = APPLICATION->getValidApplicationThemes();
-        int idx = 0;
-        if (ui->themeComboBoxColors)
-        {
-            ui->themeComboBoxColors->clear();
-            for (auto &theme : themes)
-            {
-                ui->themeComboBoxColors->addItem(theme->name(), theme->id());
-                if (currentTheme == theme->id())
-                {
-                    ui->themeComboBoxColors->setCurrentIndex(idx);
-                }
-                idx++;
-            }
-        }
-    }
-
     // Console settings
     if (ui->showConsoleCheck)
     {
@@ -608,21 +461,6 @@ void LauncherPage::loadSettings()
     {
         ui->showConsoleErrorCheck->setChecked(s->get("ShowConsoleOnError").toBool());
     }
-    if (ui->consoleFont && ui->fontSizeBox)
-    {
-        QString fontFamily = APPLICATION->settings()->get("ConsoleFont").toString();
-        QFont consoleFont(fontFamily);
-        ui->consoleFont->setCurrentFont(consoleFont);
-
-        bool conversionOk = true;
-        int fontSize = APPLICATION->settings()->get("ConsoleFontSize").toInt(&conversionOk);
-        if (!conversionOk)
-        {
-            fontSize = 11;
-        }
-        ui->fontSizeBox->setValue(fontSize);
-    }
-    refreshFontPreview();
     if (ui->lineLimitSpinBox)
     {
         ui->lineLimitSpinBox->setValue(s->get("ConsoleMaxLines").toInt());
@@ -915,39 +753,4 @@ void LauncherPage::onDownloadSourceEditRequested(int index)
         persistDownloadSelection(index);
     }
     APPLICATION->setDownloadSources(sources);
-}
-
-void LauncherPage::refreshFontPreview()
-{
-    int fontSize = ui->fontSizeBox->value();
-    QString fontFamily = ui->consoleFont->currentFont().family();
-    ui->fontPreview->clear();
-    defaultFormat->setFont(QFont(fontFamily, fontSize));
-    {
-        QTextCharFormat format(*defaultFormat);
-        format.setForeground(m_colors->getFront(MessageLevel::Error));
-        // append a paragraph/line
-        auto workCursor = ui->fontPreview->textCursor();
-        workCursor.movePosition(QTextCursor::End);
-        workCursor.insertText(tr("[Something/ERROR] A spooky error!"), format);
-        workCursor.insertBlock();
-    }
-    {
-        QTextCharFormat format(*defaultFormat);
-        format.setForeground(m_colors->getFront(MessageLevel::Message));
-        // append a paragraph/line
-        auto workCursor = ui->fontPreview->textCursor();
-        workCursor.movePosition(QTextCursor::End);
-        workCursor.insertText(tr("[Test/INFO] A harmless message..."), format);
-        workCursor.insertBlock();
-    }
-    {
-        QTextCharFormat format(*defaultFormat);
-        format.setForeground(m_colors->getFront(MessageLevel::Warning));
-        // append a paragraph/line
-        auto workCursor = ui->fontPreview->textCursor();
-        workCursor.movePosition(QTextCursor::End);
-        workCursor.insertText(tr("[Something/WARN] A not so spooky warning."), format);
-        workCursor.insertBlock();
-    }
 }
