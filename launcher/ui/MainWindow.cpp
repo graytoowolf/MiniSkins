@@ -1778,7 +1778,7 @@ void MainWindow::runModalTask(Task *task)
                 CustomMessageBox::selectable(this, tr("Warnings"), warnings.join('\n'), QMessageBox::Warning)->show();
             } });
     ProgressDialog loadDialog(this);
-    loadDialog.setSkipButton(true, tr("Abort"));
+    loadDialog.setSkipButton(true, tr("Stop"));
     loadDialog.execWithTask(task);
 }
 
@@ -2028,7 +2028,7 @@ void MainWindow::finalizeInstance(InstancePtr inst)
                     CustomMessageBox::selectable(this, tr("Error"), error, QMessageBox::Warning)->show(); });
         if (update)
         {
-            loadDialog.setSkipButton(true, tr("Abort"));
+            loadDialog.setSkipButton(true, tr("Stop"));
             loadDialog.execWithTask(update.get());
         }
     }

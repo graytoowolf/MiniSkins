@@ -888,8 +888,8 @@ namespace
             m_segments[i].end = plan.at(i).end;
             m_segment_queue.enqueue(i);
         }
-        qDebug() << "Segmented download of" << loggableUrl(m_url) << "into"
-                 << static_cast<int>(m_segments.size()) << "segments," << m_range_total << "bytes";
+        // qDebug() << "Segmented download of" << loggableUrl(m_url) << "into"
+        //          << static_cast<int>(m_segments.size()) << "segments," << m_range_total << "bytes";
         emitRangeProgress();
         startMoreSegments();
     }
