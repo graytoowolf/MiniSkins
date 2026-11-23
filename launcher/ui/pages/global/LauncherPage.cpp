@@ -28,19 +28,14 @@
 #include <QVBoxLayout>
 #include <QSignalBlocker>
 
-#include "updater/v1/UpdateChecker.h"
-#include "updater/v2/Checker.h"
-#include <QComboBox>
-#include <QHBoxLayout>
-#include <QLabel>
-
 #include "settings/SettingsObject.h"
 #include <FileSystem.h>
 #include "Application.h"
-#include "BuildConfig.h"
 
 #include <QApplication>
 #include <QProcess>
+#include <DesktopServices.h>
+#include "DesktopIntegration.h"
 
 // FIXME: possibly move elsewhere
 enum InstSortMode
@@ -60,40 +55,17 @@ LauncherPage::LauncherPage(QWidget *parent) : QWidget(parent), ui(new Ui::Launch
 
     m_languageModel = APPLICATION->translations();
 
-    if (BuildConfig.UPDATER_VERSION == 2)
-    {
-        auto tierLayout = new QHBoxLayout();
-        auto tierLabel = new QLabel(tr("Update tier:"), ui->updateSettingsBox);
-        m_tierComboBox = new QComboBox(ui->updateSettingsBox);
-        m_tierComboBox->addItem(tr("Stable: builds tested for a long time"), UpdaterV2::tierName(UpdaterV2::Tier::Stable));
-        m_tierComboBox->addItem(tr("Testing: builds being tested for Stable"), UpdaterV2::tierName(UpdaterV2::Tier::Testing));
-        m_tierComboBox->addItem(tr("Latest: the newest build, with every change"), UpdaterV2::tierName(UpdaterV2::Tier::Latest));
-        tierLabel->setBuddy(m_tierComboBox);
-        tierLayout->addWidget(tierLabel);
-        tierLayout->addWidget(m_tierComboBox, 1);
-        qobject_cast<QBoxLayout *>(ui->updateSettingsBox->layout())->addLayout(tierLayout);
-    }
-
     // 延迟加载设置，等待异步数据加载完成
     QTimer::singleShot(0, this, [this]() {
         this->sources = APPLICATION->getDownloadSources();
         this->loadSettings();
     });
 
-    // Updater
-    if (!BuildConfig.UPDATER_ENABLED)
-    {
-        if (ui->updateSettingsBox)
-        {
-            ui->updateSettingsBox->setHidden(true);
-        }
-    }
-
     connect(ui->downloadcomboBox, SIGNAL(currentIndexChanged(int)), SLOT(onDownloadSourceChanged(int)));
     connect(ui->downloadcomboBox, SIGNAL(deleteRequested(int)), SLOT(onDownloadSourceDeleteRequested(int)));
     connect(ui->downloadcomboBox, SIGNAL(editRequested(int)), SLOT(onDownloadSourceEditRequested(int)));
 
-    // move mac data button
+    //move mac data button
     QFile file(QDir::current().absolutePath() + "/dontmovemacdata");
     if (!file.exists())
     {
@@ -197,32 +169,15 @@ void LauncherPage::applySettings()
 {
     auto s = APPLICATION->settings();
 
+    s->set("ApplicationsMenuEntry", ui->applicationsMenuCheck->isChecked());
+    DesktopIntegration::update(APPLICATION->root(), ui->applicationsMenuCheck->isChecked());
+
     if (ui->resetNotificationsBtn->isChecked())
     {
         s->set("ShownNotifications", QString());
         s->set("ConfirmLogClear", true);
     }
 
-    // Updates
-    if (ui->autoUpdateCheckBox)
-    {
-        s->set("AutoUpdate", ui->autoUpdateCheckBox->isChecked());
-    }
-    if (m_tierComboBox)
-    {
-        auto tier = m_tierComboBox->currentData().toString();
-        if (tier != s->get("UpdateTier").toString())
-        {
-            s->set("UpdateTier", tier);
-            // a switch is the one time an older build is offered (as a downgrade, with a warning)
-            UpdaterV2::Tier parsed;
-            auto updater = APPLICATION->updaterV2();
-            if (updater && APPLICATION->updatesAreAllowed() && UpdaterV2::parseTier(tier, parsed))
-            {
-                updater->check(parsed, true, true);
-            }
-        }
-    }
     if (ui->downloadcomboBox && !sources.isEmpty())
     {
         const int index = ui->downloadcomboBox->currentIndex();
@@ -350,14 +305,6 @@ void LauncherPage::loadSettings()
 {
 
     auto s = APPLICATION->settings();
-    // Updates
-    ui->autoUpdateCheckBox->setChecked(s->get("AutoUpdate").toBool());
-    if (m_tierComboBox)
-    {
-        auto index = m_tierComboBox->findData(s->get("UpdateTier").toString());
-        m_tierComboBox->setCurrentIndex(index < 0 ? 0 : index);
-    }
-
     if (ui->downloadcomboBox)
     {
         QSignalBlocker blocker(ui->downloadcomboBox);
@@ -500,6 +447,52 @@ void LauncherPage::loadSettings()
             ui->sortByNameBtn->setChecked(true);
         }
     }
+
+    ui->applicationsMenuCheck->setChecked(s->get("ApplicationsMenuEntry").toBool());
+    showApplicationsMenu();
+}
+
+void LauncherPage::showApplicationsMenu()
+{
+    const auto status = DesktopIntegration::status(APPLICATION->root());
+    ui->applicationsMenuBox->setVisible(status.state != DesktopIntegration::State::Unsupported);
+    bool usable = status.state == DesktopIntegration::State::Ours || status.state == DesktopIntegration::State::Other;
+    QString text;
+    switch (status.state)
+    {
+    case DesktopIntegration::State::Unsupported:
+        break;
+    case DesktopIntegration::State::Unavailable:
+        text = status.why;
+        break;
+    case DesktopIntegration::State::Packaged:
+        text = tr("MultiMC is installed as a package here: the package provides its applications menu entry.");
+        break;
+    case DesktopIntegration::State::Ours:
+        text = ui->applicationsMenuCheck->isChecked()
+            ? tr("The applications menu starts this copy of MultiMC.")
+            : tr("MultiMC is hidden from the applications menu. Its entry stays, to give MultiMC's windows their icon.");
+        break;
+    case DesktopIntegration::State::Other:
+        text = status.other.isEmpty()
+            ? tr("The applications menu has an entry for MultiMC that MultiMC didn't make. It is left as it is.")
+            : tr("The applications menu starts another copy of MultiMC, in %1.").arg(status.other);
+        break;
+    }
+    ui->applicationsMenuCheck->setEnabled(usable);
+    ui->applicationsMenuLabel->setText(text);
+    ui->applicationsMenuUseThisBtn->setVisible(usable && status.state == DesktopIntegration::State::Other);
+}
+
+void LauncherPage::on_applicationsMenuCheck_toggled(bool)
+{
+    showApplicationsMenu();
+}
+
+void LauncherPage::on_applicationsMenuUseThisBtn_clicked()
+{
+    DesktopIntegration::takeOver(APPLICATION->root(), ui->applicationsMenuCheck->isChecked());
+    showApplicationsMenu();
 }
 
 void LauncherPage::persistDownloadSelection(int index)

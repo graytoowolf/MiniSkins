@@ -98,6 +98,13 @@ add_unit_test(Colors
     LIBS Launcher_logic
     )
 
+if(UNIX AND NOT APPLE)
+    add_unit_test(DesktopIntegration
+        SOURCES DesktopIntegration_test.cpp
+        LIBS Launcher_logic
+        )
+endif()
+
 add_unit_test(Download
     SOURCES net/Download_test.cpp
     LIBS Launcher_logic
@@ -198,24 +205,11 @@ set(LAUNCH_SOURCES
     launch/LogModel.h
 )
 
-# Updater v1
+# The updater (Design/Updater.md in the MultiMC repository)
 set(UPDATE_SOURCES
-    updater/v1/UpdateController.h
-    updater/v1/UpdateController.cpp
-    updater/v1/GoUpdate.h
-    updater/v1/GoUpdate.cpp
-    updater/v1/UpdateChecker.h
-    updater/v1/UpdateChecker.cpp
-    updater/v1/DownloadTask.h
-    updater/v1/DownloadTask.cpp
-
-    # both updaters: waiting for the new build to start
+    # waiting for the new build to start
     updater/LiveCheck.h
     updater/LiveCheck.cpp
-)
-
-# Updater v2 (Design/Updater.md in the MultiMC repository): used only by builds made with Launcher_UPDATER_VERSION 2
-set(NEW_UPDATE_SOURCES
     updater/v2/Signature.h
     updater/v2/Signature.cpp
     updater/v2/SystemRequirements.h
@@ -243,18 +237,6 @@ set(NEW_UPDATE_SOURCES
 add_unit_test(UpdaterLiveCheck
     SOURCES updater/LiveCheck_test.cpp
     LIBS Launcher_logic
-    )
-
-add_unit_test(UpdaterV1UpdateChecker
-    SOURCES updater/v1/UpdateChecker_test.cpp
-    LIBS Launcher_logic
-    DATA updater/v1/testdata
-    )
-
-add_unit_test(UpdaterV1DownloadTask
-    SOURCES updater/v1/DownloadTask_test.cpp
-    LIBS Launcher_logic
-    DATA updater/v1/testdata
     )
 
 add_unit_test(UpdaterV2Signature
@@ -331,6 +313,10 @@ set(ICONS_SOURCES
     # Icons System and related code
     icons/IconUtils.h
     icons/IconUtils.cpp
+    icons/CappedIconEngine.h
+    icons/CappedIconEngine.cpp
+    icons/FittedIconEngine.h
+    icons/FittedIconEngine.cpp
 )
 
 # Support for Minecraft instances and launch
@@ -731,7 +717,6 @@ set(LOGIC_SOURCES
     ${NET_SOURCES}
     ${LAUNCH_SOURCES}
     ${UPDATE_SOURCES}
-    ${NEW_UPDATE_SOURCES}
     ${NOTIFICATIONS_SOURCES}
     ${NEWS_SOURCES}
     ${MINECRAFT_SOURCES}
@@ -814,6 +799,8 @@ SET(LAUNCHER_SOURCES
     ui/setupwizard/LanguageWizardPage.h
     ui/setupwizard/ThemeWizardPage.cpp
     ui/setupwizard/ThemeWizardPage.h
+    ui/setupwizard/UpdatesWizardPage.cpp
+    ui/setupwizard/UpdatesWizardPage.h
 
     # GUI - themes
     ui/themes/BrightTheme.cpp
@@ -911,6 +898,8 @@ SET(LAUNCHER_SOURCES
     ui/pages/global/LanguagePage.h
     ui/pages/global/AppearancePage.cpp
     ui/pages/global/AppearancePage.h
+    ui/pages/global/UpdatesPage.cpp
+    ui/pages/global/UpdatesPage.h
     ui/pages/global/MinecraftPage.cpp
     ui/pages/global/MinecraftPage.h
     ui/pages/global/LauncherPage.cpp
@@ -1001,6 +990,8 @@ SET(LAUNCHER_SOURCES
     ui/dialogs/customyggdrasil.h
     ui/dialogs/MSALoginDialog.cpp
     ui/dialogs/MSALoginDialog.h
+    ui/dialogs/IconPickerModel.cpp
+    ui/dialogs/IconPickerModel.h
     ui/dialogs/NewComponentDialog.cpp
     ui/dialogs/NewComponentDialog.h
     ui/dialogs/NewInstanceDialog.cpp
@@ -1045,6 +1036,8 @@ SET(LAUNCHER_SOURCES
     ui/widgets/LabeledToolButton.h
     ui/widgets/LanguageSelectionWidget.cpp
     ui/widgets/LanguageSelectionWidget.h
+    ui/widgets/TierLever.cpp
+    ui/widgets/TierLever.h
     ui/widgets/ConsolePreview.cpp
     ui/widgets/ConsolePreview.h
     ui/widgets/ColorEdit.cpp
@@ -1059,6 +1052,10 @@ SET(LAUNCHER_SOURCES
     ui/widgets/ThemePreview.h
     ui/widgets/ThemeSelectionWidget.cpp
     ui/widgets/ThemeSelectionWidget.h
+    ui/widgets/UpdateTierWidget.cpp
+    ui/widgets/UpdateTierWidget.h
+    ui/widgets/ElidedLabel.cpp
+    ui/widgets/ElidedLabel.h
     ui/widgets/LineSeparator.cpp
     ui/widgets/LineSeparator.h
     ui/widgets/LogView.cpp
@@ -1106,6 +1103,13 @@ else()
     # the desktop portal, over D-Bus
     find_package(Qt5DBus REQUIRED)
     list(APPEND LAUNCHER_SOURCES ui/themes/TitleBar_other.cpp ui/themes/SystemAppearance_linux.cpp)
+endif()
+
+# The Launcher's applications menu entry and icon (Linux); elsewhere nothing
+if(UNIX AND NOT APPLE)
+    list(APPEND LAUNCHER_SOURCES DesktopIntegration.h DesktopIntegration_linux.cpp)
+else()
+    list(APPEND LAUNCHER_SOURCES DesktopIntegration.h DesktopIntegration_other.cpp)
 endif()
 
 qt5_wrap_ui(LAUNCHER_UI

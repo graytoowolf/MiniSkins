@@ -42,12 +42,7 @@ public:
     QStringList FILES_MIRRORS;
     QStringList META_MIRRORS;
 
-    /// URL for the updater's channel
-    QString UPDATER_BASE;
-
-    /// The updater this build uses: 1, the current one, or 2 (Design/Updater.md in the MultiMC repository)
-    int UPDATER_VERSION = 1;
-    /// Updater v2: pinned root public keys (hex)
+    /// The updater (Design/Updater.md in the MultiMC repository): pinned root public keys (hex)
     QStringList UPDATER_ROOT_KEYS;
     /// Updater v2: the keys document trusted without a signature, as its exact bytes
     QByteArray UPDATER_KEYS_FLOOR;
@@ -128,6 +123,8 @@ public:
     QString WEBSITE_URL = "https://multimc.org/";
     QString FMLLIBS_BASE_URL;
     QString PATRONS_URL;
+
+    QString TRANSLATIONS_BASE_URL;
 
     QString AUTHLIB_INJECTOR_URL = "https://authlib-injector.yushi.moe/artifact/latest.json";
 

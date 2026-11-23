@@ -1,4 +1,5 @@
 #include "UpdateDialog.h"
+#include "ui/GuiUtil.h"
 #include "ui_UpdateDialog.h"
 #include <QDebug>
 #include "Application.h"
@@ -24,7 +25,7 @@ UpdateDialog::UpdateDialog(bool hasUpdate, QWidget *parent, const QString &targe
     }
     ui->changelogBrowser->setHtml(tr("<center><h1>Loading changelog...</h1></center>"));
     loadChangelog();
-    restoreGeometry(QByteArray::fromBase64(APPLICATION->settings()->get("UpdateDialogGeometry").toByteArray()));
+    GuiUtil::restoreDialogGeometry(this, "UpdateDialogGeometry");
 }
 
 UpdateDialog::~UpdateDialog()
@@ -52,7 +53,7 @@ bool UpdateDialog::variantMoveAccepted() const
 void UpdateDialog::loadChangelog()
 {
     dljob = new NetJob("Changelog", APPLICATION->network());
-    QString url = BuildConfig.UPDATER_BASE + "update/commits.json";
+    QString url = QString("https://api.github.com/repos/graytoowolf/MiniSkins/compare/%1...Bs").arg(BuildConfig.GIT_COMMIT);
     m_changelogType = CHANGELOG_COMMITS;
     dljob->addNetAction(Net::Download::makeByteArray(QUrl(url), &changelogData));
     connect(dljob.get(), &NetJob::succeeded, this, &UpdateDialog::changelogLoaded);
@@ -145,6 +146,6 @@ void UpdateDialog::on_btnUpdateNow_clicked()
 
 void UpdateDialog::closeEvent(QCloseEvent* evt)
 {
-    APPLICATION->settings()->set("UpdateDialogGeometry", saveGeometry().toBase64());
+    GuiUtil::saveDialogGeometry(this, "UpdateDialogGeometry");
     QDialog::closeEvent(evt);
 }

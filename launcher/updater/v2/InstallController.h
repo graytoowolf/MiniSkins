@@ -1,3 +1,9 @@
+/* Copyright 2026 Petr Mrázek
+ *
+ * This source is subject to the Microsoft Permissive License (MS-PL).
+ * Please see the COPYING.md file for more information.
+ */
+
 #pragma once
 
 #include <memory>
@@ -14,8 +20,7 @@ namespace UpdaterV2
 
 /**
  * Installs a downloaded update into the running Launcher's installation and starts the new
- * build in its place, rolling everything back when either fails. Updater v2's copy of
- * what UpdateController does for updater v1, on top of the Installer.
+ * build in its place, rolling everything back when either fails, on top of the Installer.
  */
 class InstallController
 {

@@ -10,7 +10,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QFile>
-#include <updater/v1/GoUpdate.h>
 
 #include "DownloadSource.h"
 #include "net/NetJob.h"
@@ -33,10 +32,6 @@ class AccountList;
 class IconList;
 class QNetworkAccessManager;
 class JavaInstallList;
-namespace UpdaterV1
-{
-    class UpdateChecker;
-}
 namespace UpdaterV2
 {
     class Checker;
@@ -97,12 +92,7 @@ public:
     QString getUpdateTargetInstanceId() const;
     bool isUpdating() const;
 
-    shared_qobject_ptr<UpdaterV1::UpdateChecker> updateChecker()
-    {
-        return m_updateChecker;
-    }
-
-    // updater v2, in place of updateChecker() when BuildConfig.UPDATER_VERSION is 2
+    // the updater; null in builds that can't update themselves (BuildConfig.UPDATER_ENABLED)
     shared_qobject_ptr<UpdaterV2::Checker> updaterV2()
     {
         return m_updaterV2;
@@ -268,8 +258,8 @@ private:
 
     shared_qobject_ptr<QNetworkAccessManager> m_network;
 
-    shared_qobject_ptr<UpdaterV1::UpdateChecker> m_updateChecker;
     shared_qobject_ptr<UpdaterV2::Checker> m_updaterV2;
+
     shared_qobject_ptr<AccountList> m_accounts;
 
     shared_qobject_ptr<HttpMetaCache> m_metacache;

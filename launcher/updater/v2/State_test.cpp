@@ -1,3 +1,9 @@
+/* Copyright 2026 Petr Mrázek
+ *
+ * This source is subject to the Microsoft Permissive License (MS-PL).
+ * Please see the COPYING.md file for more information.
+ */
+
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -36,9 +42,9 @@ slots:
     // the configuration this build was made with is usable, so a misconfigured build fails its tests
     void test_compiledIn()
     {
-        if(!BuildConfig.UPDATER_ENABLED || BuildConfig.UPDATER_VERSION != 2)
+        if(!BuildConfig.UPDATER_ENABLED)
         {
-            QSKIP("updater v2 isn't used in this build");
+            QSKIP("this build can't update itself");
         }
         State state(BuildConfig.UPDATER_KEYS_FLOOR, BuildConfig.UPDATER_ROOT_KEYS, BuildConfig.UPDATER_SERIAL_FLOOR);
         QVERIFY2(state.error().isEmpty(), qPrintable(state.error()));

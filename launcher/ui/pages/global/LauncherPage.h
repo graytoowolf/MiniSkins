@@ -61,8 +61,8 @@ public:
 private:
     void applySettings();
     void loadSettings();
-    // updater v2's tier; only in builds that use it
-    QComboBox *m_tierComboBox = nullptr;
+    // the applications menu group (DesktopIntegration.h): what this copy's entry is, now
+    void showApplicationsMenu();
 
     // 打开自定义源配置窗口，返回是否确认并输出规范化后的名称与代理地址
     bool openCustomSourceDialog(const QString &initialName, const QString &initialUrl, QString &name, QString &url);
@@ -79,6 +79,9 @@ private slots:
     void onDownloadSourceChanged(int index);
     void onDownloadSourceDeleteRequested(int index);
     void onDownloadSourceEditRequested(int index);
+
+    void on_applicationsMenuCheck_toggled(bool);
+    void on_applicationsMenuUseThisBtn_clicked();
 
 private:
     Ui::LauncherPage *ui;

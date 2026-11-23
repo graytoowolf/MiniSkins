@@ -1,5 +1,6 @@
 ﻿#include "Application.h"
 #include "BuildConfig.h"
+#include "DesktopIntegration.h"
 
 #include "ui/MainWindow.h"
 #include "ui/InstanceWindow.h"
@@ -11,6 +12,7 @@
 #include "ui/pages/global/MinecraftPage.h"
 #include "ui/pages/global/JavaPage.h"
 #include "ui/pages/global/LanguagePage.h"
+#include "ui/pages/global/UpdatesPage.h"
 #include "ui/pages/global/AppearancePage.h"
 #include "ui/pages/global/ProxyPage.h"
 #include "ui/pages/global/ExternalToolsPage.h"
@@ -25,6 +27,7 @@
 #include "ui/setupwizard/SetupWizard.h"
 #include "ui/setupwizard/LanguageWizardPage.h"
 #include "ui/setupwizard/JavaWizardPage.h"
+#include "ui/setupwizard/UpdatesWizardPage.h"
 #include "ui/setupwizard/ThemeWizardPage.h"
 
 #include "ui/dialogs/AccountsDialog.h"
@@ -60,7 +63,6 @@
 
 #include "java/JavaUtils.h"
 
-#include "updater/v1/UpdateChecker.h"
 #include "updater/v2/Checker.h"
 #include "updater/v2/HeadlessUpdate.h"
 #include "updater/v2/SystemRequirements.h"
@@ -80,8 +82,6 @@
 #include <FileSystem.h>
 #include <DesktopServices.h>
 #include <LocalPeer.h>
-
-#include <sys.h>
 
 #if defined Q_OS_WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -122,43 +122,6 @@ namespace
         APPLICATION->logFile->flush();
         QTextStream(stderr) << out.toLocal8Bit();
         fflush(stderr);
-    }
-
-    QString getIdealPlatform(QString currentPlatform)
-    {
-        auto info = Sys::getKernelInfo();
-        switch (info.kernelType)
-        {
-        case Sys::KernelType::Darwin:
-        {
-            return "osx64-5.15.2";
-        }
-        case Sys::KernelType::Windows:
-        {
-            // FIXME: 5.15.2 is not stable on Windows, due to a large number of completely unpredictable and hard to reproduce issues
-            break;
-            /*
-                        if(info.kernelMajor == 6 && info.kernelMinor >= 1) {
-                            // Windows 7
-                            return "win32-5.15.2";
-                        }
-                        else if (info.kernelMajor > 6) {
-                            // Above Windows 7
-                            return "win32-5.15.2";
-                        }
-                        else {
-                            // Below Windows 7
-                            return "win32";
-                        }
-            */
-        }
-        case Sys::KernelType::Undetermined:
-        case Sys::KernelType::Linux:
-        {
-            break;
-        }
-        }
-        return currentPlatform;
     }
 
 }
@@ -613,7 +576,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         FS::updateTimestamp(m_rootPath);
 #endif
 
-        qDebug() << BuildConfig.LAUNCHER_DISPLAYNAME << ", (c) 2013-2023 " << BuildConfig.LAUNCHER_COPYRIGHT;
+        qDebug() << BuildConfig.LAUNCHER_DISPLAYNAME << ", (c) 2012-2026 " << BuildConfig.LAUNCHER_COPYRIGHT;
         qDebug() << "Version                    : " << BuildConfig.printableVersionString();
         qDebug() << "Git commit                 : " << BuildConfig.GIT_COMMIT;
         qDebug() << "Git refspec                : " << BuildConfig.GIT_REFSPEC;
@@ -712,6 +675,10 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         // questions with a "Don't ask again" (brought back by "Reset hidden notifications")
         m_settings->registerSetting("ConfirmLogClear", true);
 
+        // Linux: this copy's entry in the applications menu (DesktopIntegration.h); off, the
+        // entry stays hidden, for the window icon
+        m_settings->registerSetting("ApplicationsMenuEntry", true);
+
         // Remembered state
         m_settings->registerSetting("LastUsedGroupForNewInstance", QString());
 
@@ -746,7 +713,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_settings->registerSetting("InstanceDir", "instances");
         m_settings->registerSetting({"CentralModsDir", "ModsDir"}, "mods");
         m_settings->registerSetting("IconsDir", "icons");
-
+        // the icon key instances without an icon of their own show; empty: the launcher's logo
+        m_settings->registerSetting("DefaultInstanceIcon", QString());
         // Editors
         m_settings->registerSetting("JsonEditor", QString());
 
@@ -820,6 +788,8 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_settings->registerSetting("TheCat", false);
 
         m_settings->registerSetting("InstSortMode", "Name");
+        // the main window's instance icons, in pixels (MainWindow's zoom)
+        m_settings->registerSetting("InstanceIconSize", 48);
         m_settings->registerSetting("SelectedInstance", QString());
 
         // Window state and geometry
@@ -846,6 +816,10 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
             m_globalSettingsProvider = std::make_shared<GenericPageProvider>(tr("Settings"));
             m_globalSettingsProvider->addPage<LauncherPage>();
             m_globalSettingsProvider->addPage<AppearancePage>();
+            if(BuildConfig.UPDATER_ENABLED)
+            {
+                m_globalSettingsProvider->addPage<UpdatesPage>();
+            }
             m_globalSettingsProvider->addPage<MinecraftPage>();
             m_globalSettingsProvider->addPage<JavaPage>();
             m_globalSettingsProvider->addPage<LanguagePage>();
@@ -885,7 +859,7 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
     }
 
     // initialize the updater
-    if(BuildConfig.UPDATER_ENABLED && BuildConfig.UPDATER_VERSION == 2)
+    if(BuildConfig.UPDATER_ENABLED)
     {
         UpdaterV2::Config config;
         config.site = BuildConfig.FILES_MIRRORS.first();
@@ -904,14 +878,6 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         {
             m_updaterV2->setPreferredVariant(value.toString());
         });
-        qDebug() << "<> Updater v2 started.";
-    }
-    else if(BuildConfig.UPDATER_ENABLED)
-    {
-        auto platform = getIdealPlatform(BuildConfig.BUILD_PLATFORM);
-        auto channelUrl = BuildConfig.UPDATER_BASE + platform + "/channels.json";
-        qDebug() << "Initializing updater with platform: " << platform << " -- " << channelUrl;
-        m_updateChecker.reset(new UpdaterV1::UpdateChecker(m_network, channelUrl, BuildConfig.VERSION_BUILD));
         qDebug() << "<> Updater started.";
     }
 
@@ -940,8 +906,28 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
                 ":/icons/miniskins/128x128/instances/",
                 ":/icons/miniskins/scalable/instances/"};
         m_icons.reset(new IconList(instFolders, setting->get().toString()));
-        connect(setting.get(), &Setting::SettingChanged, [&](const Setting &, QVariant value)
-                { m_icons->directoryChanged(value.toString()); });
+        connect(setting.get(), &Setting::SettingChanged,[&](const Setting &, QVariant value)
+        {
+            m_icons->directoryChanged(value.toString());
+        });
+        auto defaultIcon = m_settings->getSetting("DefaultInstanceIcon");
+        m_icons->setDefaultIcon(defaultIcon->get().toString());
+        connect(defaultIcon.get(), &Setting::SettingChanged, [&](const Setting &, QVariant value)
+        {
+            m_icons->setDefaultIcon(value.toString());
+        });
+        // a renamed icon: the instances using it, and the default, follow it
+        connect(m_icons.get(), &IconList::iconRenamed, [&](QString oldKey, QString newKey)
+        {
+            for (int i = 0; m_instances && i < m_instances->count(); i++)
+            {
+                auto instance = m_instances->at(i);
+                if (instance->iconKey() == oldKey)
+                    instance->setIconKey(newKey);
+            }
+            if (m_settings->get("DefaultInstanceIcon").toString() == oldKey)
+                m_settings->set("DefaultInstanceIcon", newKey);
+        });
         qDebug() << "<> Instance icons intialized.";
     }
 
@@ -1061,7 +1047,10 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         startHeadlessUpdate();
         return;
     }
-    if (createSetupWizard())
+    // Linux: this copy's applications menu entry and icon, which also give the windows their
+    // icon (DesktopIntegration.h)
+    DesktopIntegration::update(m_rootPath, m_settings->get("ApplicationsMenuEntry").toBool());
+    if(createSetupWizard())
     {
         return;
     }
@@ -1089,10 +1078,9 @@ void Application::startHeadlessUpdate()
     }
     if(!m_updaterV2)
     {
-        // a build that can't update itself with updater 2: exactly what this mode must catch
-        qWarning() << "Update (headless): this build doesn't use updater 2 (enabled:" << BuildConfig.UPDATER_ENABLED << "version:"
-                   << BuildConfig.UPDATER_VERSION << ")";
-        std::cerr << "Update (headless): this build doesn't use updater 2" << std::endl;
+        // a build that can't update itself: exactly what this mode must catch
+        qWarning() << "Update (headless): this build can't update itself (BuildConfig.UPDATER_ENABLED is false)";
+        std::cerr << "Update (headless): this build can't update itself" << std::endl;
         m_status = Application::Failed;
         return;
     }
@@ -1127,9 +1115,12 @@ bool Application::createSetupWizard()
             return true;
         return false;
     }();
+    // updater v2's tier, until it is chosen; existing installs choose once too
+    bool updatesRequired = BuildConfig.UPDATER_ENABLED && settings()->get("UpdateTier").toString().isEmpty();
+
     // the theme, until it is chosen; existing installs choose once too
     bool themeRequired = !m_themeManager->themeChosen();
-    bool wizardRequired = javaRequired || languageRequired || themeRequired;
+    bool wizardRequired = javaRequired || languageRequired || updatesRequired || themeRequired;
 
     if (wizardRequired)
     {
@@ -1141,6 +1132,10 @@ bool Application::createSetupWizard()
         if (themeRequired)
         {
             m_setupWizard->addPage(new ThemeWizardPage(m_setupWizard));
+        }
+        if (updatesRequired)
+        {
+            m_setupWizard->addPage(new UpdatesWizardPage(m_setupWizard));
         }
         if (javaRequired)
         {

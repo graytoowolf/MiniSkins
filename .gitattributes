@@ -1,2 +1,4 @@
 *.pem -crlf
+*.sig -text
+updater/keys/*.json -text
 **/testdata/** -text -diff

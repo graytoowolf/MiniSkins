@@ -64,6 +64,12 @@ set(CMAKE_CXX_FLAGS_RELEASE " -O3 -D_FORTIFY_SOURCE=2 ${CMAKE_CXX_FLAGS_RELEASE}
 if(UNIX AND APPLE)
     set(CMAKE_CXX_FLAGS " -stdlib=libc++ ${CMAKE_CXX_FLAGS}")
 endif()
+# 32-bit MinGW 8.1 reads the stack protector's canary from %gs:0 by default, which only
+# works by accident on 64-bit Windows and crashes in window procedures on Windows 10.
+# MinGW 4.9.2 already uses the global guard.
+if(MINGW)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mstack-protector-guard=global")
+endif()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Werror -Werror=return-type -O0")
 
 # Fix build with Qt 5.13
@@ -102,7 +108,6 @@ set(Launcher_BUILD_PLATFORM "" CACHE STRING "A short string identifying the plat
 
 # Our sites, each a list of base URLs: the main server first, then its copies, in the order they are tried.
 # Every URL on a site is one of its base URLs and a path.
-set(Launcher_FILES_MIRRORS "https://files.multimc.org/;https://files-r2.multimc.org/" CACHE STRING "Base URLs of the files site (updates, notifications, translations, ...), in order.")
 set(Launcher_META_MIRRORS "https://meta.multimc.org/;https://meta-r2.multimc.org/" CACHE STRING "Base URLs of the meta site, in order.")
 foreach(site FILES META)
     if(NOT Launcher_${site}_MIRRORS)
@@ -117,11 +122,8 @@ foreach(site FILES META)
     string(REPLACE ";" "\", \"" Launcher_${site}_MIRRORS_LITERALS "\"${Launcher_${site}_MIRRORS}\"")
 endforeach()
 
-# Notification URL
-set(Launcher_NOTIFICATION_URL "" CACHE STRING "URL for checking for notifications.")
-# Which updater a build uses: 1, the current one, or 2, the new one (Design/Updater.md in the
-# MultiMC repository). Both are built into every build.
-set(Launcher_UPDATER_VERSION "1" CACHE STRING "The updater this build uses: 1 or 2")
+# The updater (Design/Updater.md in the MultiMC repository). A build updates itself only when
+# all of these but the serial floor are set.
 # Updater v2: pinned root keys: Ed25519 public keys, 64 hex digits each
 set(Launcher_UPDATER_ROOT_KEYS "" CACHE STRING "Updater v2: pinned root public keys, a list")
 # Updater v2: the keys document compiled in as the floor; it must list exactly the pinned root keys
@@ -129,9 +131,6 @@ set(Launcher_UPDATER_KEYS_FLOOR "" CACHE FILEPATH "Updater v2: the keys document
 set(Launcher_UPDATER_SERIAL_FLOOR "0" CACHE STRING "Updater v2: the lowest tags serial accepted")
 # Updater v2: the variant ID this build is, e.g. linux-x86_64-qt5 (see Design/UpdaterFormats.md)
 set(Launcher_UPDATER_VARIANT "" CACHE STRING "Updater v2: this build's variant ID")
-if(NOT Launcher_UPDATER_VERSION MATCHES "^[12]$")
-    message(FATAL_ERROR "Launcher_UPDATER_VERSION must be 1 or 2, not '${Launcher_UPDATER_VERSION}'")
-endif()
 if(NOT Launcher_UPDATER_SERIAL_FLOOR MATCHES "^(0|[1-9][0-9]*)$")
     message(FATAL_ERROR "Launcher_UPDATER_SERIAL_FLOOR must be a number, not '${Launcher_UPDATER_SERIAL_FLOOR}'")
 endif()

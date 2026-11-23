@@ -14,11 +14,13 @@
  */
 
 #include "Application.h"
+#include "ui/GuiUtil.h"
 #include "NewInstanceDialog.h"
 #include "ui_NewInstanceDialog.h"
 
 #include <BaseVersion.h>
 #include <icons/IconList.h>
+#include <icons/IconUtils.h>
 #include <tasks/Task.h>
 #include <InstanceList.h>
 
@@ -51,7 +53,7 @@ NewInstanceDialog::NewInstanceDialog(const QString &initialGroup, const QString 
     setWindowIcon(APPLICATION->getThemedIcon("new"));
 
     InstIconKey = "default";
-    ui->iconButton->setIcon(APPLICATION->icons()->getIcon(InstIconKey));
+    ui->iconButton->setIcon(IconUtils::fittedIcon(APPLICATION->icons()->getIcon(InstIconKey)));
 
     auto groups = APPLICATION->instances()->getGroups().toSet();
     auto groupList = QStringList(groups.toList());
@@ -106,18 +108,18 @@ NewInstanceDialog::NewInstanceDialog(const QString &initialGroup, const QString 
 
     updateDialogState();
 
-    restoreGeometry(QByteArray::fromBase64(APPLICATION->settings()->get("NewInstanceGeometry").toByteArray()));
+    GuiUtil::restoreDialogGeometry(this, "NewInstanceGeometry");
 }
 
 void NewInstanceDialog::reject()
 {
-    APPLICATION->settings()->set("NewInstanceGeometry", saveGeometry().toBase64());
+    GuiUtil::saveDialogGeometry(this, "NewInstanceGeometry");
     QDialog::reject();
 }
 
 void NewInstanceDialog::accept()
 {
-    APPLICATION->settings()->set("NewInstanceGeometry", saveGeometry().toBase64());
+    GuiUtil::saveDialogGeometry(this, "NewInstanceGeometry");
     importIconNow();
     QDialog::accept();
 }
@@ -162,7 +164,7 @@ void NewInstanceDialog::setSuggestedPack(const QString &name, InstanceTask *task
 
     if (!task)
     {
-        ui->iconButton->setIcon(APPLICATION->icons()->getIcon("default"));
+        ui->iconButton->setIcon(IconUtils::fittedIcon(APPLICATION->icons()->getIcon("default")));
         importIcon = false;
     }
 
@@ -176,13 +178,13 @@ void NewInstanceDialog::setSuggestedIconFromFile(const QString &path, const QStr
     importIconPath = path;
     importIconName = name;
 
-    // Hmm, for some reason they can be to small
-    ui->iconButton->setIcon(QIcon(path));
+    // read capped, and fit as everywhere: platforms' logos come in any size and shape
+    ui->iconButton->setIcon(IconUtils::fittedIcon(IconUtils::fromFile(path)));
 }
 
 void NewInstanceDialog::setSuggestedIcon(const QString &key)
 {
-    auto icon = APPLICATION->icons()->getIcon(key);
+    auto icon = IconUtils::fittedIcon(APPLICATION->icons()->getIcon(key));
     importIcon = false;
 
     ui->iconButton->setIcon(icon);
@@ -241,7 +243,7 @@ void NewInstanceDialog::on_iconButton_clicked()
     if (dlg.result() == QDialog::Accepted)
     {
         InstIconKey = dlg.selectedIconKey;
-        ui->iconButton->setIcon(APPLICATION->icons()->getIcon(InstIconKey));
+        ui->iconButton->setIcon(IconUtils::fittedIcon(APPLICATION->icons()->getIcon(InstIconKey)));
         importIcon = false;
     }
 }
@@ -278,5 +280,5 @@ void NewInstanceDialog::importIconNow()
         InstIconKey = importIconName;
         importIcon = false;
     }
-    APPLICATION->settings()->set("NewInstanceGeometry", saveGeometry().toBase64());
+    GuiUtil::saveDialogGeometry(this, "NewInstanceGeometry");
 }

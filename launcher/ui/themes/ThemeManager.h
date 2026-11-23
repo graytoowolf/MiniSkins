@@ -1,3 +1,9 @@
+/* Copyright 2026 Petr Mrázek
+ *
+ * This source is subject to the Microsoft Permissive License (MS-PL).
+ * Please see the COPYING.md file for more information.
+ */
+
 #pragma once
 
 #include <QColor>
@@ -130,4 +136,7 @@ private: /* data */
     QList<QPair<const char *, QPalette>> m_platformClassPalettes;
     // whether setting a palette with no roles gives the platform's back (Qt 5.15+)
     bool m_paletteResetWorks = true;
+    // inside apply(): its palette changes are ours; a later one is the platform's
+    bool m_applying = false;
+    bool m_reapplyQueued = false;
 };

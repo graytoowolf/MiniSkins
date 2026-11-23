@@ -103,9 +103,13 @@ jobs:
            -DCMAKE_BUILD_TYPE=Release ^
            -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json ^
            -DCMAKE_INSTALL_PREFIX:PATH=D:/MiniSkins/install  ^
-           -DLauncher_UPDATER_BASE=https://mmc.mcpeau.com/ ^
+           -DLauncher_TRANSLATIONS_BASE_URL=https://mmc.mcpeau.com/ ^
            -DLauncher_VERSION_BUILD=%GITHUB_RUN_NUMBER% ^
            -DLauncher_BUILD_PLATFORM=win32 ^
+           -DLauncher_FILES_MIRRORS:STRING=https://mmc.mcpeau.com/ ^
+           -DLauncher_UPDATER_ROOT_KEYS:STRING=06c3b1f2500f5376e9d2a12f65a2387c1f77483c3f6bfa05e18bee002669a917 ^
+           -DLauncher_UPDATER_KEYS_FLOOR:FILEPATH=%GITHUB_WORKSPACE%/updater/keys/1.json ^
+           -DLauncher_UPDATER_VARIANT:STRING=windows-x86-qt5.6 ^
            -G "MinGW Makefiles" ^
            ..
 
@@ -182,6 +186,28 @@ jobs:
           chcp 65001
           python mc.py id=$env:GITHUB_RUN_NUMBER url='https://mmc.mcpeau.com'
 
+      - name: 生成 V2 更新
+        env:
+          PYTHONIOENCODING: utf-8
+          UPDATER_ONLINE_PRIVATE_KEY: ${{ secrets.UPDATER_ONLINE_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:UPDATER_ONLINE_PRIVATE_KEY)) { throw "UPDATER_ONLINE_PRIVATE_KEY is not set" }
+          $key = "D:/MiniSkins/updater-online1.pem"
+          $tree = "D:/MiniSkins/qiniu/updater"
+          $pem = $env:UPDATER_ONLINE_PRIVATE_KEY.Replace("`r`n", "`n").TrimEnd() + "`n"
+          [IO.File]::WriteAllText($key, $pem, [Text.UTF8Encoding]::new($false))
+          New-Item -ItemType Directory -Force -Path "$tree/keys" | Out-Null
+          Copy-Item updater/keys/1.json* "$tree/keys/" -Force
+
+          python generate_updater_v2.py publish --tree $tree --install D:/MiniSkins/install --build $env:GITHUB_RUN_NUMBER --commit $env:GITHUB_SHA --variant windows-x86-qt5.6 --name "Windows, x86, Qt 5.6" --requires-file updater/windows-requires.json --sign-key $key
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python generate_updater_v2.py mirrors --tree $tree --group https://mmc.mcpeau.com/ --sign-key $key
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python generate_updater_v2.py tags --tree $tree --serial $env:GITHUB_RUN_NUMBER --latest $env:GITHUB_RUN_NUMBER --testing $env:GITHUB_RUN_NUMBER --stable $env:GITHUB_RUN_NUMBER --sign-key $key
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python generate_updater_v2.py validate --tree $tree --root-pub 06c3b1f2500f5376e9d2a12f65a2387c1f77483c3f6bfa05e18bee002669a917 --check-content
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Upload qiniu
         run: |
           cd D:/MiniSkins/
@@ -228,6 +254,8 @@ jobs:
            -DCMAKE_INSTALL_PREFIX:PATH=/home/runner/MiniSkins/MiniSkins \
            -DLauncher_LAYOUT=lin-nodeps \
            -DLauncher_BUILD_PLATFORM=lin64 \
+           -DLauncher_VERSION_BUILD=${GITHUB_RUN_NUMBER} \
+           -DLauncher_FILES_MIRRORS:STRING=https://mmc.mcpeau.com/ \
            $GITHUB_WORKSPACE
 
       - name: Compile
@@ -283,6 +311,8 @@ jobs:
           -DCMAKE_PREFIX_PATH="$QT_PATH" \
           -DQt5_DIR="$QT_PATH/lib/cmake/Qt5" \
           -DLauncher_BUILD_PLATFORM=osx64-5.15.2 \
+          -DLauncher_VERSION_BUILD=${GITHUB_RUN_NUMBER} \
+          -DLauncher_FILES_MIRRORS:STRING=https://mmc.mcpeau.com/ \
           -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13
 
       - name: Compile
