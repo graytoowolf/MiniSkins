@@ -101,7 +101,6 @@ jobs:
           cd build
           cmake ^
            -DCMAKE_BUILD_TYPE=Release ^
-           -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json ^
            -DCMAKE_INSTALL_PREFIX:PATH=D:/MiniSkins/install  ^
            -DLauncher_TRANSLATIONS_BASE_URL=https://mmc.mcpeau.com/ ^
            -DLauncher_VERSION_BUILD=%GITHUB_RUN_NUMBER% ^
@@ -250,7 +249,6 @@ jobs:
            -DCMAKE_C_COMPILER=/usr/bin/gcc-5 \
            -DCMAKE_CXX_COMPILER=/usr/bin/g++-5 \
            -DCMAKE_BUILD_TYPE=Release \
-           -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json \
            -DCMAKE_INSTALL_PREFIX:PATH=/home/runner/MiniSkins/MiniSkins \
            -DLauncher_LAYOUT=lin-nodeps \
            -DLauncher_BUILD_PLATFORM=lin64 \
@@ -306,7 +304,6 @@ jobs:
           cmake .. \
           -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
           -DCMAKE_BUILD_TYPE=Release \
-          -DLauncher_NOTIFICATION_URL:STRING=https://files.multimc.org/notifications.json \
           -DCMAKE_INSTALL_PREFIX:PATH="${{ github.workspace }}/build/dist" \
           -DCMAKE_PREFIX_PATH="$QT_PATH" \
           -DQt5_DIR="$QT_PATH/lib/cmake/Qt5" \
