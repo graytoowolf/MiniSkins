@@ -1,4 +1,6 @@
-# MultiMC
+# MiniSkins
+
+MiniSkins is an independent project based on MultiMC.
 
 Portions are licensed under Apache 2.0 License:
 

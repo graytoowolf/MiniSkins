@@ -12,16 +12,16 @@
  * The Launcher's own entry in the desktop's applications menu, and its icon, for copies that
  * aren't installed as a package (Linux; elsewhere nothing). Docks and task managers also take
  * the window icon from this entry: they match windows to it by the Wayland app id and the X11
- * window class (org.multimc.MultiMC, MultiMC), which is why it carries that name.
+ * window class (com.mcpeau.www.MiniSkins, MiniSkins), which is why it carries that name.
  *
- * The entry and icon are the user's (XDG_DATA_HOME: applications/org.multimc.MultiMC.desktop,
- * icons/hicolor/scalable/apps/org.multimc.MultiMC.svg) and name the copy that wrote them
- * (X-MultiMC-Root). One copy owns the entry: others leave it alone until that copy is gone
+ * The entry and icon are the user's (XDG_DATA_HOME: applications/com.mcpeau.www.MiniSkins.desktop,
+ * icons/hicolor/scalable/apps/com.mcpeau.www.MiniSkins.svg) and name the copy that wrote them
+ * (X-MiniSkins-Root). One copy owns the entry: others leave it alone until that copy is gone
  * (its start script missing), or the user switches it in the settings. Its TryExec hides it
  * from the menu once the copy is deleted.
  *
  * Nothing is written for a copy in a temporary folder or without its start script, or when a
- * package provides the entry (system-wide org.multimc.MultiMC.desktop, the Packaging repo's):
+ * package provides the entry (system-wide com.mcpeau.www.MiniSkins.desktop, the Packaging repo's):
  * then an entry a copy wrote is removed, so it doesn't hide the package's.
  */
 namespace DesktopIntegration
@@ -42,7 +42,7 @@ struct Status
     QString other;
 };
 
-/// root: this copy's folder (the one with the MultiMC start script)
+/// root: this copy's folder (the one with the MiniSkins start script)
 Status status(const QString &root);
 
 /// At start: this copy's entry written or refreshed, shown in the menu or not; an entry whose

@@ -120,7 +120,7 @@ public:
     QString TEXTURE_BASE = "http://textures.minecraft.net";
     QString IMGUR_BASE_URL = "https://api.imgur.com/3/";
     /// Where the Launcher can be downloaded: for an installation that can no longer update itself
-    QString WEBSITE_URL = "https://multimc.org/";
+    QString WEBSITE_URL = "https://www.mcpeau.com/";
     QString FMLLIBS_BASE_URL;
     QString PATRONS_URL;
 

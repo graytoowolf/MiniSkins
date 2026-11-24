@@ -466,17 +466,17 @@ void LauncherPage::showApplicationsMenu()
         text = status.why;
         break;
     case DesktopIntegration::State::Packaged:
-        text = tr("MultiMC is installed as a package here: the package provides its applications menu entry.");
+        text = tr("MiniSkins is installed as a package here: the package provides its applications menu entry.");
         break;
     case DesktopIntegration::State::Ours:
         text = ui->applicationsMenuCheck->isChecked()
-            ? tr("The applications menu starts this copy of MultiMC.")
-            : tr("MultiMC is hidden from the applications menu. Its entry stays, to give MultiMC's windows their icon.");
+            ? tr("The applications menu starts this copy of MiniSkins.")
+            : tr("MiniSkins is hidden from the applications menu. Its entry stays, to give MiniSkins's windows their icon.");
         break;
     case DesktopIntegration::State::Other:
         text = status.other.isEmpty()
-            ? tr("The applications menu has an entry for MultiMC that MultiMC didn't make. It is left as it is.")
-            : tr("The applications menu starts another copy of MultiMC, in %1.").arg(status.other);
+            ? tr("The applications menu has an entry for MiniSkins that MiniSkins didn't make. It is left as it is.")
+            : tr("The applications menu starts another copy of MiniSkins, in %1.").arg(status.other);
         break;
     }
     ui->applicationsMenuCheck->setEnabled(usable);

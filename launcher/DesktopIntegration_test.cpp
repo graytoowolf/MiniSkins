@@ -23,14 +23,14 @@ class DesktopIntegrationTest : public QObject
     QByteArray m_tmpdir;
 
     QString base() const { return m_base->path(); }
-    QString entryPath() const { return base() + "/home/applications/org.multimc.MultiMC.desktop"; }
+    QString entryPath() const { return base() + "/home/applications/com.mcpeau.www.MiniSkins.desktop"; }
 
     // a copy of the Launcher: a folder with an executable start script
     QString copy(const QString &name)
     {
         const QString root = base() + "/" + name;
         QDir().mkpath(root);
-        QFile script(root + "/MultiMC");
+        QFile script(root + "/MiniSkins");
         script.open(QIODevice::WriteOnly);
         script.write("#!/bin/sh\n");
         script.close();
@@ -79,12 +79,12 @@ slots:
         QCOMPARE(DesktopIntegration::status(a).state, State::Ours);
         DesktopIntegration::update(a, true);
         const QString text = entry();
-        QVERIFY(text.contains("Exec=\"" + a + "/MultiMC\"\n"));
-        QVERIFY(text.contains("TryExec=" + a + "/MultiMC\n"));
-        QVERIFY(text.contains("Icon=org.multimc.MultiMC\n"));
-        QVERIFY(text.contains("StartupWMClass=MultiMC\n"));
+        QVERIFY(text.contains("Exec=\"" + a + "/MiniSkins\"\n"));
+        QVERIFY(text.contains("TryExec=" + a + "/MiniSkins\n"));
+        QVERIFY(text.contains("Icon=com.mcpeau.www.MiniSkins\n"));
+        QVERIFY(text.contains("StartupWMClass=MiniSkins\n"));
         QVERIFY(text.contains("NoDisplay=false\n"));
-        QVERIFY(text.contains("X-MultiMC-Root=" + a + "\n"));
+        QVERIFY(text.contains("X-MiniSkins-Root=" + a + "\n"));
     }
 
     void test_hiddenFromTheMenu()
@@ -101,7 +101,7 @@ slots:
         const QString a = copy("a"), b = copy("b");
         DesktopIntegration::update(a, true);
         DesktopIntegration::update(b, true);
-        QVERIFY(entry().contains("X-MultiMC-Root=" + a + "\n"));
+        QVERIFY(entry().contains("X-MiniSkins-Root=" + a + "\n"));
         auto status = DesktopIntegration::status(b);
         QCOMPARE(status.state, State::Other);
         QCOMPARE(status.other, a);
@@ -111,9 +111,9 @@ slots:
     {
         const QString a = copy("a"), b = copy("b");
         DesktopIntegration::update(a, true);
-        QFile::remove(a + "/MultiMC");
+        QFile::remove(a + "/MiniSkins");
         DesktopIntegration::update(b, true);
-        QVERIFY(entry().contains("X-MultiMC-Root=" + b + "\n"));
+        QVERIFY(entry().contains("X-MiniSkins-Root=" + b + "\n"));
     }
 
     void test_takeOver()
@@ -121,7 +121,7 @@ slots:
         const QString a = copy("a"), b = copy("b");
         DesktopIntegration::update(a, true);
         QVERIFY(DesktopIntegration::takeOver(b, false));
-        QVERIFY(entry().contains("X-MultiMC-Root=" + b + "\n"));
+        QVERIFY(entry().contains("X-MiniSkins-Root=" + b + "\n"));
         QVERIFY(entry().contains("NoDisplay=true\n"));
         QCOMPARE(DesktopIntegration::status(a).state, State::Other);
     }
@@ -147,9 +147,9 @@ slots:
         DesktopIntegration::update(a, true);
         QVERIFY(QFile::exists(entryPath()));
         QDir().mkpath(base() + "/system/applications");
-        QFile package(base() + "/system/applications/org.multimc.MultiMC.desktop");
+        QFile package(base() + "/system/applications/com.mcpeau.www.MiniSkins.desktop");
         package.open(QIODevice::WriteOnly);
-        package.write("[Desktop Entry]\nType=Application\nName=MultiMC 5\nExec=/opt/multimc/run.sh\n");
+        package.write("[Desktop Entry]\nType=Application\nName=MiniSkins 5\nExec=/opt/miniskins/run.sh\n");
         package.close();
         QCOMPARE(DesktopIntegration::status(a).state, State::Packaged);
         DesktopIntegration::update(a, true);
@@ -174,7 +174,7 @@ slots:
         // quoted for Exec ($, " and \ escaped by a backslash), then backslashes doubled as a string
         QString expected = odd;
         expected.replace("$", "\\\\$").replace("\"", "\\\\\"");
-        QVERIFY2(entry().contains("Exec=\"" + expected + "/MultiMC\"\n"), qPrintable(entry()));
+        QVERIFY2(entry().contains("Exec=\"" + expected + "/MiniSkins\"\n"), qPrintable(entry()));
         // and the root reads back as it was
         QCOMPARE(DesktopIntegration::status(odd).state, State::Ours);
     }

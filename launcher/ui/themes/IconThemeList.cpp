@@ -21,7 +21,7 @@
 
 namespace {
 // the built-in sets, by their setting value, in the order they are shown
-const char *const BUILT_IN[] = {"multimc", "pe_colored", "pe_blue", "pe_dark", "pe_light", "flat", "OSX", "iOS"};
+const char *const BUILT_IN[] = {"miniskins", "pe_colored", "pe_blue", "pe_dark", "pe_light", "flat", "OSX", "iOS"};
 // what the selector shows of each
 const char *const SAMPLES[] = {"new", "viewfolder", "settings", "help", "checkupdate", "news"};
 const int SAMPLE_SIZE = 24;
@@ -63,7 +63,7 @@ QVariant IconThemeList::data(const QModelIndex &index, int role) const
     case Qt::DisplayRole:
         if (!builtIn)
             return entry.name;
-        if (entry.id == "multimc")
+        if (entry.id == "miniskins")
             return tr("Default");
         if (entry.id == "pe_colored")
             return tr("Colored");

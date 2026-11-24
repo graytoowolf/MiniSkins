@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="https://avatars2.githubusercontent.com/u/5411890" alt="MultiMC logo"/>
+  <img src="branding/logo.svg" alt="MiniSkins logo"/>
 </p>
 
-# MultiMC
+# MiniSkins
 
-MultiMC is a custom launcher for Minecraft that focuses on predictability, long term stability and simplicity.
+MiniSkins is an independent custom launcher for Minecraft, based on [MultiMC](https://github.com/MultiMC/Launcher). It focuses on predictability, long term stability and simplicity.
 
 ## Development
 
-If you want to contribute, talk to us on [Discord](https://discord.gg/multimc) first.
+If you want to contribute, please talk to us on the [GitHub issues page](https://github.com/graytoowolf/MiniSkins/issues) first.
 
 While blindly submitting PRs is definitely possible, they're not necessarily going to get accepted.
 
@@ -32,7 +32,7 @@ In general, in order of importance:
 
 ## Translations
 
-Translations can be done [on crowdin](https://translate.multimc.org). Please avoid making direct pull requests to the translations repository.
+Translations are delivered through the launcher's built-in translation download system. Please avoid making direct pull requests to the translations repository.
 
 ## License
 
