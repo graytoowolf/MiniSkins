@@ -31,7 +31,7 @@ jobs:
           from pathlib import Path
 
           repo = "https://github.com/graytoowolf/MiniSkins"
-          branch = "Bs"
+          branch = "develop"
           max_count = "200"
 
           output = subprocess.check_output(

@@ -10,7 +10,7 @@
 #include "Application.h"
 
 NotificationChecker::NotificationChecker(QObject *parent)
-    : QObject(parent), m_appVersionChannel("Bs")
+    : QObject(parent), m_appVersionChannel("develop")
 {
 }
 
