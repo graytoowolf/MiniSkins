@@ -53,7 +53,7 @@ bool UpdateDialog::variantMoveAccepted() const
 void UpdateDialog::loadChangelog()
 {
     dljob = new NetJob("Changelog", APPLICATION->network());
-    QString url = QString("https://api.github.com/repos/graytoowolf/MiniSkins/compare/%1...Bs").arg(BuildConfig.GIT_COMMIT);
+    QString url = BuildConfig.FILES_MIRRORS.first() + "update/commits.json";
     m_changelogType = CHANGELOG_COMMITS;
     dljob->addNetAction(Net::Download::makeByteArray(QUrl(url), &changelogData));
     connect(dljob.get(), &NetJob::succeeded, this, &UpdateDialog::changelogLoaded);
