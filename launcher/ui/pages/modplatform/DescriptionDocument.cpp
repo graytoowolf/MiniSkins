@@ -60,8 +60,9 @@ void Modplatform::DescriptionDocument::requestResource(const QUrl& url) {
     QObject::connect(load->job.get(), &NetJob::succeeded, this, [this, load] {
         QPixmap pixmap;
         if(!pixmap.loadFromData(load->output)) {
-            qDebug() << load->output;
+            qDebug() << "Failed to load image from" << load->key << ":" << load->output.size() << "bytes";
             downloadFailed(load->key);
+            return;
         }
         if(pixmap.width() > 800) {
             pixmap = pixmap.scaledToWidth(800);
