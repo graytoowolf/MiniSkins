@@ -315,16 +315,6 @@ void Checker::setPreferredVariant(const QString &variant)
     m_preferred = variant;
 }
 
-bool Checker::lastVariants(QList<Variant> &runnable, QString &recommended) const
-{
-    if (m_haveVariants)
-    {
-        runnable = m_lastRunnable;
-        recommended = m_lastRecommended;
-    }
-    return m_haveVariants;
-}
-
 bool Checker::lastTags(TagsDocument &tags) const
 {
     if (m_haveVerifiedTags)
@@ -364,10 +354,6 @@ void Checker::afterTags()
         {
             m_result.recommended = recommended.variant.id;
         }
-        m_lastRunnable = m_result.runnable;
-        m_lastRecommended = m_result.recommended;
-        m_haveVariants = true;
-        emit variantsKnown();
 
         auto choice = chooseVariant(m_build, m_config.variant, m_preferred, m_config.system);
         m_result.commit = m_build.commit;

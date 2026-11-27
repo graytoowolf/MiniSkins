@@ -135,18 +135,10 @@ public:
      */
     void setPreferredVariant(const QString &variant);
 
-    /**
-     * The variants of the tier's build in the last check that read it: the ones this machine
-     * can run, and the recommended one. False before a check got that far.
-     */
-    bool lastVariants(QList<Variant> &runnable, QString &recommended) const;
-
 signals:
     void finished(const UpdaterV2::CheckResult &result);
     // a check verified the tags; lastTags() has them
     void tagsVerified();
-    // a check read the tier's build; lastVariants() has its variants
-    void variantsKnown();
 
 private:
     void nextKeys();
@@ -208,9 +200,6 @@ private:
     TagsDocument m_verifiedTags;
     bool m_haveVerifiedTags = false;
     QString m_preferred;
-    QList<Variant> m_lastRunnable;
-    QString m_lastRecommended;
-    bool m_haveVariants = false;
     TierDecision m_decision;
     BuildManifest m_build;
     CheckResult m_result;

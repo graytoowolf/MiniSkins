@@ -12,7 +12,6 @@
 #include "ui/pages/global/MinecraftPage.h"
 #include "ui/pages/global/JavaPage.h"
 #include "ui/pages/global/LanguagePage.h"
-#include "ui/pages/global/UpdatesPage.h"
 #include "ui/pages/global/AppearancePage.h"
 #include "ui/pages/global/ProxyPage.h"
 #include "ui/pages/global/ExternalToolsPage.h"
@@ -812,10 +811,6 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
             m_globalSettingsProvider = std::make_shared<GenericPageProvider>(tr("Settings"));
             m_globalSettingsProvider->addPage<LauncherPage>();
             m_globalSettingsProvider->addPage<AppearancePage>();
-            if(BuildConfig.UPDATER_ENABLED)
-            {
-                m_globalSettingsProvider->addPage<UpdatesPage>();
-            }
             m_globalSettingsProvider->addPage<MinecraftPage>();
             m_globalSettingsProvider->addPage<JavaPage>();
             m_globalSettingsProvider->addPage<LanguagePage>();

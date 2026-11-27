@@ -161,6 +161,7 @@ jobs:
           $temp = "D:/MiniSkins/temp_for_zip"
           New-Item -ItemType Directory -Force -Path $temp | Out-Null
           Copy-Item -Recurse -Force "D:/MiniSkins/install" "$temp/MiniSkins"
+          New-Item -ItemType Directory -Force -Path "D:/MiniSkins/qiniu" | Out-Null
           Compress-Archive -Path "$temp/MiniSkins" -DestinationPath "D:/MiniSkins/qiniu/MiniSkins.zip" -Force
           Remove-Item -Recurse -Force $temp
 

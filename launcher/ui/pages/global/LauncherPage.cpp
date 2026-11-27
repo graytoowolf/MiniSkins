@@ -169,6 +169,7 @@ void LauncherPage::applySettings()
 {
     auto s = APPLICATION->settings();
 
+    s->set("AutoUpdate", ui->autoUpdateCheck->isChecked());
     s->set("ApplicationsMenuEntry", ui->applicationsMenuCheck->isChecked());
     DesktopIntegration::update(APPLICATION->root(), ui->applicationsMenuCheck->isChecked());
 
@@ -305,6 +306,7 @@ void LauncherPage::loadSettings()
 {
 
     auto s = APPLICATION->settings();
+    ui->autoUpdateCheck->setChecked(s->get("AutoUpdate").toBool());
     if (ui->downloadcomboBox)
     {
         QSignalBlocker blocker(ui->downloadcomboBox);

@@ -885,8 +885,6 @@ SET(LAUNCHER_SOURCES
     ui/pages/global/LanguagePage.h
     ui/pages/global/AppearancePage.cpp
     ui/pages/global/AppearancePage.h
-    ui/pages/global/UpdatesPage.cpp
-    ui/pages/global/UpdatesPage.h
     ui/pages/global/MinecraftPage.cpp
     ui/pages/global/MinecraftPage.h
     ui/pages/global/LauncherPage.cpp

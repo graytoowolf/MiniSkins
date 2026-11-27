@@ -46,6 +46,22 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_9">
        <item>
+        <widget class="QGroupBox" name="updatesBox">
+         <property name="title">
+          <string>Updates</string>
+         </property>
+         <layout class="QVBoxLayout" name="updatesBoxLayout">
+          <item>
+           <widget class="QCheckBox" name="autoUpdateCheck">
+            <property name="text">
+             <string>Check for updates on start</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="QGroupBox" name="foldersBox">
          <property name="title">
           <string>Folders</string>
