@@ -792,8 +792,6 @@ SET(LAUNCHER_SOURCES
     ui/setupwizard/LanguageWizardPage.h
     ui/setupwizard/ThemeWizardPage.cpp
     ui/setupwizard/ThemeWizardPage.h
-    ui/setupwizard/UpdatesWizardPage.cpp
-    ui/setupwizard/UpdatesWizardPage.h
 
     # GUI - themes
     ui/themes/BrightTheme.cpp
@@ -1023,8 +1021,6 @@ SET(LAUNCHER_SOURCES
     ui/widgets/LabeledToolButton.h
     ui/widgets/LanguageSelectionWidget.cpp
     ui/widgets/LanguageSelectionWidget.h
-    ui/widgets/TierLever.cpp
-    ui/widgets/TierLever.h
     ui/widgets/ConsolePreview.cpp
     ui/widgets/ConsolePreview.h
     ui/widgets/ColorEdit.cpp
@@ -1039,8 +1035,6 @@ SET(LAUNCHER_SOURCES
     ui/widgets/ThemePreview.h
     ui/widgets/ThemeSelectionWidget.cpp
     ui/widgets/ThemeSelectionWidget.h
-    ui/widgets/UpdateTierWidget.cpp
-    ui/widgets/UpdateTierWidget.h
     ui/widgets/ElidedLabel.cpp
     ui/widgets/ElidedLabel.h
     ui/widgets/LineSeparator.cpp

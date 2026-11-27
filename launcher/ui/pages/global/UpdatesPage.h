@@ -15,11 +15,10 @@ class QCheckBox;
 class QComboBox;
 class QGroupBox;
 class QLabel;
-class UpdateTierWidget;
 
 /**
- * The updater's settings: checking for updates on start, the tier (UpdateTierWidget), and which
- * variant to run when this computer can run several.
+ * The updater's settings: checking for updates on start, and which variant to run when this
+ * computer can run several. The tier is always Stable.
  * Only in builds that can update themselves (BuildConfig.UPDATER_ENABLED).
 
  */
@@ -60,8 +59,6 @@ private:
 
 private: /* data */
     QCheckBox *m_autoUpdate = nullptr;
-    QGroupBox *m_tierBox = nullptr;
-    UpdateTierWidget *m_tierWidget = nullptr;
     QGroupBox *m_variantBox = nullptr;
     QLabel *m_variantLabel = nullptr;
     QComboBox *m_variant = nullptr;

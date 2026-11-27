@@ -1441,9 +1441,8 @@ QString intListToString(const QList<int> &list)
 
 UpdaterV2::Tier MainWindow::updateTier()
 {
-    UpdaterV2::Tier tier = UpdaterV2::Tier::Stable;
-    UpdaterV2::parseTier(APPLICATION->settings()->get("UpdateTier").toString(), tier);
-    return tier;
+    // the tier is always Stable; the setting is kept at "stable" and any other value is ignored
+    return UpdaterV2::Tier::Stable;
 }
 
 void MainWindow::updateCheckedV2(const UpdaterV2::CheckResult &result)

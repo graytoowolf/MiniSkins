@@ -27,7 +27,6 @@
 #include "ui/setupwizard/SetupWizard.h"
 #include "ui/setupwizard/LanguageWizardPage.h"
 #include "ui/setupwizard/JavaWizardPage.h"
-#include "ui/setupwizard/UpdatesWizardPage.h"
 #include "ui/setupwizard/ThemeWizardPage.h"
 
 #include "ui/dialogs/AccountsDialog.h"
@@ -644,9 +643,6 @@ Application::Application(int &argc, char **argv) : QApplication(argc, argv)
         m_settings.reset(new INISettingsObject(BuildConfig.LAUNCHER_CONFIGFILE, this));
         // Updates
         m_settings->registerSetting("AutoUpdate", true);
-        // Updater v2's tier: latest, testing or stable. Not the old channel setting, which
-        // develop users have and would put them on Latest.
-        m_settings->registerSetting("UpdateTier", QString("stable"));
         // Updater v2's variant the user chose to stay on or go back to; empty: none, the
         // Launcher moves along `supersedes` (Design/UpdaterFormats.md)
         m_settings->registerSetting("UpdateVariant", QString());
@@ -1115,12 +1111,9 @@ bool Application::createSetupWizard()
             return true;
         return false;
     }();
-    // updater v2's tier, until it is chosen; existing installs choose once too
-    bool updatesRequired = BuildConfig.UPDATER_ENABLED && settings()->get("UpdateTier").toString().isEmpty();
-
     // the theme, until it is chosen; existing installs choose once too
     bool themeRequired = !m_themeManager->themeChosen();
-    bool wizardRequired = javaRequired || languageRequired || updatesRequired || themeRequired;
+    bool wizardRequired = javaRequired || languageRequired || themeRequired;
 
     if (wizardRequired)
     {
@@ -1132,10 +1125,6 @@ bool Application::createSetupWizard()
         if (themeRequired)
         {
             m_setupWizard->addPage(new ThemeWizardPage(m_setupWizard));
-        }
-        if (updatesRequired)
-        {
-            m_setupWizard->addPage(new UpdatesWizardPage(m_setupWizard));
         }
         if (javaRequired)
         {
