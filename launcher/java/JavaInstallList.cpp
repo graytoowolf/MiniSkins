@@ -184,7 +184,6 @@ void JavaListLoadTask::javaCheckerFinished()
             javaVersion->id = result.javaVersion;
             javaVersion->arch = result.architecture;
             javaVersion->path = result.path;
-            javaVersion->vendor = result.javaVendor;
             candidates.append(javaVersion);
 
             qDebug() << " " << javaVersion->id.toString() << javaVersion->arch.serialize() << javaVersion->path;

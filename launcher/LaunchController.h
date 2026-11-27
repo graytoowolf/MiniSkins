@@ -3,7 +3,6 @@
 #include <BaseInstance.h>
 #include <tools/BaseProfiler.h>
 
-#include "java/JavaMatchTask.h"
 #include "minecraft/launch/QuickPlayTarget.h"
 #include "minecraft/auth/MinecraftAccount.h"
 
@@ -59,7 +58,6 @@ public:
 private:
     void login();
     void launchInstance();
-    void createAndStartLauncher();
     void decideAccount();
 
 private slots:
@@ -68,9 +66,6 @@ private slots:
     void onSucceeded();
     void onFailed(QString reason);
     void onProgressRequested(Task *task);
-
-    void javaMatchSucceeded();
-    void javaMatchFailed(QString reason);
 
 private:
     BaseProfilerFactory *m_profiler = nullptr;
@@ -82,6 +77,5 @@ private:
     MinecraftAccountPtr m_accountToUse = nullptr;
     AuthSessionPtr m_session;
     shared_qobject_ptr<LaunchTask> m_launcher;
-    shared_qobject_ptr<JavaMatchTask> m_javaMatchTask;
     QuickPlayTargetPtr m_quickPlayTarget;
 };
