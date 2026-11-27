@@ -108,7 +108,7 @@ set(Launcher_BUILD_PLATFORM "" CACHE STRING "A short string identifying the plat
 
 # Our sites, each a list of base URLs: the main server first, then its copies, in the order they are tried.
 # Every URL on a site is one of its base URLs and a path.
-set(Launcher_META_MIRRORS "https://meta.multimc.org/;https://meta-r2.multimc.org/" CACHE STRING "Base URLs of the meta site, in order.")
+set(Launcher_META_MIRRORS "https://meta.mcpeau.com/" CACHE STRING "Base URLs of the meta site, in order.")
 foreach(site FILES META)
     if(NOT Launcher_${site}_MIRRORS)
         message(FATAL_ERROR "Launcher_${site}_MIRRORS must have at least one base URL")
